@@ -1,0 +1,27 @@
+{
+  "name": "agentpress",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "build": "pnpm --filter './packages/*' build && pnpm --filter './apps/*' build",
+    "typecheck": "pnpm --recursive typecheck",
+    "lint": "pnpm --recursive lint",
+    "test": "pnpm --recursive test",
+    "bootstrap": "tsx scripts/bootstrap.ts",
+    "sdk:generate": "pnpm --filter @project/sdk generate",
+    "sdk:check": "tsx scripts/check-sdk-drift.ts",
+    "test:generate": "tsx scripts/generate-tests.ts",
+    "docs:generate": "tsx scripts/generate-docs.ts",
+    "pages:generate": "tsx scripts/generate-pages.ts",
+    "db:push": "pnpm --filter @project/db db:push",
+    "db:seed": "pnpm --filter @project/db db:seed",
+    "db:studio": "pnpm --filter @project/db db:studio"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.0",
+    "eslint": "^8.0.0",
+    "js-yaml": "^4.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

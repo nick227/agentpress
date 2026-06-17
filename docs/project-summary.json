@@ -1,0 +1,8 @@
+{
+  "name": "AgentPress MVP",
+  "summary": "Account-owned AI pipeline builder for generating structured blog posts, saving output assets, and optionally publishing to WordPress.",
+  "mvpPages": ["AccountsPage.tsx", "AccountDetailPage.tsx", "PipelineBuilderPage.tsx"],
+  "coreHierarchy": "Account > Pipeline > Run",
+  "agentOutputs": ["title", "excerpt", "thumbnail_prompt", "body"],
+  "integrations": ["OpenAI", "WordPress REST API", "Local output folder"]
+}

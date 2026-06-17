@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         String    @default("OWNER")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  category     String?
+  phone        String?
+  email        String?
+  description  String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  pipelines    Pipeline[]
+  destinations Destination[]
+}
+
+model Pipeline {
+  id           String             @id @default(cuid())
+  accountId    String
+  account      Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name         String
+  slug         String
+  description  String?
+  status       String             @default("draft")
+  destinationId String?
+  dryRun       Boolean            @default(true)
+  scheduleMode String             @default("manual")
+  frequency    String?
+  timeOfDay    String?
+  timezone     String?
+  isPaused     Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  variables    PipelineVariable[]
+  agents       PipelineAgent[]
+  runs         PipelineRun[]
+
+  @@unique([accountId, slug])
+}
+
+model PipelineVariable {
+  id           String   @id @default(cuid())
+  pipelineId   String
+  pipeline     Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  key          String
+  label        String?
+  type         String   @default("text")
+  required     Boolean  @default(false)
+  defaultValue String?
+  exampleValue String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PipelineAgent {
+  id           String   @id @default(cuid())
+  pipelineId   String
+  pipeline     Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  uid          String
+  name         String
+  systemPrompt String   @db.Text
+  userPrompt   String   @db.Text
+  outputTarget String
+  outputFormat String   @default("text")
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([pipelineId, uid])
+}
+
+model PipelineRun {
+  id              String           @id @default(cuid())
+  accountId       String
+  pipelineId      String
+  pipeline        Pipeline         @relation(fields: [pipelineId], references: [id])
+  status          String           @default("queued")
+  dryRun          Boolean          @default(true)
+  variables       Json
+  generatedPost   Json?
+  outputFolder    String?
+  destinationId   String?
+  startedAt       DateTime         @default(now())
+  completedAt     DateTime?
+  error           String?          @db.Text
+  agentRuns       AgentRun[]
+  assets          RunAsset[]
+  publishAttempts PublishAttempt[]
+}
+
+model AgentRun {
+  id                   String      @id @default(cuid())
+  pipelineRunId        String
+  pipelineRun          PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  agentUid             String
+  agentName            String
+  outputTarget         String
+  renderedSystemPrompt String      @db.Text
+  renderedUserPrompt   String      @db.Text
+  outputText           String?     @db.Text
+  outputJson           Json?
+  status               String      @default("queued")
+  error                String?
+  sortOrder            Int         @default(0)
+  startedAt            DateTime?
+  completedAt          DateTime?
+}
+
+model RunAsset {
+  id            String      @id @default(cuid())
+  pipelineRunId String
+  pipelineRun   PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  type          String
+  label         String
+  filename      String
+  path          String
+  url           String?
+  createdAt     DateTime    @default(now())
+}
+
+model Destination {
+  id              String           @id @default(cuid())
+  accountId       String
+  account         Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type            String           @default("wordpress")
+  name            String
+  siteUrl         String
+  authType        String           @default("application_password")
+  username        String?
+  encryptedSecret String
+  defaultStatus   String           @default("draft")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  publishAttempts PublishAttempt[]
+}
+
+model PublishAttempt {
+  id            String      @id @default(cuid())
+  pipelineRunId String
+  pipelineRun   PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id])
+  status        String      @default("pending")
+  remotePostId  String?
+  remoteUrl     String?
+  error         String?
+  createdAt     DateTime    @default(now())
+}

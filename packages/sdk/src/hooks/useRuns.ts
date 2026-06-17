@@ -1,0 +1,45 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { getApiClient, ApiError } from '../client'
+
+export function usePipelineRun(runId: string) {
+  return useQuery({
+    queryKey: ['run', runId],
+    queryFn: async () => {
+      const { data, error, response } = await getApiClient().GET('/api/pipeline-runs/{runId}', {
+        params: { path: { runId } },
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    enabled: Boolean(runId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.data?.status
+      return status === 'queued' || status === 'running' ? 2000 : false
+    },
+  })
+}
+
+export function useStartPipelineRun() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      pipelineId,
+      variables,
+      dryRun,
+    }: {
+      pipelineId: string
+      variables: Record<string, unknown>
+      dryRun?: boolean
+    }) => {
+      const { data, error, response } = await getApiClient().POST('/api/pipelines/{pipelineId}/runs', {
+        params: { path: { pipelineId } },
+        body: { variables, dryRun },
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    onSuccess: (_data, { pipelineId }) => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline', pipelineId] })
+    },
+  })
+}

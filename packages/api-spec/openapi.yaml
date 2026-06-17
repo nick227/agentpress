@@ -1,0 +1,1140 @@
+openapi: 3.1.0
+info:
+  title: AgentPress API
+  version: 0.0.1
+  description: Minimal AI pipeline builder for generating and publishing blog content
+
+servers:
+  - url: http://localhost:3001
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    ApiError:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          {}
+
+    User:
+      type: object
+      required: [id, email, role, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AccountSummary:
+      type: object
+      required: [id, name, slug, pipelineCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        category:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        description:
+          type: string
+        pipelineCount:
+          type: integer
+        lastRunAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Account:
+      type: object
+      required: [id, name, slug, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        category:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PipelineSetup:
+      type: object
+      required: [dryRun, scheduleMode, isPaused]
+      properties:
+        destinationId:
+          type: string
+        dryRun:
+          type: boolean
+        scheduleMode:
+          type: string
+          enum: [manual, recurring]
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        timeOfDay:
+          type: string
+        timezone:
+          type: string
+        isPaused:
+          type: boolean
+
+    PipelineVariable:
+      type: object
+      required: [id, pipelineId, key, type, required, sortOrder]
+      properties:
+        id:
+          type: string
+        pipelineId:
+          type: string
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, long_text, number, boolean, json]
+        required:
+          type: boolean
+        defaultValue:
+          {}
+        exampleValue:
+          {}
+        sortOrder:
+          type: integer
+
+    PipelineVariableInput:
+      type: object
+      required: [key, type, required, sortOrder]
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, long_text, number, boolean, json]
+        required:
+          type: boolean
+        defaultValue:
+          {}
+        exampleValue:
+          {}
+        sortOrder:
+          type: integer
+
+    PipelineAgent:
+      type: object
+      required: [id, pipelineId, uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, enabled, sortOrder]
+      properties:
+        id:
+          type: string
+        pipelineId:
+          type: string
+        uid:
+          type: string
+        name:
+          type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        outputTarget:
+          type: string
+          enum: [title, excerpt, thumbnail_prompt, body]
+        outputFormat:
+          type: string
+          enum: [text, markdown, json]
+        enabled:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    PipelineAgentInput:
+      type: object
+      required: [uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, enabled, sortOrder]
+      properties:
+        id:
+          type: string
+        uid:
+          type: string
+        name:
+          type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        outputTarget:
+          type: string
+          enum: [title, excerpt, thumbnail_prompt, body]
+        outputFormat:
+          type: string
+          enum: [text, markdown, json]
+        enabled:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    Pipeline:
+      type: object
+      required: [id, accountId, name, slug, status, dryRun, scheduleMode, isPaused, variables, agents, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, paused, archived]
+        destinationId:
+          type: string
+        dryRun:
+          type: boolean
+        scheduleMode:
+          type: string
+          enum: [manual, recurring]
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        timeOfDay:
+          type: string
+        timezone:
+          type: string
+        isPaused:
+          type: boolean
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/PipelineVariable'
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/PipelineAgent'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PipelineSummary:
+      type: object
+      required: [id, accountId, name, slug, status, agentCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [draft, active, paused, archived]
+        agentCount:
+          type: integer
+        lastRunAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    GeneratedPost:
+      type: object
+      required: [title, excerpt, body]
+      properties:
+        title:
+          type: string
+        excerpt:
+          type: string
+        thumbnailPrompt:
+          type: string
+        thumbnailUrl:
+          type: string
+        body:
+          type: string
+
+    AgentRun:
+      type: object
+      required: [id, pipelineRunId, agentUid, agentName, outputTarget, renderedSystemPrompt, renderedUserPrompt, status, sortOrder]
+      properties:
+        id:
+          type: string
+        pipelineRunId:
+          type: string
+        agentUid:
+          type: string
+        agentName:
+          type: string
+        outputTarget:
+          type: string
+        renderedSystemPrompt:
+          type: string
+        renderedUserPrompt:
+          type: string
+        outputText:
+          type: string
+        outputJson:
+          {}
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        error:
+          type: string
+        sortOrder:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    RunAsset:
+      type: object
+      required: [id, pipelineRunId, type, label, filename, path, createdAt]
+      properties:
+        id:
+          type: string
+        pipelineRunId:
+          type: string
+        type:
+          type: string
+          enum: [text, json, image]
+        label:
+          type: string
+        filename:
+          type: string
+        path:
+          type: string
+        url:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PublishAttempt:
+      type: object
+      required: [id, pipelineRunId, destinationId, status, createdAt]
+      properties:
+        id:
+          type: string
+        pipelineRunId:
+          type: string
+        destinationId:
+          type: string
+        status:
+          type: string
+          enum: [pending, success, failed]
+        remotePostId:
+          type: string
+        remoteUrl:
+          type: string
+        error:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PipelineRun:
+      type: object
+      required: [id, accountId, pipelineId, status, dryRun, variables, startedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        pipelineId:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed, posted]
+        dryRun:
+          type: boolean
+        variables:
+          type: object
+          additionalProperties: true
+        generatedPost:
+          $ref: '#/components/schemas/GeneratedPost'
+        outputFolder:
+          type: string
+        destinationId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+
+    Destination:
+      type: object
+      required: [id, accountId, type, name, siteUrl, authType, defaultStatus, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        type:
+          type: string
+          enum: [wordpress]
+        name:
+          type: string
+        siteUrl:
+          type: string
+        authType:
+          type: string
+          enum: [application_password, token]
+        username:
+          type: string
+        defaultStatus:
+          type: string
+          enum: [draft, publish]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PipelineValidationIssue:
+      type: object
+      required: [level, message]
+      properties:
+        level:
+          type: string
+          enum: [error, warning]
+        message:
+          type: string
+        path:
+          type: string
+
+paths:
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '409':
+          description: Email already registered
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Log in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    nullable: true
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+
+  /api/accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      summary: List all accounts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AccountSummary'
+
+    post:
+      operationId: createAccount
+      tags: [accounts]
+      summary: Create an account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Account'
+
+  /api/accounts/{accountId}:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getAccount
+      tags: [accounts]
+      summary: Get account by ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Account'
+        '404':
+          description: Not found
+
+    patch:
+      operationId: updateAccount
+      tags: [accounts]
+      summary: Update an account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Account'
+
+    delete:
+      operationId: deleteAccount
+      tags: [accounts]
+      summary: Delete an account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /api/accounts/{accountId}/pipelines:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: listPipelines
+      tags: [pipelines]
+      summary: List pipelines for an account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pipeline list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PipelineSummary'
+
+    post:
+      operationId: createPipeline
+      tags: [pipelines]
+      summary: Create a pipeline under an account
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Pipeline created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipeline'
+
+  /api/pipelines/{pipelineId}:
+    parameters:
+      - name: pipelineId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getPipeline
+      tags: [pipelines]
+      summary: Get pipeline with variables, agents, and recent runs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pipeline
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, recentRuns]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipeline'
+                  recentRuns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PipelineRun'
+        '404':
+          description: Not found
+
+    patch:
+      operationId: updatePipeline
+      tags: [pipelines]
+      summary: Update pipeline (name, setup, variables, agents)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                status:
+                  type: string
+                  enum: [draft, active, paused, archived]
+                destinationId:
+                  type: string
+                dryRun:
+                  type: boolean
+                scheduleMode:
+                  type: string
+                  enum: [manual, recurring]
+                frequency:
+                  type: string
+                  enum: [daily, weekly, monthly]
+                timeOfDay:
+                  type: string
+                timezone:
+                  type: string
+                isPaused:
+                  type: boolean
+                variables:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PipelineVariableInput'
+                agents:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PipelineAgentInput'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipeline'
+
+    delete:
+      operationId: deletePipeline
+      tags: [pipelines]
+      summary: Delete a pipeline
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /api/pipelines/{pipelineId}/validate:
+    parameters:
+      - name: pipelineId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: validatePipeline
+      tags: [pipelines]
+      summary: Validate pipeline before run
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [valid, errors, warnings]
+                    properties:
+                      valid:
+                        type: boolean
+                      errors:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PipelineValidationIssue'
+                      warnings:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PipelineValidationIssue'
+
+  /api/pipelines/{pipelineId}/runs:
+    parameters:
+      - name: pipelineId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: startPipelineRun
+      tags: [runs]
+      summary: Start a pipeline run
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [variables]
+              properties:
+                variables:
+                  type: object
+                  additionalProperties: true
+                dryRun:
+                  type: boolean
+      responses:
+        '201':
+          description: Run started
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PipelineRun'
+
+  /api/pipeline-runs/{runId}:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getPipelineRun
+      tags: [runs]
+      summary: Get run with agent runs, assets, publish attempts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Run detail
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, agentRuns, assets, publishAttempts]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PipelineRun'
+                  agentRuns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AgentRun'
+                  assets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RunAsset'
+                  publishAttempts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublishAttempt'
+        '404':
+          description: Not found
+
+  /api/accounts/{accountId}/destinations:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: listDestinations
+      tags: [destinations]
+      summary: List destinations for an account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Destinations
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Destination'
+
+    post:
+      operationId: createDestination
+      tags: [destinations]
+      summary: Create a destination
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, siteUrl, secret]
+              properties:
+                name:
+                  type: string
+                siteUrl:
+                  type: string
+                  format: uri
+                username:
+                  type: string
+                secret:
+                  type: string
+                defaultStatus:
+                  type: string
+                  enum: [draft, publish]
+      responses:
+        '201':
+          description: Destination created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Destination'
+
+  /api/destinations/{destinationId}:
+    parameters:
+      - name: destinationId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    delete:
+      operationId: deleteDestination
+      tags: [destinations]
+      summary: Delete a destination
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /api/prompt-assist:
+    post:
+      operationId: promptAssist
+      tags: [ai]
+      summary: AI prompt suggestion for agent fields
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pipelineName, promptKind, userInstruction]
+              properties:
+                pipelineName:
+                  type: string
+                variables:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PipelineVariable'
+                previousAgents:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PipelineAgent'
+                currentAgent:
+                  $ref: '#/components/schemas/PipelineAgent'
+                promptKind:
+                  type: string
+                  enum: [system, user]
+                currentPrompt:
+                  type: string
+                userInstruction:
+                  type: string
+      responses:
+        '200':
+          description: Suggested prompt
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [suggestedPrompt]
+                    properties:
+                      suggestedPrompt:
+                        type: string
+                      warnings:
+                        type: array
+                        items:
+                          type: string
