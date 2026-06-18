@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Rows3 } from 'lucide-react'
+import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Rows3, Image } from 'lucide-react'
 import type { components } from '@project/sdk'
 import { useUpdatePipeline } from '@project/sdk'
 import { toast } from 'sonner'
@@ -60,6 +60,38 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
     })
     const addedVar = result.data.variables[result.data.variables.length - 1]
     if (addedVar) onSelect({ type: 'variable', id: addedVar.id })
+  }
+
+  async function addImageAgent() {
+    const uid = `image_${pipeline.agents.length + 1}`
+    const result = await update.mutateAsync({
+      pipelineId,
+      agents: [
+        ...pipeline.agents.map((a) => ({
+          id: a.id,
+          uid: a.uid,
+          name: a.name,
+          systemPrompt: a.systemPrompt,
+          userPrompt: a.userPrompt,
+          outputTarget: a.outputTarget as any,
+          outputFormat: a.outputFormat as any,
+          enabled: a.enabled,
+          sortOrder: a.sortOrder,
+        })),
+        {
+          uid,
+          name: `Image ${pipeline.agents.length + 1}`,
+          systemPrompt: '',
+          userPrompt: '',
+          outputTarget: 'image' as const,
+          outputFormat: 'image' as const,
+          enabled: true,
+          sortOrder: pipeline.agents.length,
+        },
+      ],
+    })
+    const addedAgent = result.data.agents[result.data.agents.length - 1]
+    if (addedAgent) onSelect({ type: 'agent', id: addedAgent.id })
   }
 
   async function addAgent() {
@@ -143,7 +175,10 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
           <Button variant="ghost" size="icon-sm" onClick={() => setShowLibrary(true)} title="Browse agent library">
             <BookOpen size={13} />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={addAgent} title="Add blank agent">
+          <Button variant="ghost" size="icon-sm" onClick={addImageAgent} title="Add image agent">
+            <Image size={13} />
+          </Button>
+          <Button variant="ghost" size="icon-sm" onClick={addAgent} title="Add text agent">
             <Plus size={13} />
           </Button>
         </div>
@@ -152,7 +187,7 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
         <SidebarItem
           key={a.id}
           label={a.name}
-          sublabel={a.outputTarget}
+          sublabel={a.outputFormat === 'image' ? `image · ${a.outputTarget}` : a.outputTarget}
           icon={<span className="text-xs text-muted-foreground w-4 text-center">{i + 1}</span>}
           active={selection.type === 'agent' && selection.id === a.id}
           onClick={() => onSelect({ type: 'agent', id: a.id })}

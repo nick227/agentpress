@@ -237,10 +237,10 @@ components:
           type: string
         outputTarget:
           type: string
-          enum: [title, excerpt, thumbnail_prompt, body, image, none]
+          enum: [title, excerpt, thumbnail_prompt, thumbnail, body, image, none]
         outputFormat:
           type: string
-          enum: [text, markdown, json]
+          enum: [text, markdown, json, image]
         enabled:
           type: boolean
         sortOrder:
@@ -262,10 +262,10 @@ components:
           type: string
         outputTarget:
           type: string
-          enum: [title, excerpt, thumbnail_prompt, body, image, none]
+          enum: [title, excerpt, thumbnail_prompt, thumbnail, body, image, none]
         outputFormat:
           type: string
-          enum: [text, markdown, json]
+          enum: [text, markdown, json, image]
         enabled:
           type: boolean
         sortOrder:

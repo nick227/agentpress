@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { usePipelineRun, usePublishRun } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
-import { CheckCircle2, XCircle, Loader2, Clock, FileText, FileJson, Image, Send } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Clock, FileCode, Image, Send, Download, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { downloadRunAsset } from '@/lib/downloadRunAsset'
 import { toast } from 'sonner'
 
 type Pipeline = components['schemas']['Pipeline']
@@ -22,9 +24,14 @@ const STATUS_MAP: Record<string, { icon: React.ReactNode; label: string; color: 
 }
 
 const ASSET_ICON: Record<string, React.ReactNode> = {
-  text: <FileText size={13} />,
-  json: <FileJson size={13} />,
+  html: <FileCode size={13} />,
   image: <Image size={13} />,
+}
+
+function assetSortOrder(filename: string, type: string): number {
+  if (type === 'html' || filename.endsWith('.html')) return 0
+  if (filename === 'thumbnail.png') return 1
+  return 2
 }
 
 const CACHE_STATUS: Record<string, { label: string; className: string }> = {
@@ -36,6 +43,7 @@ const CACHE_STATUS: Record<string, { label: string; className: string }> = {
 export function BuilderRun({ runId, pipeline }: Props) {
   const { data, isLoading } = usePipelineRun(runId)
   const publish = usePublishRun()
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   if (isLoading) {
     return (
@@ -49,7 +57,9 @@ export function BuilderRun({ runId, pipeline }: Props) {
 
   const run = data?.data
   const agentRuns = data?.agentRuns ?? []
-  const assets = data?.assets ?? []
+  const downloadAssets = [...(data?.assets ?? [])]
+    .filter((a) => a.type === 'image' || a.type === 'html')
+    .sort((a, b) => assetSortOrder(a.filename, a.type) - assetSortOrder(b.filename, b.type))
   const publishAttempts = data?.publishAttempts ?? []
 
   if (!run) return null
@@ -70,6 +80,17 @@ export function BuilderRun({ runId, pipeline }: Props) {
       toast.success(result.remoteUrl ? `Published to ${result.remoteUrl}` : 'Published successfully')
     } catch (err: any) {
       toast.error(err.message ?? 'Publish failed')
+    }
+  }
+
+  async function handleDownloadAsset(assetId: string, filename: string) {
+    setDownloadingId(assetId)
+    try {
+      await downloadRunAsset(runId, assetId, filename)
+    } catch {
+      toast.error('Download failed')
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -120,12 +141,12 @@ export function BuilderRun({ runId, pipeline }: Props) {
             </Section>
           )}
 
-          {post.thumbnailPrompt && (
+          {(post.thumbnailPrompt || post.thumbnailUrl) && (
             <Section title="Thumbnail">
               {post.thumbnailStatus === 'generating' ? (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground h-32 border rounded bg-muted/20">
                   <Loader2 size={15} className="animate-spin" />
-                  Generating with DALL-E…
+                  Generating image…
                 </div>
               ) : post.thumbnailUrl ? (
                 <img src={post.thumbnailUrl} alt="Generated thumbnail" className="rounded max-w-sm w-full" />
@@ -133,9 +154,9 @@ export function BuilderRun({ runId, pipeline }: Props) {
                 <div className="text-sm text-destructive border border-destructive/20 rounded p-3 bg-destructive/5">
                   Image generation failed
                 </div>
-              ) : (
+              ) : post.thumbnailPrompt ? (
                 <p className="text-sm text-muted-foreground">{post.thumbnailPrompt}</p>
-              )}
+              ) : null}
             </Section>
           )}
 
@@ -156,19 +177,38 @@ export function BuilderRun({ runId, pipeline }: Props) {
       )}
 
       {/* Assets */}
-      {assets.length > 0 && (
+      {downloadAssets.length > 0 && (
         <div>
           <h2 className="text-sm font-semibold mb-2">Saved Assets</h2>
+          {run.outputFolder && (
+            <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3 rounded border bg-muted/20 px-3 py-2">
+              <FolderOpen size={13} className="mt-0.5 shrink-0" />
+              <span className="font-mono break-all">{run.outputFolder}</span>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
-            {assets.map((asset) => (
-              <span
-                key={asset.id}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border bg-surface"
-              >
-                <span className="text-muted-foreground">{ASSET_ICON[asset.type]}</span>
-                {asset.filename}
-              </span>
-            ))}
+            {downloadAssets.map((asset) => {
+              const displayName = asset.filename.includes('/') ? asset.filename.split('/').pop()! : asset.filename
+              const isDownloading = downloadingId === asset.id
+              return (
+                <button
+                  key={asset.id}
+                  type="button"
+                  onClick={() => handleDownloadAsset(asset.id, asset.filename)}
+                  disabled={isDownloading}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border bg-surface hover:bg-muted/40 hover:border-foreground/20 transition-colors disabled:opacity-60"
+                  title={`Download ${asset.filename}`}
+                >
+                  <span className="text-muted-foreground">{ASSET_ICON[asset.type] ?? <Image size={13} />}</span>
+                  <span className="text-accent hover:underline">{displayName}</span>
+                  {isDownloading ? (
+                    <Loader2 size={11} className="animate-spin text-muted-foreground" />
+                  ) : (
+                    <Download size={11} className="text-muted-foreground" />
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}

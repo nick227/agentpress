@@ -13,8 +13,8 @@ export interface TemplateAgent {
   name: string
   systemPrompt: string
   userPrompt: string
-  outputTarget: 'title' | 'excerpt' | 'body' | 'thumbnail_prompt' | 'image' | 'none'
-  outputFormat: 'text' | 'json'
+  outputTarget: 'title' | 'excerpt' | 'body' | 'thumbnail_prompt' | 'thumbnail' | 'image' | 'none'
+  outputFormat: 'text' | 'json' | 'image'
   sortOrder: number
 }
 

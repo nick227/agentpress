@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { getImageProvider } from './imageProviders'
 
 let _client: OpenAI | null = null
 
@@ -23,14 +24,7 @@ export class OpenAIService {
   }
 
   async generateImage(prompt: string): Promise<string | null> {
-    const model = process.env.OPENAI_IMAGE_MODEL ?? 'dall-e-3'
-    const response = await getClient().images.generate({
-      model,
-      prompt,
-      n: 1,
-      size: '1024x1024',
-      response_format: 'url',
-    })
-    return response.data?.[0]?.url ?? null
+    const result = await getImageProvider().generate({ prompt })
+    return result?.url ?? null
   }
 }

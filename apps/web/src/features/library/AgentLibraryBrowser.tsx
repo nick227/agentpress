@@ -31,6 +31,8 @@ const TARGET_COLORS: Record<string, string> = {
   excerpt: 'bg-purple-100 text-purple-700',
   body: 'bg-green-100 text-green-700',
   thumbnail_prompt: 'bg-orange-100 text-orange-700',
+  thumbnail: 'bg-orange-100 text-orange-700',
+  image: 'bg-violet-100 text-violet-700',
   custom: 'bg-gray-100 text-gray-600',
 }
 

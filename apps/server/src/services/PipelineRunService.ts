@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import { basename } from 'path'
 import { db, Prisma } from '@project/db'
 import { OpenAIService } from './OpenAIService'
+import { getImageProvider, getImageModelLabel } from './imageProviders'
 import { PromptRenderService } from './PromptRenderService'
 import { OutputAssetService } from './OutputAssetService'
 import {
@@ -16,6 +17,7 @@ import { ResearchContextService } from './ResearchContextService'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
 
 const ai = new OpenAIService()
+const imageProvider = getImageProvider()
 const renderer = new PromptRenderService()
 const assets = new OutputAssetService()
 const wp = new WordPressService()
@@ -93,7 +95,13 @@ function computeAgentInputHash(input: {
   return createHash('sha256').update(stableStringify(input)).digest('hex')
 }
 
+function isImageAgent(agent: { outputFormat: string }): boolean {
+  return agent.outputFormat === 'image'
+}
+
 function slugify(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'image'
+}
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'image'
 }
 
@@ -198,15 +206,18 @@ export class PipelineRunService {
     const outputByUid: Record<string, { text: string; target: string; image?: InlineImageMeta }> = {}
     const forceRegenerateAgents = new Set(options.forceRegenerateAgentUids ?? [])
     const model = process.env.OPENAI_TEXT_MODEL ?? 'gpt-4o'
-    const imageModel = process.env.OPENAI_IMAGE_MODEL ?? 'dall-e-3'
+    const imageModel = getImageModelLabel()
 
     for (const agent of pipeline.agents) {
-      const renderedSystemPrompt = renderer.render(agent.systemPrompt, runVariables, agentOutputs)
+      const imageAgent = isImageAgent(agent)
+      const renderedSystemPrompt = imageAgent
+        ? ''
+        : renderer.render(agent.systemPrompt, runVariables, agentOutputs)
       const renderedUserPrompt = renderer.render(agent.userPrompt, runVariables, agentOutputs)
       const inputHash = computeAgentInputHash({
         agentUid: agent.uid,
-        model,
-        imageModel: agent.outputTarget === 'image' ? imageModel : undefined,
+        model: imageAgent ? imageProvider.id : model,
+        imageModel: imageAgent || agent.outputTarget === 'image' ? imageModel : undefined,
         outputTarget: agent.outputTarget,
         outputFormat: agent.outputFormat,
         renderedSystemPrompt,
@@ -231,22 +242,58 @@ export class PipelineRunService {
       try {
         const shouldBypassCache = options.forceRegenerate || forceRegenerateAgents.has(agent.uid)
         const reusable = shouldBypassCache ? null : await this.findReusableAgentRun(pipeline.id, agent.uid, inputHash, agentRun.id)
-        const output = reusable?.outputText ?? await ai.generateText(renderedSystemPrompt, renderedUserPrompt)
-        const cacheStatus = reusable ? 'reused' : 'generated'
+        let output: string
+        let cacheStatus: string
         let outputJson: InlineImageMeta | null = (reusable?.outputJson as InlineImageMeta | null) ?? null
 
-        agentOutputs[agent.uid] = output
+        if (imageAgent) {
+          output = renderedUserPrompt
+          cacheStatus = reusable ? 'reused' : 'generated'
+          if (agent.outputTarget === 'thumbnail') {
+            outputJson = await this.resolveGeneratedImage({
+              runId,
+              pipeline,
+              agent,
+              prompt: output,
+              reusableJson: reusable?.outputJson,
+              cacheStatus,
+              relativePath: 'thumbnail.png',
+              label: `Thumbnail: ${agent.name}`,
+            })
+            generatedPost.thumbnailUrl = outputJson?.url
+            generatedPost.thumbnailPrompt = output
+            generatedPost.thumbnailStatus = outputJson?.url ? 'done' : 'failed'
+          } else if (agent.outputTarget === 'image') {
+            outputJson = await this.resolveGeneratedImage({
+              runId,
+              pipeline,
+              agent,
+              prompt: output,
+              reusableJson: reusable?.outputJson,
+              cacheStatus,
+              relativePath: `images/${slugify(agent.uid)}.png`,
+              label: `Inline Image: ${agent.name}`,
+            })
+          }
+        } else {
+          output = reusable?.outputText ?? await ai.generateText(renderedSystemPrompt, renderedUserPrompt)
+          cacheStatus = reusable ? 'reused' : 'generated'
 
-        if (agent.outputTarget === 'image') {
-          outputJson = await this.resolveImageOutput({
-            runId,
-            pipeline,
-            agent,
-            prompt: output,
-            reusableJson: reusable?.outputJson,
-            cacheStatus,
-          })
+          if (agent.outputTarget === 'image') {
+            outputJson = await this.resolveGeneratedImage({
+              runId,
+              pipeline,
+              agent,
+              prompt: output,
+              reusableJson: reusable?.outputJson,
+              cacheStatus,
+              relativePath: `images/${slugify(agent.uid)}.png`,
+              label: `Inline Image: ${agent.name}`,
+            })
+          }
         }
+
+        agentOutputs[agent.uid] = output
 
         outputByUid[agent.uid] = {
           text: output,
@@ -263,6 +310,8 @@ export class PipelineRunService {
             break
           case 'thumbnail_prompt':
             generatedPost.thumbnailPrompt = output.trim()
+            break
+          case 'thumbnail':
             break
           case 'none':
           case 'scratch':
@@ -304,7 +353,7 @@ export class PipelineRunService {
     generatedPost.body = composed.body
     generatedPost.inlineImages = composed.inlineImages
 
-    if (generatedPost.thumbnailPrompt) {
+    if (generatedPost.thumbnailPrompt && !generatedPost.thumbnailUrl) {
       generatedPost.thumbnailStatus = 'generating'
       await db.pipelineRun.update({ where: { id: runId }, data: { generatedPost: generatedPost as any } })
 
@@ -395,16 +444,17 @@ export class PipelineRunService {
     })
   }
 
-  private async resolveImageOutput(input: {
+  private async resolveGeneratedImage(input: {
     runId: string
     pipeline: any
     agent: any
     prompt: string
     reusableJson: any
     cacheStatus: string
+    relativePath: string
+    label: string
   }): Promise<InlineImageMeta> {
     const alt = input.agent.name
-    const relativePath = `images/${slugify(input.agent.uid)}.png`
 
     if (input.cacheStatus === 'reused' && input.reusableJson?.path) {
       const copied = await assets.copyImageAsset({
@@ -412,8 +462,8 @@ export class PipelineRunService {
         accountSlug: input.pipeline.account.slug,
         pipelineSlug: input.pipeline.slug,
         sourcePath: input.reusableJson.path,
-        relativePath,
-        label: `Inline Image: ${input.agent.name}`,
+        relativePath: input.relativePath,
+        label: input.label,
       })
       return {
         ...input.reusableJson,
@@ -425,14 +475,15 @@ export class PipelineRunService {
       }
     }
 
-    const imageUrl = await ai.generateImage(input.prompt)
+    const generated = await imageProvider.generate({ prompt: input.prompt })
+    const imageUrl = generated?.url ?? null
     const saved = imageUrl ? await assets.saveImageFromUrl({
       runId: input.runId,
       accountSlug: input.pipeline.account.slug,
       pipelineSlug: input.pipeline.slug,
       imageUrl,
-      relativePath,
-      label: `Inline Image: ${input.agent.name}`,
+      relativePath: input.relativePath,
+      label: input.label,
     }) : null
 
     return {
@@ -440,7 +491,7 @@ export class PipelineRunService {
       prompt: input.prompt,
       url: imageUrl ?? undefined,
       path: saved?.path,
-      relativePath: saved?.relativePath ?? relativePath,
+      relativePath: saved?.relativePath ?? input.relativePath,
       alt,
       caption: '',
     }

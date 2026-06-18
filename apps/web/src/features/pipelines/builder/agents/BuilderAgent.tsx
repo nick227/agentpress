@@ -13,21 +13,32 @@ interface Props {
   agent: Agent
   pipeline: Pipeline
   pipelineId: string
+  onSaved: (id: string) => void
   onDeleted: () => void
 }
 
-const OUTPUT_TARGETS = [
+const TEXT_OUTPUT_TARGETS = [
   { value: 'none', label: 'Not included in final post' },
   { value: 'body', label: 'Body (section)' },
-  { value: 'image', label: 'Inline image' },
   { value: 'title', label: 'Title' },
   { value: 'excerpt', label: 'Excerpt' },
-  { value: 'thumbnail_prompt', label: 'Thumbnail prompt' },
+  { value: 'thumbnail_prompt', label: 'Thumbnail prompt (text)' },
 ] as const
-const OUTPUT_FORMATS = ['text', 'markdown', 'json'] as const
 
-export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) {
+const IMAGE_OUTPUT_TARGETS = [
+  { value: 'image', label: 'Inline image' },
+  { value: 'thumbnail', label: 'Thumbnail' },
+] as const
+
+const TEXT_OUTPUT_FORMATS = ['text', 'markdown', 'json'] as const
+
+function isImageAgent(agent: { outputFormat: string }) {
+  return agent.outputFormat === 'image'
+}
+
+export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }: Props) {
   const update = useUpdatePipeline()
+  const imageAgent = isImageAgent(agent)
   const [form, setForm] = useState({
     uid: agent.uid,
     name: agent.name,
@@ -54,35 +65,39 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) 
     setForm((f) => ({ ...f, [key]: val }))
   }
 
+  function toAgentPayload(a: Agent, overrides?: Partial<typeof form>) {
+    const next = overrides ? { ...form, ...overrides } : form
+    return {
+      id: a.id,
+      uid: next.uid,
+      name: next.name,
+      systemPrompt: isImageAgent({ outputFormat: next.outputFormat }) ? '' : next.systemPrompt,
+      userPrompt: next.userPrompt,
+      outputTarget: next.outputTarget as Agent['outputTarget'],
+      outputFormat: next.outputFormat as Agent['outputFormat'],
+      enabled: next.enabled,
+      sortOrder: a.sortOrder,
+    }
+  }
+
   async function handleSave() {
-    await update.mutateAsync({
+    const agentIndex = pipeline.agents.findIndex((a) => a.id === agent.id)
+    const result = await update.mutateAsync({
       pipelineId,
       agents: pipeline.agents.map((a) =>
-        a.id === agent.id
-          ? {
-              id: a.id,
-              uid: form.uid,
-              name: form.name,
-              systemPrompt: form.systemPrompt,
-              userPrompt: form.userPrompt,
-              outputTarget: form.outputTarget as any,
-              outputFormat: form.outputFormat as any,
-              enabled: form.enabled,
-              sortOrder: a.sortOrder,
-            }
-          : {
-              id: a.id,
-              uid: a.uid,
-              name: a.name,
-              systemPrompt: a.systemPrompt,
-              userPrompt: a.userPrompt,
-              outputTarget: a.outputTarget as any,
-              outputFormat: a.outputFormat as any,
-              enabled: a.enabled,
-              sortOrder: a.sortOrder,
-            }
+        a.id === agent.id ? toAgentPayload(a) : toAgentPayload(a, {
+          uid: a.uid,
+          name: a.name,
+          outputTarget: a.outputTarget,
+          outputFormat: a.outputFormat,
+          enabled: a.enabled,
+          systemPrompt: a.systemPrompt,
+          userPrompt: a.userPrompt,
+        }),
       ),
     })
+    const savedAgent = result.data.agents[agentIndex]
+    if (savedAgent) onSaved(savedAgent.id)
     toast.success('Agent saved')
   }
 
@@ -91,16 +106,14 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) 
       pipelineId,
       agents: pipeline.agents
         .filter((a) => a.id !== agent.id)
-        .map((a) => ({
-          id: a.id,
+        .map((a) => toAgentPayload(a, {
           uid: a.uid,
           name: a.name,
+          outputTarget: a.outputTarget,
+          outputFormat: a.outputFormat,
+          enabled: a.enabled,
           systemPrompt: a.systemPrompt,
           userPrompt: a.userPrompt,
-          outputTarget: a.outputTarget as any,
-          outputFormat: a.outputFormat as any,
-          enabled: a.enabled,
-          sortOrder: a.sortOrder,
         })),
     })
     toast.success('Agent deleted')
@@ -109,14 +122,21 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) 
 
   return (
     <div className="p-6 max-w-2xl space-y-5">
-      <h2 className="text-sm font-semibold">Agent</h2>
+      <div className="flex items-center gap-2">
+        <h2 className="text-sm font-semibold">{imageAgent ? 'Image Agent' : 'Agent'}</h2>
+        {imageAgent && (
+          <span className="text-[10px] uppercase tracking-wide font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">
+            image
+          </span>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <Field label="UID">
           <Input
             value={form.uid}
             onChange={(e) => patch('uid', e.target.value)}
-            placeholder="researcher"
+            placeholder={imageAgent ? 'hero-image' : 'researcher'}
             className="font-mono"
           />
           <p className="text-xs text-muted-foreground mt-1">Used in <code className="bg-muted px-1 rounded">{`{agents.${form.uid || 'uid'}.output}`}</code></p>
@@ -125,7 +145,7 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) 
           <Input
             value={form.name}
             onChange={(e) => patch('name', e.target.value)}
-            placeholder="Researcher"
+            placeholder={imageAgent ? 'Hero Image' : 'Researcher'}
           />
         </Field>
       </div>
@@ -134,26 +154,40 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) 
         <Field label="Output target">
           <select
             value={form.outputTarget}
-            onChange={(e) => patch('outputTarget', e.target.value as any)}
+            onChange={(e) => patch('outputTarget', e.target.value)}
             className="w-full h-9 rounded border border-input-border bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            {OUTPUT_TARGETS.map((t) => (
+            {(imageAgent ? IMAGE_OUTPUT_TARGETS : TEXT_OUTPUT_TARGETS).map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
         </Field>
-        <Field label="Output format">
-          <select
-            value={form.outputFormat}
-            onChange={(e) => patch('outputFormat', e.target.value as any)}
-            className="w-full h-9 rounded border border-input-border bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {OUTPUT_FORMATS.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
-        </Field>
+        {imageAgent ? (
+          <Field label="Output format">
+            <div className="h-9 flex items-center px-3 text-sm text-muted-foreground border rounded bg-muted/20">
+              image
+            </div>
+          </Field>
+        ) : (
+          <Field label="Output format">
+            <select
+              value={form.outputFormat}
+              onChange={(e) => patch('outputFormat', e.target.value)}
+              className="w-full h-9 rounded border border-input-border bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {TEXT_OUTPUT_FORMATS.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </Field>
+        )}
       </div>
+
+      {imageAgent && (
+        <p className="text-xs text-muted-foreground -mt-2">
+          Prompt is sent directly to the image provider (DALL-E). Use the smallest size during development.
+        </p>
+      )}
 
       <Field label="">
         <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -166,24 +200,26 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) 
         </label>
       </Field>
 
-      <PromptField
-        label="System Prompt"
-        value={form.systemPrompt}
-        onChange={(v) => patch('systemPrompt', v)}
-        promptKind="system"
-        pipeline={pipeline}
-        agent={agent}
-        placeholder="You are a research assistant..."
-      />
+      {!imageAgent && (
+        <PromptField
+          label="System Prompt"
+          value={form.systemPrompt}
+          onChange={(v) => patch('systemPrompt', v)}
+          promptKind="system"
+          pipeline={pipeline}
+          agent={agent}
+          placeholder="You are a research assistant..."
+        />
+      )}
 
       <PromptField
-        label="User Prompt"
+        label={imageAgent ? 'Image Prompt' : 'User Prompt'}
         value={form.userPrompt}
         onChange={(v) => patch('userPrompt', v)}
         promptKind="user"
         pipeline={pipeline}
         agent={agent}
-        placeholder="Research the topic: {subject}"
+        placeholder={imageAgent ? 'A minimalist hero illustration of {subject}, flat vector style' : 'Research the topic: {subject}'}
       />
 
       <div className="flex gap-2">
