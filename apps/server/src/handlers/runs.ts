@@ -6,9 +6,10 @@ const svc = new PipelineRunService()
 const assets = new OutputAssetService()
 
 export async function startPipelineRun(request: any, reply: any) {
-  const { variables, dryRun, forceRegenerate, forceRegenerateAgentUids } = request.body
+  const { variables, dryRun, title, forceRegenerate, forceRegenerateAgentUids } = request.body
   const run = await svc.startRun(request.params.pipelineId, variables, {
     dryRun,
+    title,
     forceRegenerate,
     forceRegenerateAgentUids,
   })
@@ -45,6 +46,7 @@ export async function getPipelineRun(request: any, reply: any) {
       id: run.id,
       accountId: run.accountId,
       pipelineId: run.pipelineId,
+      title: run.title ?? undefined,
       status: run.status,
       dryRun: run.dryRun,
       variables: run.variables,

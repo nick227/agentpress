@@ -42,18 +42,20 @@ export function useStartPipelineRun() {
       pipelineId,
       variables,
       dryRun,
+      title,
       forceRegenerate,
       forceRegenerateAgentUids,
     }: {
       pipelineId: string
       variables: Record<string, unknown>
       dryRun?: boolean
+      title?: string
       forceRegenerate?: boolean
       forceRegenerateAgentUids?: string[]
     }) => {
       const { data, error, response } = await getApiClient().POST('/api/pipelines/{pipelineId}/runs', {
         params: { path: { pipelineId } },
-        body: { variables, dryRun, forceRegenerate, forceRegenerateAgentUids },
+        body: { variables, dryRun, title, forceRegenerate, forceRegenerateAgentUids },
       })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!

@@ -481,6 +481,8 @@ components:
           type: string
         pipelineId:
           type: string
+        title:
+          type: string
         status:
           type: string
           enum: [queued, running, completed, failed, posted]
@@ -1343,6 +1345,8 @@ paths:
                   additionalProperties: true
                 dryRun:
                   type: boolean
+                title:
+                  type: string
       responses:
         '201':
           description: Run started

@@ -4,7 +4,6 @@ import { BuilderSetup } from './setup/BuilderSetup'
 import { BuilderVariable } from './variables/BuilderVariable'
 import { BuilderAgent } from './agents/BuilderAgent'
 import { BuilderRun } from './runs/BuilderRun'
-import { BuilderComposer } from './composer/BuilderComposer'
 
 type Pipeline = components['schemas']['Pipeline']
 type Run = components['schemas']['PipelineRun']
@@ -20,10 +19,6 @@ interface Props {
 export function DetailPanel({ pipeline, runs, selection, onSelect, pipelineId }: Props) {
   if (selection.type === 'setup') {
     return <BuilderSetup pipeline={pipeline} pipelineId={pipelineId} onRunCreated={(id) => onSelect({ type: 'run', id })} />
-  }
-
-  if (selection.type === 'composer') {
-    return <BuilderComposer pipeline={pipeline} pipelineId={pipelineId} />
   }
 
   if (selection.type === 'variable') {

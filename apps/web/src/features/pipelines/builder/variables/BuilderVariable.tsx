@@ -161,8 +161,8 @@ export function BuilderVariable({ variable, pipeline, pipelineId, onSaved, onDel
       </div>
 
       <div className="mt-6 flex gap-2">
-        <Button size="sm" loading={update.isPending} onClick={handleSave}>Save</Button>
         <Button variant="outline" size="sm" onClick={handleDelete}>Delete</Button>
+        <Button size="sm" loading={update.isPending} onClick={handleSave}>Save</Button>
       </div>
     </div>
   )

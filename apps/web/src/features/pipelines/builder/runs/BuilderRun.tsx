@@ -65,6 +65,7 @@ export function BuilderRun({ runId, pipeline }: Props) {
   if (!run) return null
 
   const statusInfo = STATUS_MAP[run.status] ?? STATUS_MAP.queued!
+  const runTitle = run.title || pipeline.name
   const post = run.generatedPost as any
   const isActive = run.status === 'queued' || run.status === 'running'
 
@@ -98,17 +99,20 @@ export function BuilderRun({ runId, pipeline }: Props) {
     <div className="p-6 max-w-2xl space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className={cn('flex items-center gap-1.5 text-sm font-medium', statusInfo.color)}>
-            {statusInfo.icon}
-            {statusInfo.label}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {run.dryRun ? 'Dry run' : 'Live run'} · {new Date(run.startedAt).toLocaleString()}
-          </span>
-          {isActive && (
-            <span className="text-xs text-muted-foreground animate-pulse">Refreshing…</span>
-          )}
+        <div className="min-w-0 space-y-1">
+          <h1 className="text-lg font-semibold truncate">{runTitle}</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className={cn('flex items-center gap-1.5 text-sm font-medium', statusInfo.color)}>
+              {statusInfo.icon}
+              {statusInfo.label}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {run.dryRun ? 'Dry run' : 'Live run'} · {new Date(run.startedAt).toLocaleString()}
+            </span>
+            {isActive && (
+              <span className="text-xs text-muted-foreground animate-pulse">Refreshing…</span>
+            )}
+          </div>
         </div>
 
         {canPublish && (
@@ -183,7 +187,7 @@ export function BuilderRun({ runId, pipeline }: Props) {
           {run.outputFolder && (
             <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3 rounded border bg-muted/20 px-3 py-2">
               <FolderOpen size={13} className="mt-0.5 shrink-0" />
-              <span className="font-mono break-all">{run.outputFolder}</span>
+              <span className="font-mono break-all truncate whitespace-nowrap">{run.outputFolder}</span>
             </div>
           )}
           <div className="flex flex-wrap gap-2">

@@ -106,6 +106,7 @@ model PipelineRun {
   accountId       String
   pipelineId      String
   pipeline        Pipeline         @relation(fields: [pipelineId], references: [id])
+  title           String?
   status          String           @default("queued")
   dryRun          Boolean          @default(true)
   variables       Json

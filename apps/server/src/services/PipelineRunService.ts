@@ -43,6 +43,7 @@ export function decrypt(encrypted: string): string {
 
 interface StartRunOptions {
   dryRun?: boolean
+  title?: string
   forceRegenerate?: boolean
   forceRegenerateAgentUids?: string[]
 }
@@ -154,11 +155,13 @@ export class PipelineRunService {
 
     const dryRun = options.dryRun !== undefined ? options.dryRun : pipeline.dryRun
     const runVariables = variables ?? {}
+    const title = options.title?.trim() || pipeline.name
 
     const run = await db.pipelineRun.create({
       data: {
         accountId: pipeline.accountId,
         pipelineId: pipeline.id,
+        title,
         status: 'running',
         dryRun,
         variables: runVariables as any,

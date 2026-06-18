@@ -4,7 +4,6 @@ import type { components } from '@project/sdk'
 import { usePromptAssist, useResearchSources } from '@project/sdk'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
 
 type Pipeline = components['schemas']['Pipeline']
 type Agent = components['schemas']['PipelineAgent']
@@ -43,7 +42,7 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
   }
 
   const agentsBefore = pipeline.agents.filter((a) => a.sortOrder < agent.sortOrder)
-  const researchSources = researchData?.data ?? []
+  const researchSources = (researchData?.data ?? []).filter((source) => (source.itemCount ?? 0) > 0)
 
   function formatTinyDate(value: string) {
     return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
@@ -118,40 +117,31 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
             {showResearchMenu && (
               <div className="absolute right-0 top-8 w-72 bg-surface border rounded shadow-lg z-20 py-1">
                 {researchSources.length > 0 ? (
-                  researchSources.map((source) => {
-                    const hasItems = (source.itemCount ?? 0) > 0
-                    const tinyDate = hasItems ? formatTinyDate(source.createdAt) : 'None'
-                    return (
-                      <div key={source.id} className="px-1 py-1">
-                        <div className="px-2 pb-1">
-                          <p className="text-[11px] font-medium truncate">{source.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            {hasItems ? `Created ${tinyDate}` : 'None'}
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1">
-                          {(['summary', 'date'] as const).map((field) => (
-                            <button
-                              key={field}
-                              type="button"
-                              disabled={!hasItems}
-                              className={cn(
-                                'text-left px-2 py-1.5 text-xs font-mono rounded truncate',
-                                hasItems ? 'hover:bg-muted' : 'text-muted-foreground opacity-50 cursor-not-allowed',
-                              )}
-                              onClick={() => {
-                                if (!hasItems) return
-                                insertAtCursor(`{${source.slug}.${field}}`)
-                                setShowResearchMenu(false)
-                              }}
-                            >
-                              {`{${source.slug}.${field}}`}
-                            </button>
-                          ))}
-                        </div>
+                  researchSources.map((source) => (
+                    <div key={source.id} className="px-1 py-1">
+                      <div className="px-2 pb-1">
+                        <p className="text-[11px] font-medium truncate">{source.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          Created {formatTinyDate(source.createdAt)}
+                        </p>
                       </div>
-                    )
-                  })
+                      <div className="grid grid-cols-2 gap-1">
+                        {(['summary', 'date'] as const).map((field) => (
+                          <button
+                            key={field}
+                            type="button"
+                            className="text-left px-2 py-1.5 text-xs font-mono rounded truncate hover:bg-muted"
+                            onClick={() => {
+                              insertAtCursor(`{${source.slug}.${field}}`)
+                              setShowResearchMenu(false)
+                            }}
+                          >
+                            {`{${source.slug}.${field}}`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   <p className="px-3 py-2 text-xs text-muted-foreground">No research feeds available</p>
                 )}

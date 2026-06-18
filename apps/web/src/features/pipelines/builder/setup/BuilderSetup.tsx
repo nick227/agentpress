@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Play, Zap, Plus, Trash2, Globe, ChevronDown, FlaskConical } from 'lucide-react'
+import { ArrowDown, ArrowUp, Image, Play, Plus, Trash2, Type, Globe, ChevronDown, Zap } from 'lucide-react'
 import type { components } from '@project/sdk'
 import {
   useUpdatePipeline,
@@ -15,6 +15,12 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
 type Pipeline = components['schemas']['Pipeline']
+interface ComposerRow {
+  id: string
+  type: 'agent_output'
+  agentUid: string
+  include: boolean
+}
 
 interface Props {
   pipeline: Pipeline
@@ -34,6 +40,7 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   const [nameInput, setNameInput] = useState(pipeline.name)
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showAddDestination, setShowAddDestination] = useState(false)
+  const [runTitle, setRunTitle] = useState(pipeline.name)
   const [forceRegenerate, setForceRegenerate] = useState(false)
   const [forceRegenerateAgentUids, setForceRegenerateAgentUids] = useState<string[]>([])
   const [runVars, setRunVars] = useState<Record<string, string>>(() => {
@@ -59,7 +66,11 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
 
   async function handleNameBlur() {
     if (nameInput.trim() && nameInput !== pipeline.name) {
-      await update.mutateAsync({ pipelineId, name: nameInput.trim() })
+      const nextName = nameInput.trim()
+      if (!runTitle.trim() || runTitle === pipeline.name) {
+        setRunTitle(nextName)
+      }
+      await update.mutateAsync({ pipelineId, name: nextName })
       toast.success('Pipeline renamed')
     }
   }
@@ -69,6 +80,7 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
       pipelineId,
       variables: runVars,
       dryRun,
+      title: runTitle.trim() || pipeline.name,
       forceRegenerate,
       forceRegenerateAgentUids: forceRegenerate ? undefined : forceRegenerateAgentUids,
     })
@@ -117,245 +129,339 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   const { data: categoriesData, isLoading: categoriesLoading, error: categoriesError } = useWordPressCategories(activeDestination?.id)
   const wordpressCategories = categoriesData?.data ?? []
   const pipelineCategoryIds = pipeline.wpCategoryIds ?? []
+  const composerRows = getComposerRows(pipeline)
+
+  async function saveComposer(nextRows: ComposerRow[]) {
+    await update.mutateAsync({ pipelineId, bodyComposer: nextRows.map((row) => ({ ...row })) })
+  }
+
+  function moveComposerRow(index: number, direction: -1 | 1) {
+    const next = [...composerRows]
+    const target = index + direction
+    if (target < 0 || target >= next.length) return
+    const [row] = next.splice(index, 1)
+    if (!row) return
+    next.splice(target, 0, row)
+    saveComposer(next)
+  }
+
+  function toggleComposerRow(row: ComposerRow) {
+    saveComposer(composerRows.map((item) => item.id === row.id ? { ...item, include: !item.include } : item))
+  }
 
   return (
-    <div className="p-6 max-w-lg space-y-6">
-
-      {/* Name + Run */}
-      <div className="flex items-center gap-2">
-        <Input
-          value={nameInput}
-          onChange={(e) => setNameInput(e.target.value)}
-          onBlur={handleNameBlur}
-          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className="flex-1 font-medium"
-        />
-        <Button onClick={() => setShowRunDialog(true)} size="sm" className="gap-1.5 shrink-0">
-          <Play size={13} />
-          Run
-        </Button>
-      </div>
-
-      {/* Destination */}
-      <div className="space-y-2">
-        <Label>Destination</Label>
-        {destinations.length > 0 ? (
-          <div className="space-y-1.5">
-            {destinations.map((d) => {
-              const isActive = pipeline.destinationId === d.id
-              return (
-                <div
-                  key={d.id}
-                  className={`flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors ${
-                    isActive ? 'border-accent bg-accent/5' : 'border-input-border bg-surface hover:bg-muted/40'
-                  }`}
-                >
-                  <button
-                    type="button"
-                    className="flex-1 flex items-center gap-2 text-left min-w-0"
-                    onClick={() => handleSave({ destinationId: isActive ? undefined : d.id })}
-                  >
-                    <Globe size={13} className="text-muted-foreground shrink-0" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium truncate">{d.name}</span>
-                      <span className="block text-xs text-muted-foreground truncate">{d.siteUrl}</span>
-                    </span>
-                    {isActive && (
-                      <span className="text-xs text-accent font-medium shrink-0">Active</span>
-                    )}
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => handleDeleteDestination(d.id)}
-                    loading={deleteDestination.isPending}
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          !showAddDestination && (
-            <p className="text-xs text-muted-foreground">
-              No destinations yet. Add one to publish live runs.
-            </p>
-          )
-        )}
-
-        {showAddDestination ? (
-          <div className="border rounded p-4 space-y-3 bg-muted/20">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">WordPress REST API</p>
-            <div className="space-y-2">
-              <Input
-                placeholder="Name (e.g. My Blog)"
-                value={destForm.name}
-                onChange={(e) => setDestForm((f) => ({ ...f, name: e.target.value }))}
-              />
-              <Input
-                placeholder="Site URL (e.g. https://myblog.com)"
-                value={destForm.siteUrl}
-                onChange={(e) => setDestForm((f) => ({ ...f, siteUrl: e.target.value }))}
-              />
-              <Input
-                placeholder="WordPress username"
-                value={destForm.username}
-                onChange={(e) => setDestForm((f) => ({ ...f, username: e.target.value }))}
-              />
-              <Input
-                type="password"
-                placeholder="Application Password"
-                value={destForm.secret}
-                onChange={(e) => setDestForm((f) => ({ ...f, secret: e.target.value }))}
-              />
-              <div className="flex gap-2">
-                {(['draft', 'publish'] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setDestForm((f) => ({ ...f, defaultStatus: s }))}
-                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                      destForm.defaultStatus === s
-                        ? 'bg-foreground text-background border-foreground'
-                        : 'border-input-border hover:bg-muted'
-                    }`}
-                  >
-                    {s === 'draft' ? 'Save as draft' : 'Publish directly'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" loading={createDestination.isPending} onClick={handleAddDestination}>
-                Add destination
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowAddDestination(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowAddDestination(true)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Plus size={12} />
-            Add WordPress destination
-          </button>
-        )}
-      </div>
-
-      {activeDestination && (
-        <div className="space-y-3">
-          <Label>WordPress categories</Label>
-          {categoriesLoading ? (
-            <p className="text-xs text-muted-foreground">Loading categories from {activeDestination.name}…</p>
-          ) : categoriesError ? (
-            <p className="text-xs text-destructive">Could not load WordPress categories. Check destination credentials.</p>
-          ) : wordpressCategories.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No categories found on this WordPress site.</p>
-          ) : (
-            <>
-              <CategoryPicker
-                label="Destination defaults"
-                hint="Used when this pipeline has no category override."
-                categories={wordpressCategories}
-                selected={activeDestination.defaultCategoryIds ?? []}
-                onChange={async (ids) => {
-                  await updateDestination.mutateAsync({
-                    destinationId: activeDestination.id,
-                    accountId: pipeline.accountId,
-                    defaultCategoryIds: ids.length > 0 ? ids : null,
-                  })
-                  refetchDestinations()
-                  toast.success('Destination categories saved')
-                }}
-              />
-              <CategoryPicker
-                label="Pipeline override"
-                hint="Optional. Overrides destination defaults for this pipeline only."
-                categories={wordpressCategories}
-                selected={pipelineCategoryIds}
-                onChange={async (ids) => {
-                  await update.mutateAsync({
-                    pipelineId,
-                    wpCategoryIds: ids.length > 0 ? ids : null,
-                  })
-                  toast.success('Pipeline categories saved')
-                }}
-              />
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Run mode + Schedule — collapsed into a compact row group */}
-      <div className="space-y-3">
-        <Label>Settings</Label>
-
-        <Row label="Run mode">
-          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={pipeline.dryRun}
-              onChange={(e) => handleSave({ dryRun: e.target.checked })}
-              className="rounded"
+    <div className="min-h-full flex flex-col">
+      <div className="p-6">
+        <div className="max-w-6xl space-y-6">
+          <div className="max-w-2xl">
+            <Input
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onBlur={handleNameBlur}
+              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+              className="font-medium text-base"
             />
-            Dry run only
-          </label>
-        </Row>
+          </div>
 
-        <Row label="Schedule">
-          <div className="flex gap-1.5 flex-wrap items-center">
-            {(['manual', 'recurring'] as const).map((mode) => (
-              <Chip
-                key={mode}
-                active={pipeline.scheduleMode === mode}
-                onClick={() => handleSave({ scheduleMode: mode })}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </Chip>
-            ))}
-            {pipeline.scheduleMode === 'recurring' && (
-              <>
-                <ChevronDown size={11} className="text-muted-foreground" />
-                {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
-                  <Chip
-                    key={freq}
-                    active={pipeline.frequency === freq}
-                    accent
-                    onClick={() => handleSave({ frequency: freq })}
+          <div className="gap-6">
+            <div className="space-y-6">
+
+              <section className="space-y-2">
+                <Label>Destination</Label>
+                {destinations.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {destinations.map((d) => {
+                      const isActive = pipeline.destinationId === d.id
+                      return (
+                        <div
+                          key={d.id}
+                          className={`flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors ${isActive ? 'border-accent bg-accent/5' : 'border-input-border bg-surface hover:bg-muted/40'
+                            }`}
+                        >
+                          <button
+                            type="button"
+                            className="flex-1 flex items-center gap-2 text-left min-w-0"
+                            onClick={() => handleSave({ destinationId: isActive ? undefined : d.id })}
+                          >
+                            <Globe size={13} className="text-muted-foreground shrink-0" />
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-medium truncate">{d.name}</span>
+                              <span className="block text-xs text-muted-foreground truncate">{d.siteUrl}</span>
+                            </span>
+                            {isActive && (
+                              <span className="text-xs text-accent font-medium shrink-0">Active</span>
+                            )}
+                          </button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => handleDeleteDestination(d.id)}
+                            loading={deleteDestination.isPending}
+                            className="shrink-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  !showAddDestination && (
+                    <p className="text-xs text-muted-foreground">
+                      No destinations yet. Add one to publish live runs.
+                    </p>
+                  )
+                )}
+
+                {showAddDestination ? (
+                  <div className="border rounded p-4 space-y-3 bg-muted/20">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">WordPress REST API</p>
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Name (e.g. My Blog)"
+                        value={destForm.name}
+                        onChange={(e) => setDestForm((f) => ({ ...f, name: e.target.value }))}
+                      />
+                      <Input
+                        placeholder="Site URL (e.g. https://myblog.com)"
+                        value={destForm.siteUrl}
+                        onChange={(e) => setDestForm((f) => ({ ...f, siteUrl: e.target.value }))}
+                      />
+                      <Input
+                        placeholder="WordPress username"
+                        value={destForm.username}
+                        onChange={(e) => setDestForm((f) => ({ ...f, username: e.target.value }))}
+                      />
+                      <Input
+                        type="password"
+                        placeholder="Application Password"
+                        value={destForm.secret}
+                        onChange={(e) => setDestForm((f) => ({ ...f, secret: e.target.value }))}
+                      />
+                      <div className="flex gap-2">
+                        {(['draft', 'publish'] as const).map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setDestForm((f) => ({ ...f, defaultStatus: s }))}
+                            className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${destForm.defaultStatus === s
+                                ? 'bg-foreground text-background border-foreground'
+                                : 'border-input-border hover:bg-muted'
+                              }`}
+                          >
+                            {s === 'draft' ? 'Save as draft' : 'Publish directly'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" loading={createDestination.isPending} onClick={handleAddDestination}>
+                        Add destination
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setShowAddDestination(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddDestination(true)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                  </Chip>
-                ))}
-                <Input
-                  type="time"
-                  value={pipeline.timeOfDay ?? ''}
-                  onChange={(e) => handleSave({ timeOfDay: e.target.value })}
-                  className="w-28 h-7 text-xs"
-                />
-              </>
-            )}
-          </div>
-        </Row>
+                    <Plus size={12} />
+                    Add WordPress destination
+                  </button>
+                )}
+              </section>
 
-        <Row label="Status">
-          <div className="flex gap-1.5 flex-wrap">
-            {(['draft', 'active', 'paused', 'archived'] as const).map((s) => (
-              <Chip
-                key={s}
-                active={pipeline.status === s}
-                onClick={() => handleSave({ status: s })}
-              >
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </Chip>
-            ))}
+              {activeDestination && (
+                <section className="space-y-3">
+                  <Label>WordPress categories</Label>
+                  {categoriesLoading ? (
+                    <p className="text-xs text-muted-foreground">Loading categories from {activeDestination.name}…</p>
+                  ) : categoriesError ? (
+                    <p className="text-xs text-destructive">Could not load WordPress categories. Check destination credentials.</p>
+                  ) : wordpressCategories.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No categories found on this WordPress site.</p>
+                  ) : (
+                    <>
+                      <CategoryPicker
+                        label="Destination defaults"
+                        hint="Used when this pipeline has no category override."
+                        categories={wordpressCategories}
+                        selected={activeDestination.defaultCategoryIds ?? []}
+                        onChange={async (ids) => {
+                          await updateDestination.mutateAsync({
+                            destinationId: activeDestination.id,
+                            accountId: pipeline.accountId,
+                            defaultCategoryIds: ids.length > 0 ? ids : null,
+                          })
+                          refetchDestinations()
+                          toast.success('Destination categories saved')
+                        }}
+                      />
+                      <CategoryPicker
+                        label="Pipeline override"
+                        hint="Optional. Overrides destination defaults for this pipeline only."
+                        categories={wordpressCategories}
+                        selected={pipelineCategoryIds}
+                        onChange={async (ids) => {
+                          await update.mutateAsync({
+                            pipelineId,
+                            wpCategoryIds: ids.length > 0 ? ids : null,
+                          })
+                          toast.success('Pipeline categories saved')
+                        }}
+                      />
+                    </>
+                  )}
+                </section>
+              )}
+
+              {/* Run mode + Schedule — collapsed into a compact row group */}
+              <section className="space-y-3">
+                <Label>Settings</Label>
+
+                <Row label="Run title">
+                  <Input
+                    value={runTitle}
+                    onChange={(e) => setRunTitle(e.target.value)}
+                    placeholder={pipeline.name}
+                    className="h-8 text-sm"
+                  />
+                </Row>
+
+                <Row label="Run mode">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={pipeline.dryRun}
+                      onChange={(e) => handleSave({ dryRun: e.target.checked })}
+                      className="rounded"
+                    />
+                    Dry run only
+                  </label>
+                </Row>
+
+                <Row label="Schedule">
+                  <div className="flex gap-1.5 flex-wrap items-center">
+                    {(['manual', 'recurring'] as const).map((mode) => (
+                      <Chip
+                        key={mode}
+                        active={pipeline.scheduleMode === mode}
+                        onClick={() => handleSave({ scheduleMode: mode })}
+                      >
+                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                      </Chip>
+                    ))}
+                    {pipeline.scheduleMode === 'recurring' && (
+                      <>
+                        <ChevronDown size={11} className="text-muted-foreground" />
+                        {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                          <Chip
+                            key={freq}
+                            active={pipeline.frequency === freq}
+                            accent
+                            onClick={() => handleSave({ frequency: freq })}
+                          >
+                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                          </Chip>
+                        ))}
+                        <Input
+                          type="time"
+                          value={pipeline.timeOfDay ?? ''}
+                          onChange={(e) => handleSave({ timeOfDay: e.target.value })}
+                          className="w-28 h-7 text-xs"
+                        />
+                      </>
+                    )}
+                  </div>
+                </Row>
+
+                <Row label="Status">
+                  <div className="flex gap-1.5 flex-wrap">
+                    {(['draft', 'active', 'paused', 'archived'] as const).map((s) => (
+                      <Chip
+                        key={s}
+                        active={pipeline.status === s}
+                        onClick={() => handleSave({ status: s })}
+                      >
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </Chip>
+                    ))}
+                  </div>
+                </Row>
+              </section>
+            </div>
+
+            <section className="space-y-3 mt-8">
+              <div>
+                <Label>Body Composer</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Arrange existing text and image outputs. Reordering or excluding rows does not run AI.
+                </p>
+              </div>
+
+              {composerRows.length === 0 ? (
+                <div className="border rounded p-4 text-sm text-muted-foreground bg-surface">
+                  Add body or inline image agents to compose the final document body.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {composerRows.map((row, index) => {
+                    const agent = pipeline.agents.find((item) => item.uid === row.agentUid)
+                    if (!agent) return null
+                    const isImage = agent.outputTarget === 'image'
+                    return (
+                      <div key={row.id} className={`border rounded px-3 py-2 flex items-center gap-3 transition-colors ${row.include ? 'bg-surface' : 'bg-muted/30 opacity-60'}`}>
+                        <input
+                          type="checkbox"
+                          checked={row.include}
+                          onChange={() => toggleComposerRow(row)}
+                          className="rounded shrink-0"
+                          aria-label={`Include ${agent.name} in final body`}
+                        />
+                        <span className="text-muted-foreground shrink-0">
+                          {isImage ? <Image size={14} /> : <Type size={14} />}
+                        </span>
+                        <div className="text-left min-w-0 flex-1">
+                          <span className="block text-sm font-medium truncate">{agent.name}</span>
+                          <span className="block text-xs text-muted-foreground font-mono truncate">
+                            {row.include ? 'Included' : 'Excluded'} · {agent.uid}
+                          </span>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon-sm" onClick={() => moveComposerRow(index, -1)} disabled={index === 0}>
+                            <ArrowUp size={13} />
+                          </Button>
+                          <Button variant="ghost" size="icon-sm" onClick={() => moveComposerRow(index, 1)} disabled={index === composerRows.length - 1}>
+                            <ArrowDown size={13} />
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
           </div>
-        </Row>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur px-6 py-3">
+        <div className="max-w-6xl flex items-center justify-start gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-foreground">{pipeline.dryRun ? 'Dry run mode' : 'Live run mode'}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {(runTitle.trim() || pipeline.name)} · {activeDestination ? activeDestination.name : 'No destination selected'}
+            </p>
+          </div>
+          <Button onClick={() => setShowRunDialog(true)} size="sm" className="gap-1.5 shrink-0">
+            <Play size={13} />
+            Run
+          </Button>
+        </div>
       </div>
 
       {/* Run dialog */}
@@ -424,9 +530,8 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
                             key={agent.uid}
                             type="button"
                             onClick={() => toggleForceAgent(agent.uid)}
-                            className={`px-2 py-1 rounded border text-xs transition-colors ${
-                              active ? 'bg-foreground text-background border-foreground' : 'border-input-border hover:bg-muted'
-                            }`}
+                            className={`px-2 py-1 rounded border text-xs transition-colors ${active ? 'bg-foreground text-background border-foreground' : 'border-input-border hover:bg-muted'
+                              }`}
                           >
                             {agent.uid}
                           </button>
@@ -483,13 +588,12 @@ function Chip({
     <button
       type="button"
       onClick={onClick}
-      className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-        active
+      className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${active
           ? accent
             ? 'bg-accent text-accent-foreground border-accent'
             : 'bg-foreground text-background border-foreground'
           : 'border-input-border hover:bg-muted'
-      }`}
+        }`}
     >
       {children}
     </button>
@@ -536,4 +640,20 @@ function CategoryPicker({
       </div>
     </div>
   )
+}
+
+function getComposerRows(pipeline: Pipeline): ComposerRow[] {
+  const eligibleAgents = pipeline.agents.filter((agent) => agent.outputTarget === 'body' || agent.outputTarget === 'image')
+  const existingRows = Array.isArray(pipeline.bodyComposer) ? pipeline.bodyComposer as unknown as ComposerRow[] : []
+  const rows = existingRows
+    .filter((row) => eligibleAgents.some((agent) => agent.uid === row.agentUid))
+    .map((row) => ({ ...row, type: 'agent_output' as const, include: row.include !== false }))
+
+  for (const agent of eligibleAgents) {
+    if (!rows.some((row) => row.agentUid === agent.uid)) {
+      rows.push({ id: agent.uid, type: 'agent_output', agentUid: agent.uid, include: true })
+    }
+  }
+
+  return rows
 }

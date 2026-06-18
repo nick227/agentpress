@@ -223,8 +223,8 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
       />
 
       <div className="flex gap-2">
-        <Button size="sm" loading={update.isPending} onClick={handleSave}>Save</Button>
         <Button variant="outline" size="sm" onClick={handleDelete}>Delete</Button>
+        <Button size="sm" loading={update.isPending} onClick={handleSave}>Save</Button>
       </div>
     </div>
   )

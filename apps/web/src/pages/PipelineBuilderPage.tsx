@@ -8,7 +8,6 @@ import { DetailPanel } from '@/features/pipelines/builder/DetailPanel'
 
 export type Selection =
   | { type: 'setup' }
-  | { type: 'composer' }
   | { type: 'variable'; id: string }
   | { type: 'agent'; id: string }
   | { type: 'run'; id: string }

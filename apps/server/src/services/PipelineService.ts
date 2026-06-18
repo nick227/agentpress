@@ -121,6 +121,7 @@ export class PipelineService {
         id: r.id,
         accountId: r.accountId,
         pipelineId: r.pipelineId,
+        title: r.title ?? undefined,
         status: r.status,
         dryRun: r.dryRun,
         variables: r.variables,

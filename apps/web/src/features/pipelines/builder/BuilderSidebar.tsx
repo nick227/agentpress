@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Rows3, Image } from 'lucide-react'
+import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Image } from 'lucide-react'
 import type { components } from '@project/sdk'
 import { useUpdatePipeline } from '@project/sdk'
 import { toast } from 'sonner'
@@ -135,12 +135,6 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
         active={selection.type === 'setup'}
         onClick={() => onSelect({ type: 'setup' })}
       />
-      <SidebarItem
-        label="Body Composer"
-        icon={<Rows3 size={13} />}
-        active={selection.type === 'composer'}
-        onClick={() => onSelect({ type: 'composer' })}
-      />
 
       {/* Variables */}
       <div className="px-3 pt-4 pb-1 flex items-center justify-between">
@@ -225,8 +219,8 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
         runs.slice(0, 10).map((run, i) => (
           <SidebarItem
             key={run.id}
-            label={`Run ${runs.length - i}${run.dryRun ? ' (dry)' : ''}`}
-            sublabel={new Date(run.startedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            label={run.title || `Run ${runs.length - i}`}
+            sublabel={`${run.dryRun ? 'Dry' : 'Live'} · ${new Date(run.startedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
             icon={RUN_STATUS_ICON[run.status] ?? <Clock size={12} />}
             active={selection.type === 'run' && selection.id === run.id}
             onClick={() => onSelect({ type: 'run', id: run.id })}
