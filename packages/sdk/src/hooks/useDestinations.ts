@@ -39,7 +39,7 @@ export function useCreateDestination() {
       accountId: string
       name: string
       siteUrl: string
-      username?: string
+      username: string
       secret: string
       defaultStatus?: 'draft' | 'publish'
       defaultCategoryIds?: number[]

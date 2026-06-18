@@ -3,6 +3,7 @@ import type { components } from '@project/sdk'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
 import type { ResearchSelection } from '@/pages/ResearchSourcePage'
+import { contentStatusMessage } from './contentStatus'
 
 type ResearchSource = components['schemas']['ResearchSource']
 type ResearchItem = components['schemas']['ResearchItem']
@@ -60,19 +61,23 @@ export function ResearchSidebar({ source, itemsPage, itemsLoading, page, onPageC
         ) : items.length === 0 ? (
           <p className="px-4 py-1.5 text-xs text-muted-foreground">No items collected yet.</p>
         ) : (
-          items.map((item) => (
+          items.map((item) => {
+            const transcriptIssue = contentStatusMessage(item.contentStatus, source.sourceType)
+            return (
             <SidebarItem
               key={item.id}
               label={item.title}
               sublabel={
                 new Date(item.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
-                (item.summaryCount ? ` · ${item.summaryCount} summar${item.summaryCount !== 1 ? 'ies' : 'y'}` : '')
+                (item.summaryCount ? ` · ${item.summaryCount} summar${item.summaryCount !== 1 ? 'ies' : 'y'}` : '') +
+                (transcriptIssue ? ' · No transcript' : '')
               }
               icon={<Video size={12} className="text-muted-foreground shrink-0" />}
               active={selection.type === 'item' && selection.id === item.id}
               onClick={() => onSelect({ type: 'item', id: item.id })}
             />
-          ))
+            )
+          })
         )}
       </div>
 

@@ -13,6 +13,7 @@ import { CreatePipelineDialog } from '@/features/pipelines/CreatePipelineDialog'
 import { PipelineStatusBadge } from '@/features/pipelines/PipelineStatusBadge'
 import { TemplateBrowser } from '@/features/content/TemplateBrowser'
 import { CreateResearchSourceDialog } from '@/features/research/CreateResearchSourceDialog'
+import { researchCheckFeedback } from '@/features/research/researchCheckFeedback'
 import { cn } from '@/lib/utils'
 
 type SyncResult = components['schemas']['SyncResult']
@@ -81,12 +82,16 @@ export function AccountDetailPage() {
         try {
           const result = await checkResearchSource.mutateAsync(source.id)
           const r = result.data
+          const feedback = researchCheckFeedback(source.sourceType, r)
+          const transcriptFailed = source.sourceType === 'youtube' && r.latest && !r.latest.hasTranscript
           results.push({
             sourceName: source.name,
             sourceId: source.id,
             newItem: r.newItem,
-            itemTitle: r.newItem && r.item ? r.item.title : undefined,
-            error: !r.checked ? 'Could not resolve source. Check the URL.' : undefined,
+            updatedCount: r.updatedCount,
+            itemTitle: r.latest?.title ?? (r.newItem && r.item ? r.item.title : undefined),
+            statusMessage: feedback.message,
+            error: !r.checked ? feedback.message : transcriptFailed ? feedback.message : undefined,
           })
         } catch (err: any) {
           results.push({
@@ -483,19 +488,30 @@ function SyncResultDialog({ result, researchOnly, onClose }: { result: SyncResul
                       <AlertCircle size={13} className="text-destructive shrink-0 mt-0.5" />
                     ) : r.newItem ? (
                       <CheckCircle2 size={13} className="text-green-600 shrink-0 mt-0.5" />
+                    ) : r.updatedCount && r.updatedCount > 0 ? (
+                      <RefreshCw size={13} className="text-blue-600 shrink-0 mt-0.5" />
                     ) : (
                       <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/30 shrink-0 mt-0.5" />
                     )}
                     <div className="min-w-0">
                       <span className="font-medium">{r.sourceName}</span>
-                      {r.newItem && r.itemTitle && (
-                        <span className="text-muted-foreground"> — {r.itemTitle}</span>
-                      )}
-                      {!r.newItem && !r.error && (
-                        <span className="text-muted-foreground"> — no new items</span>
-                      )}
-                      {r.error && (
-                        <span className="text-destructive"> — {r.error}</span>
+                      {r.statusMessage ? (
+                        <span className={r.error ? ' text-destructive' : ' text-muted-foreground'}> — {r.statusMessage}</span>
+                      ) : (
+                        <>
+                          {r.newItem && r.itemTitle && (
+                            <span className="text-muted-foreground"> — {r.itemTitle}</span>
+                          )}
+                          {!r.newItem && !r.error && r.updatedCount && r.updatedCount > 0 && (
+                            <span className="text-muted-foreground"> — refreshed</span>
+                          )}
+                          {!r.newItem && !r.error && !r.updatedCount && (
+                            <span className="text-muted-foreground"> — no new items</span>
+                          )}
+                          {r.error && (
+                            <span className="text-destructive"> — {r.error}</span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

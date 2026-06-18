@@ -205,31 +205,91 @@ export class ResearchService {
     await db.researchSource.delete({ where: { id: sourceId } })
   }
 
-  async checkLatest(sourceId: string): Promise<{ checked: boolean; newItem: boolean; newCount: number; item?: object }> {
-    const source = await db.researchSource.findUniqueOrThrow({ where: { id: sourceId } })
+  private latestFromItem(
+    item: {
+      id: string
+      title: string
+      content: string | null
+      contentStatus: string | null
+      contentErrorReason: string | null
+    },
+    isNew: boolean,
+    contentChecked: boolean,
+  ) {
+    const hasTranscript = Boolean(item.content?.trim())
+    return {
+      id: item.id,
+      title: item.title,
+      contentStatus: item.contentStatus ?? (hasTranscript ? 'ok' : 'unavailable'),
+      contentErrorReason: item.contentErrorReason,
+      hasTranscript,
+      isNew,
+      contentChecked,
+    }
+  }
+
+  async checkLatest(sourceId: string): Promise<{
+    checked: boolean
+    newItem: boolean
+    newCount: number
+    updatedCount: number
+    item?: object
+    latest?: ReturnType<ResearchService['latestFromItem']>
+  }> {
+    const source = await db.researchSource.findFirstOrThrow({ where: { OR: [{ id: sourceId }, { slug: sourceId }] } })
 
     let externalId = source.externalId
     if (!externalId) {
       externalId = await this.resolveSourceCached(source.sourceType, source.sourceUrl).catch(() => null)
       if (externalId) {
-        await db.researchSource.update({ where: { id: sourceId }, data: { externalId } })
+        await db.researchSource.update({ where: { id: source.id }, data: { externalId } })
       }
     }
 
-    if (!externalId) return { checked: false, newItem: false, newCount: 0 }
+    if (!externalId) return { checked: false, newItem: false, newCount: 0, updatedCount: 0 }
 
     const feedItems = await this.fetchLatestCached(source.sourceType, externalId, source.sourceUrl)
-    await db.researchSource.update({ where: { id: sourceId }, data: { lastChecked: new Date() } })
+    await db.researchSource.update({ where: { id: source.id }, data: { lastChecked: new Date() } })
 
     let newCount = 0
+    let updatedCount = 0
     let firstNew: object | undefined = undefined
+    let latest: ReturnType<ResearchService['latestFromItem']> | undefined
 
     for (const feedItem of feedItems) {
       const existing = await db.researchItem.findUnique({
-        where: { sourceId_externalId: { sourceId, externalId: feedItem.externalId } },
+        where: { sourceId_externalId: { sourceId: source.id, externalId: feedItem.externalId } },
       })
 
       if (existing) {
+        const contentFields = contentFieldsFromFeedItem(feedItem)
+        const shouldRefreshExisting =
+          source.sourceType === 'reddit' &&
+          (
+            existing.title !== feedItem.title ||
+            existing.itemUrl !== feedItem.itemUrl ||
+            existing.content !== contentFields.content ||
+            existing.contentStatus !== contentFields.contentStatus
+          )
+
+        if (shouldRefreshExisting) {
+          const updated = await db.researchItem.update({
+            where: { id: existing.id },
+            data: {
+              title: feedItem.title,
+              itemUrl: feedItem.itemUrl,
+              publishedAt: feedItem.publishedAt,
+              content: contentFields.content,
+              contentStatus: contentFields.contentStatus,
+              contentErrorReason: contentFields.contentErrorReason,
+              contentCheckedAt: contentFields.contentCheckedAt,
+            },
+          })
+          updatedCount++
+          latest = this.latestFromItem(updated, false, true)
+          continue
+        }
+
         const shouldRetryContent =
           !existing.content?.trim() ||
           existing.contentStatus === 'rate_limited' ||
@@ -237,31 +297,38 @@ export class ResearchService {
 
         if (shouldRetryContent) {
           const fields =
-            feedItem.contentStatus || feedItem.content.trim()
-              ? contentFieldsFromFeedItem(feedItem)
-              : source.sourceType === 'youtube'
-                ? await this.backfillYoutubeContent(feedItem.externalId)
-                : contentFieldsFromFeedItem(feedItem)
+            source.sourceType === 'youtube'
+              ? await this.backfillYoutubeContent(feedItem.externalId)
+              : contentFieldsFromFeedItem(feedItem)
 
-          if (fields.content || fields.contentStatus !== existing.contentStatus) {
-            await db.researchItem.update({
-              where: { id: existing.id },
-              data: {
-                content: fields.content,
-                contentStatus: fields.contentStatus,
-                contentErrorReason: fields.contentErrorReason,
-                contentCheckedAt: fields.contentCheckedAt,
-              },
-            })
+          const contentChanged = Boolean(fields.content) || fields.contentStatus !== existing.contentStatus
+          const updated = contentChanged
+            ? await db.researchItem.update({
+                where: { id: existing.id },
+                data: {
+                  content: fields.content,
+                  contentStatus: fields.contentStatus,
+                  contentErrorReason: fields.contentErrorReason,
+                  contentCheckedAt: fields.contentCheckedAt,
+                },
+              })
+            : existing
+
+          if (source.sourceType === 'youtube' || contentChanged) {
+            updatedCount++
           }
+          latest = this.latestFromItem(updated, false, true)
+          continue
         }
+
+        latest = this.latestFromItem(existing, false, false)
         continue
       }
 
       const contentFields = contentFieldsFromFeedItem(feedItem)
       const created = await db.researchItem.create({
         data: {
-          sourceId,
+          sourceId: source.id,
           externalId: feedItem.externalId,
           title: feedItem.title,
           itemUrl: feedItem.itemUrl,
@@ -274,9 +341,10 @@ export class ResearchService {
       })
       if (!firstNew) firstNew = created
       newCount++
+      latest = this.latestFromItem(created, true, true)
     }
 
-    return { checked: true, newItem: newCount > 0, newCount, item: firstNew }
+    return { checked: true, newItem: newCount > 0, newCount, updatedCount, item: firstNew, latest }
   }
 
   async listItems(sourceId: string, page = 1, limit = 15) {

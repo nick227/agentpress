@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ArrowDown, ArrowUp, Image, Play, Plus, Trash2, Type, Globe, ChevronDown, Zap } from 'lucide-react'
 import type { components } from '@project/sdk'
@@ -43,6 +43,7 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   const [runTitle, setRunTitle] = useState(pipeline.name)
   const [forceRegenerate, setForceRegenerate] = useState(false)
   const [forceRegenerateAgentUids, setForceRegenerateAgentUids] = useState<string[]>([])
+  const [dryRun, setDryRun] = useState(pipeline.dryRun)
   const [runVars, setRunVars] = useState<Record<string, string>>(() => {
     const defaults: Record<string, string> = {}
     for (const v of pipeline.variables) {
@@ -50,7 +51,6 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
     }
     return defaults
   })
-  const [dryRun, setDryRun] = useState(pipeline.dryRun)
   const [destForm, setDestForm] = useState({
     name: '',
     siteUrl: '',
@@ -58,6 +58,10 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
     secret: '',
     defaultStatus: 'draft' as 'draft' | 'publish',
   })
+
+  useEffect(() => {
+    setDryRun(pipeline.dryRun)
+  }, [pipeline.dryRun])
 
   async function handleSave(fields: Partial<typeof pipeline>) {
     await update.mutateAsync({ pipelineId, ...fields })
@@ -98,22 +102,27 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   }
 
   async function handleAddDestination() {
-    if (!destForm.name || !destForm.siteUrl || !destForm.secret) {
-      toast.error('Name, Site URL and Application Password are required')
+    const nextDestination = {
+      name: destForm.name.trim(),
+      siteUrl: destForm.siteUrl.trim(),
+      username: destForm.username.trim(),
+      secret: destForm.secret.trim(),
+      defaultStatus: destForm.defaultStatus,
+    }
+
+    if (!nextDestination.name || !nextDestination.siteUrl || !nextDestination.username || !nextDestination.secret) {
+      toast.error('Name, Site URL, WordPress username and Application Password are required')
       return
     }
-    await createDestination.mutateAsync({
+    const created = await createDestination.mutateAsync({
       accountId: pipeline.accountId,
-      name: destForm.name,
-      siteUrl: destForm.siteUrl,
-      username: destForm.username || undefined,
-      secret: destForm.secret,
-      defaultStatus: destForm.defaultStatus,
+      ...nextDestination,
     })
-    toast.success('Destination added')
+    await update.mutateAsync({ pipelineId, destinationId: created.data.id })
+    await refetchDestinations()
+    toast.success('Destination added and selected')
     setDestForm({ name: '', siteUrl: '', username: '', secret: '', defaultStatus: 'draft' })
     setShowAddDestination(false)
-    refetchDestinations()
   }
 
   async function handleDeleteDestination(destinationId: string) {
@@ -169,41 +178,28 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
               <section className="space-y-2">
                 <Label>Destination</Label>
                 {destinations.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {destinations.map((d) => {
-                      const isActive = pipeline.destinationId === d.id
-                      return (
-                        <div
-                          key={d.id}
-                          className={`flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors ${isActive ? 'border-accent bg-accent/5' : 'border-input-border bg-surface hover:bg-muted/40'
-                            }`}
-                        >
-                          <button
-                            type="button"
-                            className="flex-1 flex items-center gap-2 text-left min-w-0"
-                            onClick={() => handleSave({ destinationId: isActive ? undefined : d.id })}
-                          >
-                            <Globe size={13} className="text-muted-foreground shrink-0" />
-                            <span className="min-w-0 flex-1">
-                              <span className="block font-medium truncate">{d.name}</span>
-                              <span className="block text-xs text-muted-foreground truncate">{d.siteUrl}</span>
-                            </span>
-                            {isActive && (
-                              <span className="text-xs text-accent font-medium shrink-0">Active</span>
-                            )}
-                          </button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => handleDeleteDestination(d.id)}
-                            loading={deleteDestination.isPending}
-                            className="shrink-0 text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 size={13} />
-                          </Button>
-                        </div>
-                      )
-                    })}
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={pipeline.destinationId ?? ''}
+                      onChange={(e) => handleSave({ destinationId: e.target.value || null })}
+                      className="h-9 min-w-0 flex-1 rounded border border-input-border bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">No destination selected</option>
+                      {destinations.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                    {activeDestination && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleDeleteDestination(activeDestination.id)}
+                        loading={deleteDestination.isPending}
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   !showAddDestination && (
@@ -238,29 +234,29 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
                         value={destForm.secret}
                         onChange={(e) => setDestForm((f) => ({ ...f, secret: e.target.value }))}
                       />
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap items-center gap-3">
                         {(['draft', 'publish'] as const).map((s) => (
-                          <button
+                          <label
                             key={s}
-                            type="button"
-                            onClick={() => setDestForm((f) => ({ ...f, defaultStatus: s }))}
-                            className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${destForm.defaultStatus === s
-                                ? 'bg-foreground text-background border-foreground'
-                                : 'border-input-border hover:bg-muted'
-                              }`}
+                            className="flex items-center gap-1.5 text-xs font-medium cursor-pointer select-none"
                           >
-                            {s === 'draft' ? 'Save as draft' : 'Publish directly'}
-                          </button>
+                            <input
+                              type="radio"
+                              name="destination-default-status"
+                              value={s}
+                              checked={destForm.defaultStatus === s}
+                              onChange={() => setDestForm((f) => ({ ...f, defaultStatus: s }))}
+                            />
+                            {s === 'draft' ? 'Draft' : 'Live'}
+                          </label>
                         ))}
+                        <Button variant="outline" size="sm" onClick={() => setShowAddDestination(false)}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" loading={createDestination.isPending} onClick={handleAddDestination}>
+                          Add destination
+                        </Button>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" loading={createDestination.isPending} onClick={handleAddDestination}>
-                        Add destination
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setShowAddDestination(false)}>
-                        Cancel
-                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -337,7 +333,10 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
                     <input
                       type="checkbox"
                       checked={pipeline.dryRun}
-                      onChange={(e) => handleSave({ dryRun: e.target.checked })}
+                      onChange={(e) => {
+                        setDryRun(e.target.checked)
+                        void handleSave({ dryRun: e.target.checked })
+                      }}
                       className="rounded"
                     />
                     Dry run only

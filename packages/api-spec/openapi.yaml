@@ -96,7 +96,11 @@ components:
                     type: string
                   newItem:
                     type: boolean
+                  updatedCount:
+                    type: integer
                   itemTitle:
+                    type: string
+                  statusMessage:
                     type: string
                   error:
                     type: string
@@ -795,6 +799,44 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    ResearchCheckLatest:
+      type: object
+      required: [id, title, contentStatus, hasTranscript, isNew, contentChecked]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        contentStatus:
+          type: string
+          enum: [ok, disabled, unavailable, rate_limited, error]
+        contentErrorReason:
+          type: string
+          nullable: true
+        hasTranscript:
+          type: boolean
+        isNew:
+          type: boolean
+        contentChecked:
+          type: boolean
+
+    ResearchCheckResult:
+      type: object
+      required: [checked, newItem, newCount, updatedCount]
+      properties:
+        checked:
+          type: boolean
+        newItem:
+          type: boolean
+        newCount:
+          type: integer
+        updatedCount:
+          type: integer
+        item:
+          $ref: '#/components/schemas/ResearchItem'
+        latest:
+          $ref: '#/components/schemas/ResearchCheckLatest'
 
     ResearchItem:
       type: object
@@ -1651,7 +1693,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, siteUrl, secret]
+              required: [name, siteUrl, username, secret]
               properties:
                 name:
                   type: string
@@ -2245,17 +2287,7 @@ paths:
                 required: [data]
                 properties:
                   data:
-                    type: object
-                    required: [checked, newItem, newCount]
-                    properties:
-                      checked:
-                        type: boolean
-                      newItem:
-                        type: boolean
-                      newCount:
-                        type: integer
-                      item:
-                        $ref: '#/components/schemas/ResearchItem'
+                    $ref: '#/components/schemas/ResearchCheckResult'
 
   /api/research/{sourceId}/items:
     parameters:

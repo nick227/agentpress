@@ -58,7 +58,7 @@ export function useUpdateResearchSource() {
       return data!
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['research-source', data.data.id] })
+      queryClient.invalidateQueries({ queryKey: ['research-source'] })
       queryClient.invalidateQueries({ queryKey: ['research-sources', data.data.accountId] })
     },
   })
@@ -91,8 +91,9 @@ export function useCheckResearchSource() {
       return data!
     },
     onSuccess: (_data, sourceId) => {
-      queryClient.invalidateQueries({ queryKey: ['research-source', sourceId] })
+      queryClient.invalidateQueries({ queryKey: ['research-source'] })
       queryClient.invalidateQueries({ queryKey: ['research-items', sourceId] })
+      queryClient.invalidateQueries({ queryKey: ['research-items'] })
     },
   })
 }

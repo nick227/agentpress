@@ -6,15 +6,17 @@ import { useCheckResearchSource, useUpdateResearchSource, useDeleteResearchSourc
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { researchCheckFeedback } from './researchCheckFeedback'
 
 type ResearchSource = components['schemas']['ResearchSource']
 
-const TYPE_LABELS: Record<string, { urlLabel: string; externalIdLabel: string; checkLabel: string; newLabel: (n: number) => string; noNewLabel: string }> = {
+const TYPE_LABELS: Record<string, { urlLabel: string; externalIdLabel: string; checkLabel: string; newLabel: (n: number) => string; updatedLabel: (n: number) => string; noNewLabel: string }> = {
   youtube: {
     urlLabel: 'YouTube URL',
     externalIdLabel: 'Channel ID',
     checkLabel: 'Check for new video',
     newLabel: () => 'New video found and transcript fetched!',
+    updatedLabel: () => 'Video content refreshed.',
     noNewLabel: 'No new videos since last check.',
   },
   reddit: {
@@ -22,6 +24,7 @@ const TYPE_LABELS: Record<string, { urlLabel: string; externalIdLabel: string; c
     externalIdLabel: 'Subreddit',
     checkLabel: "Fetch today's posts",
     newLabel: (n) => `${n} new digest${n !== 1 ? 's' : ''} fetched!`,
+    updatedLabel: (n) => `${n} digest${n !== 1 ? 's' : ''} refreshed.`,
     noNewLabel: "Already have today's digest.",
   },
   rss: {
@@ -29,6 +32,7 @@ const TYPE_LABELS: Record<string, { urlLabel: string; externalIdLabel: string; c
     externalIdLabel: 'Feed URL',
     checkLabel: 'Fetch latest articles',
     newLabel: (n) => `${n} new article${n !== 1 ? 's' : ''} fetched!`,
+    updatedLabel: (n) => `${n} article${n !== 1 ? 's' : ''} refreshed.`,
     noNewLabel: 'No new articles since last check.',
   },
 }
@@ -52,18 +56,19 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
   const labels = TYPE_LABELS[source.sourceType] ?? TYPE_LABELS.youtube!
 
   async function handleCheck() {
+    const loadingId = toast.loading(
+      source.sourceType === 'youtube' ? 'Checking for latest video and fetching transcript…' : 'Checking for new content…',
+    )
     try {
       const result = await checkSource.mutateAsync(source.id)
-      const r = result.data
-      if (!r.checked) {
-        toast.error('Could not resolve source. Check the URL.')
-      } else if (r.newItem) {
-        toast.success(labels.newLabel(r.newCount))
-      } else {
-        toast(labels.noNewLabel)
-      }
-    } catch (err: any) {
-      toast.error(err.message ?? 'Check failed')
+      const feedback = researchCheckFeedback(source.sourceType, result.data, labels)
+      toast.dismiss(loadingId)
+      if (feedback.variant === 'success') toast.success(feedback.message)
+      else if (feedback.variant === 'error') toast.error(feedback.message)
+      else toast.info(feedback.message)
+    } catch (err: unknown) {
+      toast.dismiss(loadingId)
+      toast.error(err instanceof Error ? err.message : 'Check failed')
     }
   }
 

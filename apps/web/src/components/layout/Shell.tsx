@@ -64,7 +64,7 @@ export function Shell() {
       </aside>
 
       {/* Content */}
-      <main className="flex-1 min-h-screen overflow-auto">
+      <main className="flex-1 min-h-screen overflow-auto max-w-7xl mx-auto">
         <Outlet />
       </main>
     </div>

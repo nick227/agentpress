@@ -115,7 +115,7 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
               Research feeds <ChevronDown size={11} />
             </Button>
             {showResearchMenu && (
-              <div className="absolute right-0 top-8 w-72 bg-surface border rounded shadow-lg z-20 py-1">
+              <div className="absolute right-0 top-8 min-w-[420px] bg-surface border rounded shadow-lg z-20 py-1">
                 {researchSources.length > 0 ? (
                   researchSources.map((source) => (
                     <div key={source.id} className="px-1 py-1">

@@ -1,5 +1,6 @@
 import { db } from '@project/db'
 import { ResearchService } from './ResearchService'
+import { formatResearchCheckMessage } from './researchCheckMessage'
 import { PipelineRunService } from './PipelineRunService'
 
 function toSlug(name: string): string {
@@ -105,16 +106,21 @@ export class AccountService {
       where: { accountId, status: 'active' },
     })
 
-    const researchResults: Array<{ sourceName: string; sourceId: string; newItem: boolean; itemTitle?: string; error?: string }> = []
+    const researchResults: Array<{ sourceName: string; sourceId: string; newItem: boolean; updatedCount?: number; itemTitle?: string; statusMessage?: string; error?: string }> = []
 
     for (const source of sources) {
       try {
         const result = await research.checkLatest(source.id)
+        const statusMessage = formatResearchCheckMessage(source.sourceType, result)
+        const transcriptFailed = source.sourceType === 'youtube' && result.latest && !result.latest.hasTranscript
         researchResults.push({
           sourceName: source.name,
           sourceId: source.id,
           newItem: result.newItem,
-          itemTitle: result.newItem && result.item ? (result.item as any).title : undefined,
+          updatedCount: result.updatedCount,
+          itemTitle: result.latest?.title ?? (result.newItem && result.item ? (result.item as { title: string }).title : undefined),
+          statusMessage,
+          error: !result.checked ? statusMessage : transcriptFailed ? statusMessage : undefined,
         })
       } catch (err: any) {
         researchResults.push({ sourceName: source.name, sourceId: source.id, newItem: false, error: err.message ?? 'Unknown error' })
