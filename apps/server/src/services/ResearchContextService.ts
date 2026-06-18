@@ -19,8 +19,6 @@ export interface ResearchContext {
 
 type PipelineForResearch = {
   accountId: string
-  researchSourceId?: string | null
-  researchSummaryPromptId?: string | null
   variables?: Array<{ key: string }>
   agents?: Array<{ systemPrompt: string; userPrompt: string }>
 }
@@ -34,17 +32,6 @@ export class ResearchContextService {
   async resolveForPipeline(pipeline: PipelineForResearch): Promise<Record<string, ResearchContext>> {
     const contexts: Record<string, ResearchContext> = {}
 
-    if (pipeline.researchSourceId) {
-      const source = await db.researchSource.findUnique({
-        where: { id: pipeline.researchSourceId },
-      })
-      if (!source) throw new Error('Selected research source was not found')
-
-      const context = await this.resolveSource(source, pipeline.researchSummaryPromptId)
-      contexts.research = context
-      contexts[source.slug] = context
-    }
-
     const referencedSources = this.findReferencedSources(pipeline)
     if (referencedSources.size > 0) {
       const sources = await db.researchSource.findMany({
@@ -55,13 +42,12 @@ export class ResearchContextService {
       for (const [slug, itemKeys] of referencedSources) {
         const source = sourceBySlug.get(slug)
         if (!source) throw new Error(`Research source "${slug}" was not found`)
-        const sourceContext = contexts[slug] ?? await this.resolveSource(source, pipeline.researchSummaryPromptId)
+        const sourceContext = contexts[slug] ?? await this.resolveSource(source)
         contexts[slug] = sourceContext
 
         for (const itemKey of itemKeys) {
           ;(sourceContext as unknown as Record<string, ResearchContext>)[itemKey] = await this.resolveSource(
             source,
-            pipeline.researchSummaryPromptId,
             itemKey,
           )
         }
@@ -96,7 +82,7 @@ export class ResearchContextService {
     slug: string
     name: string
     sourceType: string
-  }, summaryPromptId?: string | null, itemKey?: string): Promise<ResearchContext> {
+  }, itemKey?: string): Promise<ResearchContext> {
     let item = itemKey
       ? await this.findItemByKey(source.id, itemKey)
       : await db.researchItem.findFirst({
@@ -110,9 +96,7 @@ export class ResearchContextService {
         : `No research items found for "${source.name}"`)
     }
 
-    const prompt = summaryPromptId
-      ? await db.summaryPrompt.findUnique({ where: { id: summaryPromptId } })
-      : await db.summaryPrompt.findFirst({ orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }] })
+    const prompt = await db.summaryPrompt.findFirst({ orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }] })
 
     if (!prompt) throw new Error('No summary prompt is available for research interpolation')
 

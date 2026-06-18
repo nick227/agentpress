@@ -42,7 +42,6 @@ Common reference fields:
 | `{ziptrader.title}` | Latest item title |
 | `{ziptrader.url}` | Latest item URL |
 | `{ziptrader.content}` | Latest collected source content/transcript |
-| `{research.summary}` | Pipeline-selected default research feed summary |
 
 For exact reuse of a prior daily pull, pin by date. This is implemented in the run resolver by matching the source slug, the `YYYY-MM-DD` key, and the requested field:
 

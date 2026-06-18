@@ -35,6 +35,7 @@ export function DetailPanel({ pipeline, runs, selection, onSelect, pipelineId }:
         variable={variable}
         pipeline={pipeline}
         pipelineId={pipelineId}
+        onSaved={(id) => onSelect({ type: 'variable', id })}
         onDeleted={() => onSelect({ type: 'setup' })}
       />
     )
@@ -49,6 +50,7 @@ export function DetailPanel({ pipeline, runs, selection, onSelect, pipelineId }:
         agent={agent}
         pipeline={pipeline}
         pipelineId={pipelineId}
+        onSaved={(id) => onSelect({ type: 'agent', id })}
         onDeleted={() => onSelect({ type: 'setup' })}
       />
     )

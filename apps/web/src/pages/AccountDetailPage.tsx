@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ChevronLeft, Plus, Pencil, Trash2, Zap, LayoutTemplate, FlaskConical, Video, RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react'
-import { useAccount, usePipelines, useDeleteAccount, useResearchSources, useSyncAccount } from '@project/sdk'
+import { useAccount, usePipelines, useDeleteAccount, useResearchSources, useSyncAccount, useCheckResearchSource } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -12,12 +13,20 @@ import { CreatePipelineDialog } from '@/features/pipelines/CreatePipelineDialog'
 import { PipelineStatusBadge } from '@/features/pipelines/PipelineStatusBadge'
 import { TemplateBrowser } from '@/features/content/TemplateBrowser'
 import { CreateResearchSourceDialog } from '@/features/research/CreateResearchSourceDialog'
+import { cn } from '@/lib/utils'
 
 type SyncResult = components['schemas']['SyncResult']
+type ResearchSyncProgress = {
+  currentSourceId?: string
+  currentSourceName?: string
+  completed: number
+  total: number
+}
 
 export function AccountDetailPage() {
   const { accountSlug } = useParams<{ accountSlug: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { data: accountData, isLoading: accountLoading } = useAccount(accountSlug!)
   const account = accountData?.data
   const { data: pipelinesData, isLoading: pipelinesLoading } = usePipelines(account?.id ?? '')
@@ -30,18 +39,85 @@ export function AccountDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const sync = useSyncAccount()
+  const checkResearchSource = useCheckResearchSource()
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+  const [syncResultResearchOnly, setSyncResultResearchOnly] = useState(false)
+  const [researchSyncing, setResearchSyncing] = useState(false)
+  const [researchSyncProgress, setResearchSyncProgress] = useState<ResearchSyncProgress | null>(null)
+  const [newResearchSourceIds, setNewResearchSourceIds] = useState<Set<string>>(new Set())
 
   const pipelines = pipelinesData?.data ?? []
   const researchSources = researchData?.data ?? []
+  const activeResearchSources = researchSources.filter((source) => source.status === 'active')
 
   async function handleSync() {
     if (!account) return
     try {
       const result = await sync.mutateAsync(account.id)
+      setSyncResultResearchOnly(false)
       setSyncResult(result.data)
     } catch (err: any) {
       toast.error(err.message ?? 'Sync failed')
+    }
+  }
+
+  async function handleSyncResearch() {
+    if (!account || activeResearchSources.length === 0) return
+
+    const results: SyncResult['research']['results'] = []
+    setResearchSyncing(true)
+    setNewResearchSourceIds(new Set())
+    setResearchSyncProgress({ completed: 0, total: activeResearchSources.length })
+
+    try {
+      for (const [index, source] of activeResearchSources.entries()) {
+        setResearchSyncProgress({
+          currentSourceId: source.id,
+          currentSourceName: source.name,
+          completed: index,
+          total: activeResearchSources.length,
+        })
+
+        try {
+          const result = await checkResearchSource.mutateAsync(source.id)
+          const r = result.data
+          results.push({
+            sourceName: source.name,
+            sourceId: source.id,
+            newItem: r.newItem,
+            itemTitle: r.newItem && r.item ? r.item.title : undefined,
+            error: !r.checked ? 'Could not resolve source. Check the URL.' : undefined,
+          })
+        } catch (err: any) {
+          results.push({
+            sourceName: source.name,
+            sourceId: source.id,
+            newItem: false,
+            error: err.message ?? 'Unknown error',
+          })
+        }
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['research-sources', account.id] })
+
+      setNewResearchSourceIds(new Set(results.filter((result) => result.newItem).map((result) => result.sourceId)))
+
+      setSyncResultResearchOnly(true)
+      setSyncResult({
+        research: {
+          checked: results.length,
+          newItems: results.filter((result) => result.newItem).length,
+          results,
+        },
+        pipelines: {
+          started: 0,
+          skipped: 0,
+          results: [],
+        },
+      })
+    } finally {
+      setResearchSyncing(false)
+      setResearchSyncProgress(null)
     }
   }
 
@@ -87,7 +163,14 @@ export function AccountDetailPage() {
       <div className="flex items-start justify-between mb-1">
         <h1 className="text-lg font-semibold">{account.name}</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" loading={sync.isPending} onClick={handleSync} title="Check all active research feeds and run all ready pipelines">
+          <Button
+            variant="outline"
+            size="sm"
+            loading={sync.isPending}
+            disabled={researchSyncing}
+            onClick={handleSync}
+            title="Check all active research feeds and run all ready pipelines"
+          >
             <RefreshCw size={13} />
             Sync All
           </Button>
@@ -186,12 +269,33 @@ export function AccountDetailPage() {
 
       {/* Research section */}
       <div className="border-t pt-5 mt-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <h2 className="text-sm font-semibold">Research</h2>
-          <Button size="sm" onClick={() => setShowCreateResearch(true)}>
-            <Plus size={13} />
-            New Source
-          </Button>
+          <div className="flex flex-col items-end gap-1.5">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                loading={researchSyncing}
+                disabled={researchSyncing || sync.isPending || activeResearchSources.length === 0}
+                onClick={handleSyncResearch}
+                title="Check all active research sources"
+              >
+                <RefreshCw size={13} />
+                Check Research Feeds
+              </Button>
+              <Button size="sm" onClick={() => setShowCreateResearch(true)}>
+                <Plus size={13} />
+                New Source
+              </Button>
+            </div>
+            {researchSyncProgress && (
+              <p className="text-xs text-muted-foreground text-right max-w-xs truncate">
+                Checking {researchSyncProgress.completed + 1}/{researchSyncProgress.total}
+                {researchSyncProgress.currentSourceName ? ` · ${researchSyncProgress.currentSourceName}` : ''}
+              </p>
+            )}
+          </div>
         </div>
 
         {researchLoading ? (
@@ -209,36 +313,56 @@ export function AccountDetailPage() {
           />
         ) : (
           <div className="space-y-1.5">
-            {researchSources.map((source) => (
-              <Link
-                key={source.id}
-                to={`/accounts/${account.slug}/research/${source.slug}`}
-                className="flex items-center justify-between px-4 py-3 rounded border bg-surface hover:bg-muted/40 transition-colors group"
-              >
-                <div className="min-w-0 flex items-center gap-3">
-                  <Video size={14} className="text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {source.itemCount ?? 0} {source.sourceType === 'youtube' ? 'video' : source.sourceType === 'reddit' ? 'digest' : 'article'}{(source.itemCount ?? 0) !== 1 ? 's' : ''}
-                      {source.lastChecked
-                        ? ` · Checked ${new Date(source.lastChecked).toLocaleDateString()}`
-                        : ' · Never checked'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {source.category && (
-                    <span className="text-xs px-2 py-0.5 rounded font-medium bg-muted text-muted-foreground capitalize">
-                      {source.category}
-                    </span>
+            {researchSources.map((source) => {
+              const hasNewResults = newResearchSourceIds.has(source.id)
+              const isChecking = researchSyncProgress?.currentSourceId === source.id
+              const statusInfo = getResearchRowStatus(source, hasNewResults)
+
+              return (
+                <Link
+                  key={source.id}
+                  to={`/accounts/${account.slug}/research/${source.slug}`}
+                  className={cn(
+                    'flex items-center justify-between px-4 py-3 rounded border bg-surface hover:bg-muted/40 transition-colors group',
+                    statusInfo.rowClass,
+                    isChecking && 'border-blue-300 bg-blue-50/50',
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded font-medium ${source.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
-                    {source.status}
-                  </span>
-                </div>
-              </Link>
-            ))}
+                >
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div className={cn('h-8 w-8 rounded flex items-center justify-center shrink-0', statusInfo.iconClass)}>
+                      <Video size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {source.itemCount ?? 0} {source.sourceType === 'youtube' ? 'video' : source.sourceType === 'reddit' ? 'digest' : 'article'}{(source.itemCount ?? 0) !== 1 ? 's' : ''}
+                        {source.lastChecked
+                          ? ` · Checked ${new Date(source.lastChecked).toLocaleDateString()}`
+                          : ' · Never checked'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-1.5 shrink-0 flex-wrap max-w-[48%]">
+                    {isChecking && (
+                      <span className="text-xs px-2 py-0.5 rounded font-medium bg-blue-100 text-blue-700">
+                        Checking
+                      </span>
+                    )}
+                    <span className={cn('text-xs px-2 py-0.5 rounded font-medium', statusInfo.badgeClass)}>
+                      {statusInfo.label}
+                    </span>
+                    {source.category && (
+                      <span className="text-xs px-2 py-0.5 rounded font-medium bg-muted text-muted-foreground capitalize">
+                        {source.category}
+                      </span>
+                    )}
+                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${source.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                      {source.status}
+                    </span>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
@@ -268,15 +392,50 @@ export function AccountDetailPage() {
         />
       )}
       {syncResult && (
-        <SyncResultDialog result={syncResult} onClose={() => setSyncResult(null)} />
+        <SyncResultDialog
+          result={syncResult}
+          researchOnly={syncResultResearchOnly}
+          onClose={() => setSyncResult(null)}
+        />
       )}
     </div>
   )
 }
 
-function SyncResultDialog({ result, onClose }: { result: SyncResult; onClose: () => void }) {
+function getResearchRowStatus(source: components['schemas']['ResearchSource'], hasNewResults: boolean) {
+  if (hasNewResults) {
+    return {
+      label: 'New results',
+      rowClass: 'border-green-200 bg-green-50/50 hover:bg-green-50',
+      iconClass: 'bg-green-100 text-green-700',
+      badgeClass: 'bg-green-100 text-green-700',
+    }
+  }
+
+  if ((source.itemCount ?? 0) > 0) {
+    return {
+      label: 'Has results',
+      rowClass: 'border-sky-100 bg-sky-50/30 hover:bg-sky-50/60',
+      iconClass: 'bg-sky-100 text-sky-700',
+      badgeClass: 'bg-sky-100 text-sky-700',
+    }
+  }
+
+  return {
+    label: source.lastChecked ? 'No results' : 'Never checked',
+    rowClass: 'border-dashed',
+    iconClass: 'bg-muted text-muted-foreground',
+    badgeClass: 'bg-muted text-muted-foreground',
+  }
+}
+
+function SyncResultDialog({ result, researchOnly, onClose }: { result: SyncResult; researchOnly?: boolean; onClose: () => void }) {
   const totalNew = result.research.newItems
   const totalStarted = result.pipelines.started
+  const totalResearchErrors = result.research.results.filter((r) => r.error).length
+  const showPipelineSummary = !researchOnly || result.pipelines.results.length > 0
+  const researchSummaryLabel = researchOnly ? 'feed' : 'source'
+  const researchSummaryVerb = researchOnly ? 'processed' : 'attempted'
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -293,16 +452,24 @@ function SyncResultDialog({ result, onClose }: { result: SyncResult; onClose: ()
           <div className="flex gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-muted font-medium">
               <RefreshCw size={11} />
-              {result.research.checked} source{result.research.checked !== 1 ? 's' : ''} checked
+              {result.research.checked} {researchSummaryLabel}{result.research.checked !== 1 ? 's' : ''} {researchSummaryVerb}
             </div>
             <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${totalNew > 0 ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
               <CheckCircle2 size={11} />
               {totalNew} new item{totalNew !== 1 ? 's' : ''}
             </div>
-            <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${totalStarted > 0 ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'}`}>
-              <Zap size={11} />
-              {totalStarted} pipeline{totalStarted !== 1 ? 's' : ''} started
-            </div>
+            {totalResearchErrors > 0 && (
+              <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-700">
+                <AlertCircle size={11} />
+                {totalResearchErrors} issue{totalResearchErrors !== 1 ? 's' : ''}
+              </div>
+            )}
+            {showPipelineSummary && (
+              <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${totalStarted > 0 ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'}`}>
+                <Zap size={11} />
+                {totalStarted} pipeline{totalStarted !== 1 ? 's' : ''} started
+              </div>
+            )}
           </div>
 
           {/* Research results */}

@@ -1,7 +1,9 @@
 import { PipelineRunService } from '../services/PipelineRunService'
+import { mimeTypeForAsset, OutputAssetService } from '../services/OutputAssetService'
 import { db } from '@project/db'
 
 const svc = new PipelineRunService()
+const assets = new OutputAssetService()
 
 export async function startPipelineRun(request: any, reply: any) {
   const { variables, dryRun, forceRegenerate, forceRegenerateAgentUids } = request.body
@@ -16,6 +18,16 @@ export async function startPipelineRun(request: any, reply: any) {
 export async function publishRun(request: any, reply: any) {
   const result = await svc.publishRun(request.params.runId)
   return reply.send(result)
+}
+
+export async function downloadRunAsset(request: any, reply: any) {
+  const file = await assets.getAssetFile(request.params.runId, request.params.assetId)
+  if (!file) return reply.status(404).send({ error: 'Asset not found' })
+
+  return reply
+    .header('Content-Disposition', `attachment; filename="${file.filename}"`)
+    .type(mimeTypeForAsset(file.filename))
+    .send(file.buffer)
 }
 
 export async function getPipelineRun(request: any, reply: any) {

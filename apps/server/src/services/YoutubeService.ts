@@ -20,6 +20,44 @@ function parseLatestVideo(xml: string): { videoId: string; title: string; publis
 }
 
 export class YoutubeService {
+  // Resolves a YouTube URL to a specific video ID (v=xyz or youtu.be/xyz)
+  resolveVideoId(url: string): string | null {
+    // youtu.be/xyz
+    const shortMatch = url.match(/youtu\.be\/([\w-]{11})/)
+    if (shortMatch) return shortMatch[1]!
+
+    // youtube.com/watch?v=xyz
+    const paramMatch = url.match(/[?&]v=([\w-]{11})/)
+    if (paramMatch) return paramMatch[1]!
+
+    // youtube.com/v/xyz or youtube.com/embed/xyz
+    const pathMatch = url.match(/youtube\.com\/(?:v|embed)\/([\w-]{11})/)
+    if (pathMatch) return pathMatch[1]!
+
+    return null
+  }
+
+  // Fetches metadata from a video page
+  async getVideoMetadata(videoId: string): Promise<{ title: string; publishedAt: Date } | null> {
+    try {
+      const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; bot)' },
+      })
+      if (!res.ok) return null
+      const html = await res.text()
+
+      const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"\s*>/i)
+      const title = titleMatch ? titleMatch[1]!.replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"') : `YouTube Video ${videoId}`
+
+      const dateMatch = html.match(/<meta\s+itemprop="datePublished"\s+content="([^"]+)"\s*>/i)
+      const publishedAt = dateMatch ? new Date(dateMatch[1]!) : new Date()
+
+      return { title, publishedAt }
+    } catch {
+      return null
+    }
+  }
+
   // Resolves a YouTube URL (@handle, /channel/, /c/, /user/) to a channel ID
   async resolveChannelId(url: string): Promise<string | null> {
     // Already a bare channel ID like UCxxxxxx

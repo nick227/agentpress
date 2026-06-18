@@ -176,11 +176,10 @@ export class ResearchService {
       }
     }
 
-    await db.researchSource.update({ where: { id: sourceId }, data: { lastChecked: new Date() } })
-
     if (!externalId) return { checked: false, newItem: false, newCount: 0 }
 
     const feedItems = await this.fetchLatestCached(source.sourceType, externalId, source.sourceUrl)
+    await db.researchSource.update({ where: { id: sourceId }, data: { lastChecked: new Date() } })
 
     let newCount = 0
     let firstNew: object | undefined = undefined

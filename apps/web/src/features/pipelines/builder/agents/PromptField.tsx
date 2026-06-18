@@ -25,7 +25,8 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
   const [showAssist, setShowAssist] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [suggested, setSuggested] = useState('')
-  const [showRefMenu, setShowRefMenu] = useState(false)
+  const [showVariableMenu, setShowVariableMenu] = useState(false)
+  const [showResearchMenu, setShowResearchMenu] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   function insertAtCursor(text: string) {
@@ -43,6 +44,10 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
 
   const agentsBefore = pipeline.agents.filter((a) => a.sortOrder < agent.sortOrder)
   const researchSources = researchData?.data ?? []
+
+  function formatTinyDate(value: string) {
+    return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
 
   async function handleAssist() {
     const result = await promptAssist.mutateAsync({
@@ -62,73 +67,93 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">{label}</label>
         <div className="flex gap-1">
-          {/* Insert reference menu */}
           <div className="relative">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setShowRefMenu((v) => !v)}
+              disabled={pipeline.variables.length === 0}
+              onClick={() => {
+                setShowVariableMenu((v) => !v)
+                setShowResearchMenu(false)
+              }}
               className="text-xs h-7 gap-1"
             >
-              Insert ref <ChevronDown size={11} />
+              Variables <ChevronDown size={11} />
             </Button>
-            {showRefMenu && (
-              <div className="absolute right-0 top-8 w-64 bg-surface border rounded shadow-lg z-20 py-1">
-                {pipeline.variables.length > 0 && (
-                  <>
-                    <p className="px-3 py-1 text-xs text-muted-foreground font-medium">Variables</p>
-                    {pipeline.variables.map((v) => (
-                      <button
-                        key={v.key}
-                        type="button"
-                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted font-mono"
-                        onClick={() => { insertAtCursor(`{${v.key}}`); setShowRefMenu(false) }}
-                      >
-                        {`{${v.key}}`}
-                      </button>
-                    ))}
-                  </>
+            {showVariableMenu && (
+              <div className="absolute right-0 top-8 w-56 bg-surface border rounded shadow-lg z-20 py-1">
+                {pipeline.variables.length > 0 ? (
+                  pipeline.variables.map((v) => (
+                    <button
+                      key={v.key}
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted font-mono"
+                      onClick={() => { insertAtCursor(`{${v.key}}`); setShowVariableMenu(false) }}
+                    >
+                      {`{${v.key}}`}
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">No variables available</p>
                 )}
-                {agentsBefore.length > 0 && (
-                  <>
-                    <p className="px-3 py-1 text-xs text-muted-foreground font-medium">Prior outputs</p>
-                    {agentsBefore.map((a) => (
-                      <button
-                        key={a.uid}
-                        type="button"
-                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted font-mono"
-                        onClick={() => { insertAtCursor(`{agents.${a.uid}.output}`); setShowRefMenu(false) }}
-                      >
-                        {`{agents.${a.uid}.output}`}
-                      </button>
-                    ))}
-                  </>
-                )}
-                {researchSources.length > 0 && (
-                  <>
-                    <p className="px-3 py-1 text-xs text-muted-foreground font-medium">Research feeds</p>
-                    {researchSources.map((source) => (
-                      <div key={source.id} className="px-1">
-                        <p className="px-2 pt-1 text-[11px] text-muted-foreground truncate">{source.name}</p>
-                        <div className="grid grid-cols-2 gap-1 pb-1">
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={researchSources.length === 0}
+              onClick={() => {
+                setShowResearchMenu((v) => !v)
+                setShowVariableMenu(false)
+              }}
+              className="text-xs h-7 gap-1"
+            >
+              Research feeds <ChevronDown size={11} />
+            </Button>
+            {showResearchMenu && (
+              <div className="absolute right-0 top-8 w-72 bg-surface border rounded shadow-lg z-20 py-1">
+                {researchSources.length > 0 ? (
+                  researchSources.map((source) => {
+                    const hasItems = (source.itemCount ?? 0) > 0
+                    const tinyDate = hasItems ? formatTinyDate(source.createdAt) : 'None'
+                    return (
+                      <div key={source.id} className="px-1 py-1">
+                        <div className="px-2 pb-1">
+                          <p className="text-[11px] font-medium truncate">{source.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {hasItems ? `Created ${tinyDate}` : 'None'}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
                           {(['summary', 'date'] as const).map((field) => (
                             <button
                               key={field}
                               type="button"
-                              className="text-left px-2 py-1.5 text-xs hover:bg-muted font-mono rounded truncate"
-                              onClick={() => { insertAtCursor(`{${source.slug}.${field}}`); setShowRefMenu(false) }}
+                              disabled={!hasItems}
+                              className={cn(
+                                'text-left px-2 py-1.5 text-xs font-mono rounded truncate',
+                                hasItems ? 'hover:bg-muted' : 'text-muted-foreground opacity-50 cursor-not-allowed',
+                              )}
+                              onClick={() => {
+                                if (!hasItems) return
+                                insertAtCursor(`{${source.slug}.${field}}`)
+                                setShowResearchMenu(false)
+                              }}
                             >
                               {`{${source.slug}.${field}}`}
                             </button>
                           ))}
                         </div>
                       </div>
-                    ))}
-                  </>
-                )}
-                {pipeline.variables.length === 0 && agentsBefore.length === 0 && researchSources.length === 0 && (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">No references available</p>
+                    )
+                  })
+                ) : (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">No research feeds available</p>
                 )}
               </div>
             )}

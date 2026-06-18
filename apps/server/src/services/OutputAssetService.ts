@@ -1,6 +1,19 @@
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'fs'
-import { dirname, join, resolve } from 'path'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { basename, dirname, join, relative, resolve, sep } from 'path'
 import { db } from '@project/db'
+import { buildPostHtml, type RunAgentPrompt } from './runArtifacts'
+
+export type { RunAgentPrompt }
+
+export function mimeTypeForAsset(filename: string): string {
+  const base = basename(filename).toLowerCase()
+  if (base.endsWith('.html')) return 'text/html; charset=utf-8'
+  if (base.endsWith('.json')) return 'application/json; charset=utf-8'
+  if (base.endsWith('.png')) return 'image/png'
+  if (base.endsWith('.jpg') || base.endsWith('.jpeg')) return 'image/jpeg'
+  if (base.endsWith('.webp')) return 'image/webp'
+  return 'application/octet-stream'
+}
 
 export class OutputAssetService {
   private root: string
@@ -88,34 +101,13 @@ export class OutputAssetService {
       thumbnailUrl?: string
       body: string
     },
-    agentOutputs: Record<string, string>,
-    publishResult?: unknown,
+    agentPrompts: RunAgentPrompt[],
   ): Promise<{ folder: string; thumbnailLocalPath: string | null }> {
     const folder = this.getRunFolder(accountSlug, pipelineSlug, runId)
-
     const assets: Array<{ type: string; label: string; filename: string; path: string }> = []
 
-    const mdContent = `# ${generatedPost.title}\n\n${generatedPost.excerpt}\n\n${generatedPost.body}`
-    this._write(folder, 'post.md', mdContent)
-    assets.push({ type: 'text', label: 'Post Markdown', filename: 'post.md', path: join(folder, 'post.md') })
+    this._write(folder, 'agents.json', JSON.stringify(agentPrompts, null, 2))
 
-    this._write(folder, 'post.json', JSON.stringify(generatedPost, null, 2))
-    assets.push({ type: 'json', label: 'Post JSON', filename: 'post.json', path: join(folder, 'post.json') })
-
-    if (generatedPost.thumbnailPrompt) {
-      this._write(folder, 'thumbnail-prompt.txt', generatedPost.thumbnailPrompt)
-      assets.push({ type: 'text', label: 'Thumbnail Prompt', filename: 'thumbnail-prompt.txt', path: join(folder, 'thumbnail-prompt.txt') })
-    }
-
-    this._write(folder, 'agent-outputs.json', JSON.stringify(agentOutputs, null, 2))
-    assets.push({ type: 'json', label: 'Agent Outputs', filename: 'agent-outputs.json', path: join(folder, 'agent-outputs.json') })
-
-    if (publishResult) {
-      this._write(folder, 'publish-result.json', JSON.stringify(publishResult, null, 2))
-      assets.push({ type: 'json', label: 'Publish Result', filename: 'publish-result.json', path: join(folder, 'publish-result.json') })
-    }
-
-    // Download thumbnail image from DALL-E URL immediately (URL expires ~1hr)
     let thumbnailLocalPath: string | null = null
     if (generatedPost.thumbnailUrl) {
       try {
@@ -131,15 +123,27 @@ export class OutputAssetService {
       }
     }
 
-    await db.runAsset.createMany({
-      data: assets.map((a) => ({
-        pipelineRunId: runId,
-        type: a.type,
-        label: a.label,
-        filename: a.filename,
-        path: a.path,
-      })),
+    const html = buildPostHtml({
+      title: generatedPost.title,
+      excerpt: generatedPost.excerpt,
+      body: generatedPost.body,
+      thumbnailLocalPath: thumbnailLocalPath ?? undefined,
     })
+    const htmlPath = join(folder, 'post.html')
+    this._write(folder, 'post.html', html)
+    assets.push({ type: 'html', label: 'Post HTML', filename: 'post.html', path: htmlPath })
+
+    if (assets.length > 0) {
+      await db.runAsset.createMany({
+        data: assets.map((a) => ({
+          pipelineRunId: runId,
+          type: a.type,
+          label: a.label,
+          filename: a.filename,
+          path: a.path,
+        })),
+      })
+    }
 
     await db.pipelineRun.update({
       where: { id: runId },
@@ -147,6 +151,23 @@ export class OutputAssetService {
     })
 
     return { folder, thumbnailLocalPath }
+  }
+
+  async getAssetFile(runId: string, assetId: string): Promise<{ filename: string; buffer: Buffer } | null> {
+    const asset = await db.runAsset.findFirst({
+      where: { id: assetId, pipelineRunId: runId },
+    })
+    if (!asset || !existsSync(asset.path)) return null
+
+    const resolved = resolve(asset.path)
+    const root = resolve(this.root)
+    const rel = relative(root, resolved)
+    if (rel.startsWith('..') || rel.includes(`..${sep}`)) return null
+
+    return {
+      filename: basename(asset.filename),
+      buffer: readFileSync(resolved),
+    }
   }
 
   private _write(folder: string, filename: string, content: string) {

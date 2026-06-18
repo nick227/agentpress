@@ -28,7 +28,7 @@ export function PromptsPanel() {
             Reusable AI prompts applied to collected research content. Use <code className="font-mono bg-muted px-1 rounded">{'{{transcript}}'}</code> in your user prompt.
           </p>
         </div>
-        <Button size="sm" onClick={() => setShowNew(true)}>
+        <Button className="flex items-center gap-2 whitespace-nowrap bg-green-500" size="sm" onClick={() => setShowNew(true)}>
           <Plus size={13} />
           New Prompt
         </Button>

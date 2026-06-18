@@ -12,12 +12,13 @@ interface Props {
   variable: PipeableVariable
   pipeline: Pipeline
   pipelineId: string
+  onSaved: (id: string) => void
   onDeleted: () => void
 }
 
 const TYPES = ['text', 'long_text', 'number', 'boolean', 'json'] as const
 
-export function BuilderVariable({ variable, pipeline, pipelineId, onDeleted }: Props) {
+export function BuilderVariable({ variable, pipeline, pipelineId, onSaved, onDeleted }: Props) {
   const update = useUpdatePipeline()
   const [form, setForm] = useState({
     key: variable.key,
@@ -44,7 +45,8 @@ export function BuilderVariable({ variable, pipeline, pipelineId, onDeleted }: P
   }
 
   async function handleSave() {
-    await update.mutateAsync({
+    const variableIndex = pipeline.variables.findIndex((v) => v.id === variable.id)
+    const result = await update.mutateAsync({
       pipelineId,
       variables: pipeline.variables.map((v) =>
         v.id === variable.id
@@ -70,6 +72,8 @@ export function BuilderVariable({ variable, pipeline, pipelineId, onDeleted }: P
             }
       ),
     })
+    const savedVariable = result.data.variables[variableIndex]
+    if (savedVariable) onSaved(savedVariable.id)
     toast.success('Variable saved')
   }
 
@@ -95,7 +99,7 @@ export function BuilderVariable({ variable, pipeline, pipelineId, onDeleted }: P
 
   return (
     <div className="p-6 max-w-lg">
-      <h2 className="text-sm font-semibold mb-5">Variable</h2>
+      <h2 className="text-sm font-semibold mb-5">Variables</h2>
 
       <div className="space-y-4">
         <Field label="Key">
