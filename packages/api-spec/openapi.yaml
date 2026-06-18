@@ -241,6 +241,11 @@ components:
         outputFormat:
           type: string
           enum: [text, markdown, json, image]
+        imageMode:
+          type: string
+          enum: [generate, selected, none]
+        selectedImageAssetId:
+          type: string
         enabled:
           type: boolean
         sortOrder:
@@ -266,6 +271,12 @@ components:
         outputFormat:
           type: string
           enum: [text, markdown, json, image]
+        imageMode:
+          type: string
+          enum: [generate, selected, none]
+        selectedImageAssetId:
+          type: string
+          nullable: true
         enabled:
           type: boolean
         sortOrder:
@@ -324,6 +335,44 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PipelineAgent'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ImageAsset:
+      type: object
+      required: [id, prompt, provider, model, path, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        pipelineId:
+          type: string
+        agentId:
+          type: string
+        agentUid:
+          type: string
+        prompt:
+          type: string
+        provider:
+          type: string
+        model:
+          type: string
+        size:
+          type: string
+        path:
+          type: string
+        url:
+          type: string
+        status:
+          type: string
+          enum: [ready, failed]
+        error:
+          type: string
         createdAt:
           type: string
           format: date-time
@@ -1366,6 +1415,101 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/PipelineRun'
+
+  /api/pipelines/{pipelineId}/image-assets:
+    parameters:
+      - name: pipelineId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: listImageAssets
+      tags: [image-assets]
+      summary: List generated image assets for a pipeline
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: agentId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Image assets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImageAsset'
+
+  /api/pipelines/{pipelineId}/image-assets/generate:
+    parameters:
+      - name: pipelineId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: generateImageAsset
+      tags: [image-assets]
+      summary: Generate an image asset for an image agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId, prompt]
+              properties:
+                agentId:
+                  type: string
+                prompt:
+                  type: string
+      responses:
+        '201':
+          description: Generated image asset
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ImageAsset'
+
+  /api/image-assets/{assetId}/file:
+    parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: downloadImageAsset
+      tags: [image-assets]
+      summary: Download image asset file
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Image file
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
 
   /api/pipeline-runs/{runId}:
     parameters:

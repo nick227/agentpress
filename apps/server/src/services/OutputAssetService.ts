@@ -28,6 +28,30 @@ export class OutputAssetService {
     return folder
   }
 
+  getImageAssetFolder(accountId: string): string {
+    const folder = join(this.root, 'image-assets', accountId)
+    mkdirSync(folder, { recursive: true })
+    return folder
+  }
+
+  async saveImageAssetFromUrl(input: {
+    accountId: string
+    assetId: string
+    imageUrl: string
+    filename?: string
+  }): Promise<{ path: string; filename: string } | null> {
+    try {
+      const filename = input.filename ?? `${input.assetId}.png`
+      const absolutePath = join(this.getImageAssetFolder(input.accountId), filename)
+      const buffer = await this.imageBuffer(input.imageUrl)
+      if (!buffer) return null
+      writeFileSync(absolutePath, buffer)
+      return { path: absolutePath, filename }
+    } catch {
+      return null
+    }
+  }
+
   async saveImageFromUrl(input: {
     runId: string
     accountSlug: string
@@ -41,12 +65,7 @@ export class OutputAssetService {
       const absolutePath = join(folder, input.relativePath)
       mkdirSync(dirname(absolutePath), { recursive: true })
 
-      const buffer = input.imageUrl.startsWith('data:')
-        ? Buffer.from(input.imageUrl.split(',')[1] ?? '', 'base64')
-        : await fetch(input.imageUrl).then(async (res) => {
-            if (!res.ok) return null
-            return Buffer.from(await res.arrayBuffer())
-          })
+      const buffer = await this.imageBuffer(input.imageUrl)
       if (!buffer) return null
 
       writeFileSync(absolutePath, buffer)
@@ -104,6 +123,7 @@ export class OutputAssetService {
       excerpt: string
       thumbnailPrompt?: string
       thumbnailUrl?: string
+      thumbnailLocalPath?: string
       body: string
     },
     agentPrompts: RunAgentPrompt[],
@@ -114,7 +134,9 @@ export class OutputAssetService {
     this._write(folder, 'agents.json', JSON.stringify(agentPrompts, null, 2))
 
     let thumbnailLocalPath: string | null = null
-    if (generatedPost.thumbnailUrl) {
+    if (generatedPost.thumbnailLocalPath && existsSync(generatedPost.thumbnailLocalPath)) {
+      thumbnailLocalPath = generatedPost.thumbnailLocalPath
+    } else if (generatedPost.thumbnailUrl) {
       try {
         const res = await fetch(generatedPost.thumbnailUrl)
         if (res.ok) {
@@ -173,6 +195,30 @@ export class OutputAssetService {
       filename: basename(asset.filename),
       buffer: readFileSync(resolved),
     }
+  }
+
+  async getImageAssetFile(assetId: string): Promise<{ filename: string; buffer: Buffer } | null> {
+    const asset = await db.imageAsset.findUnique({ where: { id: assetId } })
+    if (!asset || !existsSync(asset.path)) return null
+
+    const resolved = resolve(asset.path)
+    const root = resolve(this.root)
+    const rel = relative(root, resolved)
+    if (rel.startsWith('..') || rel.includes(`..${sep}`)) return null
+
+    return {
+      filename: basename(asset.path),
+      buffer: readFileSync(resolved),
+    }
+  }
+
+  private async imageBuffer(imageUrl: string): Promise<Buffer | null> {
+    if (imageUrl.startsWith('data:')) {
+      return Buffer.from(imageUrl.split(',')[1] ?? '', 'base64')
+    }
+    const res = await fetch(imageUrl)
+    if (!res.ok) return null
+    return Buffer.from(await res.arrayBuffer())
   }
 
   private _write(folder: string, filename: string, content: string) {

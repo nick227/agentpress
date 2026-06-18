@@ -143,7 +143,7 @@ export class PipelineRunService {
       include: {
         account: true,
         variables: { orderBy: { sortOrder: 'asc' } },
-        agents: { orderBy: { sortOrder: 'asc' }, where: { enabled: true } },
+        agents: { orderBy: { sortOrder: 'asc' }, where: { enabled: true }, include: { selectedImageAsset: true } },
       },
     })
 
@@ -251,7 +251,7 @@ export class PipelineRunService {
           output = renderedUserPrompt
           cacheStatus = reusable ? 'reused' : 'generated'
           if (agent.outputTarget === 'thumbnail') {
-            outputJson = await this.resolveGeneratedImage({
+            outputJson = await this.resolveImageForAgent({
               runId,
               pipeline,
               agent,
@@ -262,10 +262,11 @@ export class PipelineRunService {
               label: `Thumbnail: ${agent.name}`,
             })
             generatedPost.thumbnailUrl = outputJson?.url
+            generatedPost.thumbnailLocalPath = outputJson?.path
             generatedPost.thumbnailPrompt = output
-            generatedPost.thumbnailStatus = outputJson?.url ? 'done' : 'failed'
+            generatedPost.thumbnailStatus = outputJson?.url || outputJson?.path ? 'done' : 'failed'
           } else if (agent.outputTarget === 'image') {
-            outputJson = await this.resolveGeneratedImage({
+            outputJson = await this.resolveImageForAgent({
               runId,
               pipeline,
               agent,
@@ -281,7 +282,7 @@ export class PipelineRunService {
           cacheStatus = reusable ? 'reused' : 'generated'
 
           if (agent.outputTarget === 'image') {
-            outputJson = await this.resolveGeneratedImage({
+            outputJson = await this.resolveImageForAgent({
               runId,
               pipeline,
               agent,
@@ -445,7 +446,7 @@ export class PipelineRunService {
     })
   }
 
-  private async resolveGeneratedImage(input: {
+  private async resolveImageForAgent(input: {
     runId: string
     pipeline: any
     agent: any
@@ -456,6 +457,36 @@ export class PipelineRunService {
     label: string
   }): Promise<InlineImageMeta> {
     const alt = input.agent.name
+
+    if (input.agent.imageMode === 'none') {
+      return {
+        agentUid: input.agent.uid,
+        prompt: input.prompt,
+        alt,
+        caption: '',
+      }
+    }
+
+    if (input.agent.imageMode === 'selected' && input.agent.selectedImageAsset?.path) {
+      const copied = await assets.copyImageAsset({
+        runId: input.runId,
+        accountSlug: input.pipeline.account.slug,
+        pipelineSlug: input.pipeline.slug,
+        sourcePath: input.agent.selectedImageAsset.path,
+        relativePath: input.relativePath,
+        label: input.label,
+      })
+
+      return {
+        agentUid: input.agent.uid,
+        prompt: input.agent.selectedImageAsset.prompt ?? input.prompt,
+        url: `/api/image-assets/${input.agent.selectedImageAsset.id}/file`,
+        path: copied?.path ?? input.agent.selectedImageAsset.path,
+        relativePath: copied?.relativePath ?? input.relativePath,
+        alt,
+        caption: '',
+      }
+    }
 
     if (input.cacheStatus === 'reused' && input.reusableJson?.path) {
       const copied = await assets.copyImageAsset({

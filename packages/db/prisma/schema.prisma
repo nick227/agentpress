@@ -39,6 +39,7 @@ model Account {
   pipelines       Pipeline[]
   destinations    Destination[]
   researchSources ResearchSource[]
+  imageAssets     ImageAsset[]
 }
 
 model Pipeline {
@@ -64,6 +65,7 @@ model Pipeline {
   variables    PipelineVariable[]
   agents       PipelineAgent[]
   runs         PipelineRun[]
+  imageAssets  ImageAsset[]
 
   @@unique([accountId, slug])
 }
@@ -93,12 +95,38 @@ model PipelineAgent {
   userPrompt   String   @db.Text
   outputTarget String
   outputFormat String   @default("text")
+  imageMode    String   @default("generate")
+  selectedImageAssetId String?
+  selectedImageAsset ImageAsset? @relation("SelectedImageAsset", fields: [selectedImageAssetId], references: [id], onDelete: SetNull)
   enabled      Boolean  @default(true)
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  imageAssets  ImageAsset[] @relation("AgentImageAssets")
 
   @@unique([pipelineId, uid])
+}
+
+model ImageAsset {
+  id          String         @id @default(cuid())
+  accountId   String?
+  account     Account?       @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  pipelineId  String?
+  pipeline    Pipeline?      @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
+  agentId     String?
+  agentUid    String?
+  agent       PipelineAgent? @relation("AgentImageAssets", fields: [agentId], references: [id], onDelete: SetNull)
+  prompt      String         @db.Text
+  provider    String
+  model       String
+  size        String?
+  path        String
+  url         String?
+  status      String         @default("ready")
+  error       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  selectedByAgents PipelineAgent[] @relation("SelectedImageAsset")
 }
 
 model PipelineRun {
