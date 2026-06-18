@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import type { components } from '@project/sdk'
-import { useGenerateImageAsset, useImageAssets, useUpdatePipeline } from '@project/sdk'
+import { useUpdatePipeline } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PromptField } from './PromptField'
+import { ImageAgentPanel } from './ImageAgentPanel'
 
 type Pipeline = components['schemas']['Pipeline']
 type Agent = components['schemas']['PipelineAgent']
@@ -32,7 +33,6 @@ const IMAGE_OUTPUT_TARGETS = [
 ] as const
 
 const TEXT_OUTPUT_FORMATS = ['text', 'markdown', 'json'] as const
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
 function isImageAgent(agent: { outputFormat: string }) {
   return agent.outputFormat === 'image'
@@ -40,10 +40,7 @@ function isImageAgent(agent: { outputFormat: string }) {
 
 export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }: Props) {
   const update = useUpdatePipeline()
-  const generateImage = useGenerateImageAsset()
   const imageAgent = isImageAgent(agent)
-  const { data: imageAssetsData } = useImageAssets(imageAgent ? pipelineId : '', imageAgent ? agent.id : undefined)
-  const imageAssets = imageAssetsData?.data ?? []
   const [form, setForm] = useState({
     uid: agent.uid,
     name: agent.name,
@@ -158,24 +155,13 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
     onDeleted()
   }
 
-  async function handleGenerateImage() {
-    try {
-      const prompt = form.userPrompt.trim()
-      if (!prompt) {
-        toast.error('Image prompt is required')
-        return
-      }
-      const result = await generateImage.mutateAsync({ pipelineId, agentId: agent.id, prompt })
-      await saveAgentPatch({ imageMode: 'selected', selectedImageAssetId: result.data.id })
-      toast.success('Image generated')
-    } catch (err: any) {
-      toast.error(err.message ?? 'Image generation failed')
-    }
+  async function handleGenerated(asset: ImageAsset) {
+    await saveAgentPatch({ imageMode: 'selected', selectedImageAssetId: asset.id })
   }
 
   async function handleSelectImage(asset: ImageAsset) {
     await saveAgentPatch({ imageMode: 'selected', selectedImageAssetId: asset.id })
-    toast.success('Selected image saved')
+    toast.success('Image selected for runs')
   }
 
   return (
@@ -243,7 +229,7 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
 
       {imageAgent && (
         <p className="text-xs text-muted-foreground -mt-2">
-          Prompt is sent directly to the image provider (DALL-E). Use the smallest size during development.
+          Prompt is sent to the image provider (gpt-image-1 by default). Generation usually takes 15–30 seconds.
         </p>
       )}
 
@@ -281,54 +267,16 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
       />
 
       {imageAgent && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <Field label="Image source">
-              <select
-                value={form.imageMode}
-                onChange={(e) => saveAgentPatch({ imageMode: e.target.value as typeof form.imageMode })}
-                className="w-full h-9 rounded border border-input-border bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="selected">Use selected image</option>
-                <option value="generate">Generate during run</option>
-                <option value="none">Skip image</option>
-              </select>
-            </Field>
-            <Button size="sm" loading={generateImage.isPending} onClick={handleGenerateImage}>
-              Generate image
-            </Button>
-          </div>
-
-          {imageAssets.length === 0 ? (
-            <div className="border rounded p-4 text-sm text-muted-foreground">
-              No generated images yet.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {imageAssets.map((asset) => {
-                const selected = form.selectedImageAssetId === asset.id
-                return (
-                  <button
-                    key={asset.id}
-                    type="button"
-                    onClick={() => handleSelectImage(asset)}
-                    className={`text-left rounded border overflow-hidden transition-colors ${selected ? 'border-accent bg-accent/5' : 'border-input-border hover:bg-muted/30'}`}
-                  >
-                    <img
-                      src={imageAssetUrl(asset.id)}
-                      alt=""
-                      className="w-full aspect-square object-cover bg-muted"
-                    />
-                    <div className="p-2 space-y-1">
-                      <p className="text-xs font-medium truncate">{selected ? 'Selected' : 'Image'}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{asset.prompt}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </section>
+        <ImageAgentPanel
+          pipelineId={pipelineId}
+          agentId={agent.id}
+          prompt={form.userPrompt}
+          imageMode={form.imageMode as 'selected' | 'generate' | 'none'}
+          selectedImageAssetId={form.selectedImageAssetId}
+          onImageModeChange={(mode) => saveAgentPatch({ imageMode: mode })}
+          onGenerated={handleGenerated}
+          onSelectAsset={handleSelectImage}
+        />
       )}
 
       <div className="flex gap-2">
@@ -337,10 +285,6 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
       </div>
     </div>
   )
-}
-
-function imageAssetUrl(assetId: string) {
-  return `${API_BASE_URL}/api/image-assets/${assetId}/file`
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
