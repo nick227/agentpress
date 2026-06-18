@@ -1,4 +1,4 @@
-import { YoutubeTranscript } from 'youtube-transcript'
+import { fetchYoutubeTranscript } from './youtube/youtubeTranscript'
 
 // Parses the RSS feed XML to get the most recent video
 function parseLatestVideo(xml: string): { videoId: string; title: string; publishedAt: Date } | null {
@@ -99,11 +99,7 @@ export class YoutubeService {
 
   // Fetches the transcript for a video ID and returns it as plain text
   async fetchTranscript(videoId: string): Promise<string | null> {
-    try {
-      const segments = await YoutubeTranscript.fetchTranscript(videoId)
-      return segments.map((s) => s.text).join(' ')
-    } catch {
-      return null
-    }
+    const result = await fetchYoutubeTranscript(videoId)
+    return result.ok ? result.text : null
   }
 }

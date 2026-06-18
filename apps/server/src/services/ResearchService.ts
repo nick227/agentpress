@@ -2,9 +2,11 @@ import { db } from '@project/db'
 import { getAdapter } from './adapters/FeedAdapter'
 import type { FeedItem } from './adapters/FeedAdapter'
 import { OpenAIService } from './OpenAIService'
+import { fetchYoutubeTranscript } from './youtube/youtubeTranscript'
 import { createHash } from 'crypto'
 
 const REMOTE_CACHE_TTL_MS = 60 * 60 * 1000
+const YOUTUBE_MISSING_TRANSCRIPT_CACHE_TTL_MS = 5 * 60 * 1000
 
 function toSlug(name: string): string {
   return name
@@ -36,21 +38,33 @@ export class ResearchService {
     return row.payload as T
   }
 
-  private async setCached(cacheKey: string, payload: unknown): Promise<void> {
+  private async setCached(cacheKey: string, payload: unknown, ttlMs = REMOTE_CACHE_TTL_MS): Promise<void> {
     await db.researchFetchCache.upsert({
       where: { id: this.cacheId(cacheKey) },
       update: {
         cacheKey,
         payload: payload as any,
-        expiresAt: new Date(Date.now() + REMOTE_CACHE_TTL_MS),
+        expiresAt: new Date(Date.now() + ttlMs),
       },
       create: {
         id: this.cacheId(cacheKey),
         cacheKey,
         payload: payload as any,
-        expiresAt: new Date(Date.now() + REMOTE_CACHE_TTL_MS),
+        expiresAt: new Date(Date.now() + ttlMs),
       },
     })
+  }
+
+  private fetchCacheTtl(sourceType: string, items: FeedItem[]): number {
+    if (sourceType === 'youtube' && items.some((item) => !item.content.trim())) {
+      return YOUTUBE_MISSING_TRANSCRIPT_CACHE_TTL_MS
+    }
+    return REMOTE_CACHE_TTL_MS
+  }
+
+  private async backfillYoutubeTranscript(externalId: string): Promise<string | null> {
+    const result = await fetchYoutubeTranscript(externalId)
+    return result.ok ? result.text : null
   }
 
   private async resolveSourceCached(sourceType: string, sourceUrl: string): Promise<string | null> {
@@ -86,10 +100,14 @@ export class ResearchService {
     const adapter = getAdapter(sourceType)
     try {
       const items = await adapter.fetchLatest(externalId, sourceUrl)
-      await this.setCached(cacheKey, {
-        ok: true,
-        items: items.map((item) => ({ ...item, publishedAt: item.publishedAt.toISOString() })),
-      })
+      await this.setCached(
+        cacheKey,
+        {
+          ok: true,
+          items: items.map((item) => ({ ...item, publishedAt: item.publishedAt.toISOString() })),
+        },
+        this.fetchCacheTtl(sourceType, items),
+      )
       return items
     } catch (err: any) {
       await this.setCached(cacheKey, { ok: false, error: err.message ?? 'Research fetch failed' })
@@ -188,7 +206,23 @@ export class ResearchService {
       const existing = await db.researchItem.findUnique({
         where: { sourceId_externalId: { sourceId, externalId: feedItem.externalId } },
       })
-      if (existing) continue
+
+      if (existing) {
+        if (!existing.content?.trim()) {
+          const content = feedItem.content.trim()
+            ? feedItem.content
+            : source.sourceType === 'youtube'
+              ? await this.backfillYoutubeTranscript(feedItem.externalId)
+              : null
+          if (content) {
+            await db.researchItem.update({
+              where: { id: existing.id },
+              data: { content },
+            })
+          }
+        }
+        continue
+      }
 
       const created = await db.researchItem.create({
         data: {

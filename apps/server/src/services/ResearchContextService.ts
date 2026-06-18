@@ -104,7 +104,7 @@ export class ResearchContextService {
       where: { itemId_promptId: { itemId: item.id, promptId: prompt.id } },
     })
 
-    if (!summary || summary.status !== 'completed' || !summary.text) {
+    if (!summary || summary.status !== 'done' || !summary.text) {
       summary = await this.research.summarize(item.id, prompt.id) as any
     }
 
