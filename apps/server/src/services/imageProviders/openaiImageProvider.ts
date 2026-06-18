@@ -21,22 +21,28 @@ function getClient(): OpenAI {
 }
 
 function resolveModel(): string {
-  return process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1'
+  const raw = process.env.OPENAI_IMAGE_MODEL?.trim()
+  return raw || 'gpt-image-1'
 }
 
-function isGptImageModel(model: string): boolean {
-  return model.startsWith('gpt-image')
+function normalizeModel(model: string): string {
+  return model.trim().toLowerCase()
+}
+
+function isDalleModel(model: string): boolean {
+  const m = normalizeModel(model)
+  return m === 'dall-e-2' || m === 'dall-e-3'
 }
 
 function resolveDalleSize(model: string): DalleSize {
-  const allowed = DALLE_SIZES[model] ?? DALLE_SIZES['dall-e-2']!
-  const requested = process.env.OPENAI_IMAGE_SIZE
+  const allowed = DALLE_SIZES[normalizeModel(model)] ?? DALLE_SIZES['dall-e-2']!
+  const requested = process.env.OPENAI_IMAGE_SIZE?.trim()
   if (requested && allowed.includes(requested)) return requested as DalleSize
   return allowed[0] as DalleSize
 }
 
 function resolveGptImageSize(): GptImageSize {
-  const requested = process.env.OPENAI_IMAGE_SIZE
+  const requested = process.env.OPENAI_IMAGE_SIZE?.trim()
   if (requested && GPT_IMAGE_SIZES.includes(requested as GptImageSize)) {
     return requested as GptImageSize
   }
@@ -47,34 +53,37 @@ function toDataUrl(b64: string, mime = 'image/png'): string {
   return `data:${mime};base64,${b64}`
 }
 
+function resultFromResponse(data: OpenAI.Images.ImagesResponse['data']): ImageGenerateResult | null {
+  const image = data?.[0]
+  if (!image) return null
+  if (image.b64_json) return { url: toDataUrl(image.b64_json) }
+  return image.url ? { url: image.url } : null
+}
+
 export class OpenAIImageProvider implements ImageProvider {
   readonly id = 'openai'
 
   async generate(options: ImageGenerateOptions): Promise<ImageGenerateResult | null> {
     const model = resolveModel()
 
-    if (isGptImageModel(model)) {
+    if (isDalleModel(model)) {
       const response = await getClient().images.generate({
-        model,
+        model: normalizeModel(model),
         prompt: options.prompt,
-        size: resolveGptImageSize(),
-        output_format: 'png',
+        n: 1,
+        size: resolveDalleSize(model),
+        response_format: 'url',
       })
-      const b64 = response.data?.[0]?.b64_json
-      return b64 ? { url: toDataUrl(b64) } : null
+      return resultFromResponse(response.data)
     }
 
+    // gpt-image-1 and newer OpenAI image models reject response_format.
     const response = await getClient().images.generate({
-      model,
+      model: normalizeModel(model),
       prompt: options.prompt,
-      n: 1,
-      size: resolveDalleSize(model),
-      response_format: 'b64_json',
+      size: resolveGptImageSize(),
     })
-    const image = response.data?.[0]
-    const b64 = image?.b64_json
-    if (b64) return { url: toDataUrl(b64) }
-    return image?.url ? { url: image.url } : null
+    return resultFromResponse(response.data)
   }
 }
 
