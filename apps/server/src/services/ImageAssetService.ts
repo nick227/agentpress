@@ -5,17 +5,27 @@ import { OutputAssetService } from './OutputAssetService'
 const assets = new OutputAssetService()
 
 export class ImageAssetService {
-  async list(pipelineId: string, agentId?: string) {
+  private async resolvePipeline(idOrSlug: string) {
+    const pipeline = await db.pipeline.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      select: { id: true, accountId: true },
+    })
+    if (!pipeline) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
+    return pipeline
+  }
+
+  async list(idOrSlug: string, agentId?: string) {
+    const pipeline = await this.resolvePipeline(idOrSlug)
     const agent = agentId
       ? await db.pipelineAgent.findFirst({
-        where: { id: agentId, pipelineId },
+        where: { id: agentId, pipelineId: pipeline.id },
         select: { id: true, uid: true },
       })
       : null
 
     return db.imageAsset.findMany({
       where: {
-        pipelineId,
+        pipelineId: pipeline.id,
         ...(agent
           ? {
             OR: [
@@ -29,13 +39,10 @@ export class ImageAssetService {
     })
   }
 
-  async generate(pipelineId: string, input: { agentId: string; prompt: string }) {
-    const pipeline = await db.pipeline.findUniqueOrThrow({
-      where: { id: pipelineId },
-      select: { id: true, accountId: true },
-    })
+  async generate(idOrSlug: string, input: { agentId: string; prompt: string }) {
+    const pipeline = await this.resolvePipeline(idOrSlug)
     const agent = await db.pipelineAgent.findFirstOrThrow({
-      where: { id: input.agentId, pipelineId },
+      where: { id: input.agentId, pipelineId: pipeline.id },
       select: { id: true, uid: true },
     })
 
@@ -44,8 +51,15 @@ export class ImageAssetService {
     const prompt = input.prompt.trim()
     if (!prompt) throw Object.assign(new Error('Prompt is required'), { statusCode: 400 })
 
-    const generated = await provider.generate({ prompt })
-    if (!generated?.url) throw Object.assign(new Error('Image generation failed'), { statusCode: 502 })
+    let generated
+    try {
+      generated = await provider.generate({ prompt })
+    } catch (err: unknown) {
+      const apiErr = err as { error?: { message?: string }; message?: string }
+      const message = apiErr.error?.message ?? apiErr.message ?? 'Image generation failed'
+      throw Object.assign(new Error(message), { statusCode: 502 })
+    }
+    if (!generated?.url) throw Object.assign(new Error('Image generation returned no image'), { statusCode: 502 })
 
     const draft = await db.imageAsset.create({
       data: {

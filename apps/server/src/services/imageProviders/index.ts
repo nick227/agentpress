@@ -1,23 +1,22 @@
-import { DalleProvider } from './dalleProvider'
+import { OpenAIImageProvider } from './openaiImageProvider'
 import type { ImageProvider } from './types'
 
+const openaiImageProvider = new OpenAIImageProvider()
+
 const providers: Record<string, ImageProvider> = {
-  dalle: new DalleProvider(),
+  openai: openaiImageProvider,
+  dalle: openaiImageProvider,
 }
 
 export function getImageProvider(): ImageProvider {
-  const id = process.env.IMAGE_PROVIDER ?? 'dalle'
+  const id = process.env.IMAGE_PROVIDER ?? 'openai'
   const provider = providers[id]
   if (!provider) throw new Error(`Unknown image provider: ${id}`)
   return provider
 }
 
 export function getImageModelLabel(): string {
-  const provider = process.env.IMAGE_PROVIDER ?? 'dalle'
-  if (provider === 'dalle') {
-    return process.env.OPENAI_IMAGE_MODEL ?? 'dall-e-2'
-  }
-  return provider
+  return process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1'
 }
 
 export type { ImageProvider, ImageGenerateOptions, ImageGenerateResult } from './types'

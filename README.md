@@ -181,7 +181,7 @@ password123
 | `PORT` | No | API server port, default `3001` |
 | `VITE_API_URL` | No | Browser API base URL, default `http://localhost:3001` |
 | `OPENAI_TEXT_MODEL` | No | Text generation model, default `gpt-4o` |
-| `OPENAI_IMAGE_MODEL` | No | Image generation model, default `dall-e-3` |
+| `OPENAI_IMAGE_MODEL` | No | Image generation model, default `gpt-image-1` |
 | `OUTPUT_ROOT` | No | Directory for saved run assets, default `./outputs` |
 | `REDDIT_CLIENT_ID` | No | Reddit app client ID for OAuth-backed Reddit feeds |
 | `REDDIT_SECRET` | No | Reddit app secret |
