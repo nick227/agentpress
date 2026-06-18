@@ -1,4 +1,4 @@
-import { db } from '@project/db'
+import { db, Prisma } from '@project/db'
 
 function toSlug(name: string): string {
   return name
@@ -18,7 +18,13 @@ async function uniqueSlug(accountId: string, base: string): Promise<string> {
   }
 }
 
+function parseCategoryIds(value: unknown): number[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0)
+}
+
 function formatPipeline(p: any) {
+  const wpCategoryIds = parseCategoryIds(p.wpCategoryIds)
   return {
     id: p.id,
     accountId: p.accountId,
@@ -28,8 +34,7 @@ function formatPipeline(p: any) {
     category: p.category ?? undefined,
     status: p.status,
     destinationId: p.destinationId ?? undefined,
-    researchSourceId: p.researchSourceId ?? undefined,
-    researchSummaryPromptId: p.researchSummaryPromptId ?? undefined,
+    wpCategoryIds: wpCategoryIds.length > 0 ? wpCategoryIds : undefined,
     bodyComposer: p.bodyComposer ?? undefined,
     dryRun: p.dryRun,
     scheduleMode: p.scheduleMode,
@@ -151,6 +156,12 @@ export class PipelineService {
     const pipelineId = await this.resolveId(idOrSlug)
     const { variables, agents, ...fields } = data
 
+    if ('wpCategoryIds' in fields) {
+      fields.wpCategoryIds = fields.wpCategoryIds?.length
+        ? fields.wpCategoryIds
+        : Prisma.DbNull
+    }
+
     await db.$transaction(async (tx) => {
       await tx.pipeline.update({ where: { id: pipelineId }, data: fields })
 
@@ -247,9 +258,7 @@ export class PipelineService {
             warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown agent UID "${uid}"`, path: `agents.${agent.uid}` })
           }
         } else if (ref === 'research' || ref.startsWith('research.')) {
-          if (!p.researchSourceId) {
-            warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references research, but no research feed is selected`, path: `agents.${agent.uid}` })
-          }
+          warnings.push({ level: 'warning', message: `Agent "${agent.uid}" uses legacy {research} reference which is deprecated. Use the specific feed slug instead, e.g. {feed_slug.summary}`, path: `agents.${agent.uid}` })
         } else if (ref.includes('.')) {
           const [root] = ref.split('.')
           if (root && !varKeys.has(root) && !researchSourceSlugs.has(root)) {

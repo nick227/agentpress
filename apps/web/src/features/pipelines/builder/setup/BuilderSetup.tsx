@@ -7,9 +7,9 @@ import {
   useStartPipelineRun,
   useDestinations,
   useCreateDestination,
+  useUpdateDestination,
   useDeleteDestination,
-  useResearchSources,
-  useSummaryPrompts,
+  useWordPressCategories,
 } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -26,13 +26,10 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   const update = useUpdatePipeline()
   const startRun = useStartPipelineRun()
   const { data: destinationsData, refetch: refetchDestinations } = useDestinations(pipeline.accountId)
-  const { data: researchData } = useResearchSources(pipeline.accountId)
-  const { data: promptData } = useSummaryPrompts()
   const createDestination = useCreateDestination()
+  const updateDestination = useUpdateDestination()
   const deleteDestination = useDeleteDestination()
   const destinations = destinationsData?.data ?? []
-  const researchSources = researchData?.data ?? []
-  const summaryPrompts = promptData?.data ?? []
 
   const [nameInput, setNameInput] = useState(pipeline.name)
   const [showRunDialog, setShowRunDialog] = useState(false)
@@ -117,6 +114,9 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   }
 
   const activeDestination = destinations.find((d) => d.id === pipeline.destinationId)
+  const { data: categoriesData, isLoading: categoriesLoading, error: categoriesError } = useWordPressCategories(activeDestination?.id)
+  const wordpressCategories = categoriesData?.data ?? []
+  const pipelineCategoryIds = pipeline.wpCategoryIds ?? []
 
   return (
     <div className="p-6 max-w-lg space-y-6">
@@ -248,51 +248,49 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
         )}
       </div>
 
-      {/* Research */}
-      <div className="space-y-2">
-        <Label>Research</Label>
-        <Row label="Feed">
-          <select
-            value={pipeline.researchSourceId ?? ''}
-            onChange={(e) => handleSave({
-              researchSourceId: e.target.value || null,
-              researchSummaryPromptId: e.target.value ? pipeline.researchSummaryPromptId : null,
-            })}
-            className="w-full h-8 rounded border border-input-border bg-background px-2 text-sm"
-          >
-            <option value="">No research feed</option>
-            {researchSources.map((source) => (
-              <option key={source.id} value={source.id}>
-                {source.name} ({source.sourceType})
-              </option>
-            ))}
-          </select>
-        </Row>
-        {pipeline.researchSourceId && (
-          <>
-            <Row label="Summary">
-              <select
-                value={pipeline.researchSummaryPromptId ?? ''}
-                onChange={(e) => handleSave({ researchSummaryPromptId: e.target.value || null })}
-                className="w-full h-8 rounded border border-input-border bg-background px-2 text-sm"
-              >
-                <option value="">Default summary prompt</option>
-                {summaryPrompts.map((prompt) => (
-                  <option key={prompt.id} value={prompt.id}>
-                    {prompt.name}{prompt.isDefault ? ' (default)' : ''}
-                  </option>
-                ))}
-              </select>
-            </Row>
-            <div className="flex items-start gap-2 rounded border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-              <FlaskConical size={13} className="mt-0.5 shrink-0" />
-              <span>
-                This feed is the default <code className="font-mono text-foreground">{'{research.summary}'}</code>. Any connected feed can also be referenced by slug, such as <code className="font-mono text-foreground">{'{ziptrader.summary}'}</code>.
-              </span>
-            </div>
-          </>
-        )}
-      </div>
+      {activeDestination && (
+        <div className="space-y-3">
+          <Label>WordPress categories</Label>
+          {categoriesLoading ? (
+            <p className="text-xs text-muted-foreground">Loading categories from {activeDestination.name}…</p>
+          ) : categoriesError ? (
+            <p className="text-xs text-destructive">Could not load WordPress categories. Check destination credentials.</p>
+          ) : wordpressCategories.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No categories found on this WordPress site.</p>
+          ) : (
+            <>
+              <CategoryPicker
+                label="Destination defaults"
+                hint="Used when this pipeline has no category override."
+                categories={wordpressCategories}
+                selected={activeDestination.defaultCategoryIds ?? []}
+                onChange={async (ids) => {
+                  await updateDestination.mutateAsync({
+                    destinationId: activeDestination.id,
+                    accountId: pipeline.accountId,
+                    defaultCategoryIds: ids.length > 0 ? ids : null,
+                  })
+                  refetchDestinations()
+                  toast.success('Destination categories saved')
+                }}
+              />
+              <CategoryPicker
+                label="Pipeline override"
+                hint="Optional. Overrides destination defaults for this pipeline only."
+                categories={wordpressCategories}
+                selected={pipelineCategoryIds}
+                onChange={async (ids) => {
+                  await update.mutateAsync({
+                    pipelineId,
+                    wpCategoryIds: ids.length > 0 ? ids : null,
+                  })
+                  toast.success('Pipeline categories saved')
+                }}
+              />
+            </>
+          )}
+        </div>
+      )}
 
       {/* Run mode + Schedule — collapsed into a compact row group */}
       <div className="space-y-3">
@@ -495,5 +493,47 @@ function Chip({
     >
       {children}
     </button>
+  )
+}
+
+function CategoryPicker({
+  label,
+  hint,
+  categories,
+  selected,
+  onChange,
+}: {
+  label: string
+  hint?: string
+  categories: Array<{ id: number; name: string; count: number }>
+  selected: number[]
+  onChange: (ids: number[]) => void | Promise<void>
+}) {
+  function toggleCategory(id: number) {
+    const next = selected.includes(id)
+      ? selected.filter((item) => item !== id)
+      : [...selected, id]
+    void onChange(next)
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div>
+        <p className="text-xs font-medium text-foreground">{label}</p>
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {categories.map((category) => (
+          <Chip
+            key={category.id}
+            active={selected.includes(category.id)}
+            onClick={() => toggleCategory(category.id)}
+          >
+            {category.name}
+            {category.count > 0 ? ` (${category.count})` : ''}
+          </Chip>
+        ))}
+      </div>
+    </div>
   )
 }

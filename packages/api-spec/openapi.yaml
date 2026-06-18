@@ -158,12 +158,6 @@ components:
         destinationId:
           type: string
           nullable: true
-        researchSourceId:
-          type: string
-          nullable: true
-        researchSummaryPromptId:
-          type: string
-          nullable: true
         dryRun:
           type: boolean
         scheduleMode:
@@ -299,12 +293,10 @@ components:
         destinationId:
           type: string
           nullable: true
-        researchSourceId:
-          type: string
-          nullable: true
-        researchSummaryPromptId:
-          type: string
-          nullable: true
+        wpCategoryIds:
+          type: array
+          items:
+            type: integer
         bodyComposer:
           type: array
           items:
@@ -443,7 +435,7 @@ components:
           type: string
         type:
           type: string
-          enum: [text, json, image]
+          enum: [text, json, image, html]
         label:
           type: string
         filename:
@@ -535,12 +527,31 @@ components:
         defaultStatus:
           type: string
           enum: [draft, publish]
+        defaultCategoryIds:
+          type: array
+          items:
+            type: integer
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
+
+    WordPressCategory:
+      type: object
+      required: [id, name, slug, parent, count]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        parent:
+          type: integer
+        count:
+          type: integer
 
     PipelineValidationIssue:
       type: object
@@ -1199,12 +1210,11 @@ paths:
                 destinationId:
                   type: string
                   nullable: true
-                researchSourceId:
-                  type: string
+                wpCategoryIds:
+                  type: array
                   nullable: true
-                researchSummaryPromptId:
-                  type: string
-                  nullable: true
+                  items:
+                    type: integer
                 bodyComposer:
                   type: array
                   items:
@@ -1385,6 +1395,36 @@ paths:
         '404':
           description: Not found
 
+  /api/pipeline-runs/{runId}/assets/{assetId}:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: assetId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: downloadRunAsset
+      tags: [runs]
+      summary: Download a saved run asset file
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Asset file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Not found
+
   /api/pipeline-runs/{runId}/publish:
     parameters:
       - name: runId
@@ -1469,6 +1509,10 @@ paths:
                 defaultStatus:
                   type: string
                   enum: [draft, publish]
+                defaultCategoryIds:
+                  type: array
+                  items:
+                    type: integer
       responses:
         '201':
           description: Destination created
@@ -1489,6 +1533,41 @@ paths:
         schema:
           type: string
 
+    patch:
+      operationId: updateDestination
+      tags: [destinations]
+      summary: Update a destination
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                defaultStatus:
+                  type: string
+                  enum: [draft, publish]
+                defaultCategoryIds:
+                  type: array
+                  nullable: true
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: Destination updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Destination'
+
     delete:
       operationId: deleteDestination
       tags: [destinations]
@@ -1506,6 +1585,36 @@ paths:
                 properties:
                   ok:
                     type: boolean
+
+  /api/destinations/{destinationId}/wordpress/categories:
+    parameters:
+      - name: destinationId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: listDestinationWordPressCategories
+      tags: [destinations]
+      summary: List WordPress categories for a destination
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: WordPress categories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WordPressCategory'
+        '404':
+          description: Not found
 
   /api/prompt-assist:
     post:

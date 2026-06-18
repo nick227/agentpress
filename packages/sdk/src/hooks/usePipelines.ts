@@ -62,8 +62,7 @@ export function useUpdatePipeline() {
       description?: string
       status?: 'draft' | 'active' | 'paused' | 'archived'
       destinationId?: string | null
-      researchSourceId?: string | null
-      researchSummaryPromptId?: string | null
+      wpCategoryIds?: number[] | null
       bodyComposer?: Array<Record<string, unknown>>
       dryRun?: boolean
       scheduleMode?: 'manual' | 'recurring'
@@ -76,12 +75,16 @@ export function useUpdatePipeline() {
     }) => {
       const { data, error, response } = await getApiClient().PATCH('/api/pipelines/{pipelineId}', {
         params: { path: { pipelineId } },
-        body,
+        body: body as Record<string, unknown>,
       })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { pipelineId }) => {
+    onSuccess: (data, { pipelineId }) => {
+      queryClient.setQueryData(['pipeline', pipelineId], (current: any) => ({
+        ...current,
+        data: data.data,
+      }))
       queryClient.invalidateQueries({ queryKey: ['pipeline', pipelineId] })
     },
   })

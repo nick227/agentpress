@@ -1,10 +1,16 @@
 import { readFileSync } from 'fs'
 import { basename } from 'path'
-import { db } from '@project/db'
+import { db, Prisma } from '@project/db'
 import { OpenAIService } from './OpenAIService'
 import { PromptRenderService } from './PromptRenderService'
 import { OutputAssetService } from './OutputAssetService'
-import { WordPressService } from './WordPressService'
+import {
+  WordPressService,
+  resolveCategoryIds,
+  type InlineImageUploadInput,
+  type InlineImageUploadResult,
+  type WordPressCredentials,
+} from './WordPressService'
 import { LibraryAgentService } from './LibraryAgentService'
 import { ResearchContextService } from './ResearchContextService'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
@@ -24,7 +30,7 @@ export function encrypt(text: string): string {
   return `${iv.toString('hex')}:${encrypted.toString('hex')}`
 }
 
-function decrypt(encrypted: string): string {
+export function decrypt(encrypted: string): string {
   const [ivHex, encHex] = encrypted.split(':')
   if (!ivHex || !encHex) throw new Error('Invalid encrypted value')
   const iv = Buffer.from(ivHex, 'hex')
@@ -37,6 +43,35 @@ interface StartRunOptions {
   dryRun?: boolean
   forceRegenerate?: boolean
   forceRegenerateAgentUids?: string[]
+}
+
+interface InlineImageMeta {
+  agentUid: string
+  prompt: string
+  url?: string
+  path?: string
+  relativePath?: string
+  alt: string
+  caption?: string
+}
+
+interface GeneratedPost {
+  title: string
+  excerpt: string
+  body: string
+  inlineImages?: InlineImageMeta[]
+  thumbnailPrompt?: string
+  thumbnailUrl?: string
+  thumbnailStatus?: string
+  thumbnailLocalPath?: string
+  publishedUrl?: string
+  wordpressMedia?: InlineImageUploadResult[]
+}
+
+interface PublishToWordPressResult {
+  postId: string
+  postUrl: string
+  inlineUploads: InlineImageUploadResult[]
 }
 
 function stableStringify(value: unknown): string {
@@ -70,14 +105,28 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
-interface InlineImageMeta {
-  agentUid: string
-  prompt: string
-  url?: string
-  path?: string
-  relativePath?: string
-  alt: string
-  caption?: string
+function wordpressCredentials(destination: {
+  siteUrl: string
+  username: string | null
+  encryptedSecret: string
+}): WordPressCredentials {
+  return {
+    siteUrl: destination.siteUrl,
+    username: destination.username ?? '',
+    appPassword: decrypt(destination.encryptedSecret),
+  }
+}
+
+function toInlineUploadInputs(images: InlineImageMeta[]): InlineImageUploadInput[] {
+  return images
+    .filter((image) => image.path && image.relativePath)
+    .map((image) => ({
+      localPath: image.path as string,
+      relativePath: image.relativePath as string,
+      filename: basename(image.relativePath as string),
+      alt: image.alt,
+      caption: image.caption,
+    }))
 }
 
 export class PipelineRunService {
@@ -98,10 +147,8 @@ export class PipelineRunService {
       : { dryRun: dryRunOverrideOrOptions }
 
     const dryRun = options.dryRun !== undefined ? options.dryRun : pipeline.dryRun
-    const resolvedResearch = await researchContext.resolveForPipeline(pipeline)
-    const runVariables = { ...variables, ...resolvedResearch }
+    const runVariables = variables ?? {}
 
-    // Create the run record first
     const run = await db.pipelineRun.create({
       data: {
         accountId: pipeline.accountId,
@@ -113,7 +160,6 @@ export class PipelineRunService {
       },
     })
 
-    // Execute asynchronously — return run immediately so the client can poll
     this._executeRun(run.id, pipeline, runVariables, dryRun, options).catch(async (err) => {
       await db.pipelineRun.update({
         where: { id: run.id },
@@ -131,16 +177,32 @@ export class PipelineRunService {
     dryRun: boolean,
     options: StartRunOptions = {},
   ) {
+    const resolvedResearch = await researchContext.resolveForPipeline(pipeline)
+    const runVariables = { ...variables, ...resolvedResearch }
+
+    await db.pipelineRun.update({
+      where: { id: runId },
+      data: { variables: runVariables as any },
+    })
+
     const agentOutputs: Record<string, string> = {}
-    const generatedPost: any = { title: '', excerpt: '', body: '' }
+    const agentPrompts: Array<{
+      uid: string
+      name: string
+      outputTarget: string
+      cacheStatus: string
+      systemPrompt: string
+      userPrompt: string
+    }> = []
+    const generatedPost: GeneratedPost = { title: '', excerpt: '', body: '' }
     const outputByUid: Record<string, { text: string; target: string; image?: InlineImageMeta }> = {}
     const forceRegenerateAgents = new Set(options.forceRegenerateAgentUids ?? [])
     const model = process.env.OPENAI_TEXT_MODEL ?? 'gpt-4o'
     const imageModel = process.env.OPENAI_IMAGE_MODEL ?? 'dall-e-3'
 
     for (const agent of pipeline.agents) {
-      const renderedSystemPrompt = renderer.render(agent.systemPrompt, variables, agentOutputs)
-      const renderedUserPrompt = renderer.render(agent.userPrompt, variables, agentOutputs)
+      const renderedSystemPrompt = renderer.render(agent.systemPrompt, runVariables, agentOutputs)
+      const renderedUserPrompt = renderer.render(agent.userPrompt, runVariables, agentOutputs)
       const inputHash = computeAgentInputHash({
         agentUid: agent.uid,
         model,
@@ -171,7 +233,7 @@ export class PipelineRunService {
         const reusable = shouldBypassCache ? null : await this.findReusableAgentRun(pipeline.id, agent.uid, inputHash, agentRun.id)
         const output = reusable?.outputText ?? await ai.generateText(renderedSystemPrompt, renderedUserPrompt)
         const cacheStatus = reusable ? 'reused' : 'generated'
-        let outputJson: any = reusable?.outputJson ?? null
+        let outputJson: InlineImageMeta | null = (reusable?.outputJson as InlineImageMeta | null) ?? null
 
         agentOutputs[agent.uid] = output
 
@@ -206,19 +268,28 @@ export class PipelineRunService {
           case 'scratch':
           case 'body':
           case 'image':
-            break // stored in agentOutputs only
+            break
         }
 
         await db.agentRun.update({
           where: { id: agentRun.id },
           data: {
             outputText: output,
-            outputJson,
+            outputJson: outputJson as any,
             status: 'completed',
             cacheStatus,
             reusedFromAgentRunId: reusable?.id ?? null,
             completedAt: new Date(),
           },
+        })
+
+        agentPrompts.push({
+          uid: agent.uid,
+          name: agent.name,
+          outputTarget: agent.outputTarget,
+          cacheStatus,
+          systemPrompt: renderedSystemPrompt,
+          userPrompt: renderedUserPrompt,
         })
       } catch (err: any) {
         await db.agentRun.update({
@@ -233,10 +304,9 @@ export class PipelineRunService {
     generatedPost.body = composed.body
     generatedPost.inlineImages = composed.inlineImages
 
-    // Signal to UI poller that image generation is starting
     if (generatedPost.thumbnailPrompt) {
       generatedPost.thumbnailStatus = 'generating'
-      await db.pipelineRun.update({ where: { id: runId }, data: { generatedPost } })
+      await db.pipelineRun.update({ where: { id: runId }, data: { generatedPost: generatedPost as any } })
 
       try {
         const imageUrl = await ai.generateImage(generatedPost.thumbnailPrompt)
@@ -251,13 +321,12 @@ export class PipelineRunService {
       }
     }
 
-    // Save output assets — also downloads thumbnail.png from DALL-E URL if available
     const { thumbnailLocalPath } = await assets.saveRunAssets(
       runId,
       pipeline.account.slug,
       pipeline.slug,
       generatedPost,
-      agentOutputs,
+      agentPrompts,
     )
 
     if (thumbnailLocalPath) {
@@ -266,7 +335,6 @@ export class PipelineRunService {
 
     let finalStatus = 'completed'
 
-    // Publish to WordPress if live run and destination is configured
     if (!dryRun && pipeline.destinationId) {
       const destination = await db.destination.findUnique({ where: { id: pipeline.destinationId } })
       if (destination) {
@@ -279,28 +347,10 @@ export class PipelineRunService {
         })
 
         try {
-          const secret = decrypt(destination.encryptedSecret)
-          const thumbnailBuffer = generatedPost.thumbnailLocalPath
-            ? readFileSync(generatedPost.thumbnailLocalPath as string)
-            : undefined
-          const publishBody = await this.prepareInlineImagesForWordPress(
-            generatedPost.body,
-            generatedPost.inlineImages ?? [],
-            destination,
-            secret,
-          )
-          const result = await wp.publish(
-            destination.siteUrl,
-            destination.username ?? '',
-            secret,
-            {
-              title: generatedPost.title,
-              excerpt: generatedPost.excerpt,
-              content: publishBody,
-              status: destination.defaultStatus as 'draft' | 'publish',
-            },
-            thumbnailBuffer,
-          )
+          const result = await this.publishToWordPress(generatedPost, pipeline, destination)
+          generatedPost.publishedUrl = result.postUrl
+          generatedPost.wordpressMedia = result.inlineUploads
+          finalStatus = 'posted'
 
           await db.publishAttempt.update({
             where: { id: attempt.id },
@@ -310,15 +360,11 @@ export class PipelineRunService {
               remoteUrl: result.postUrl,
             },
           })
-
-          generatedPost.publishedUrl = result.postUrl
-          finalStatus = 'posted'
         } catch (err: any) {
           await db.publishAttempt.update({
             where: { id: attempt.id },
             data: { status: 'failed', error: err.message },
           })
-          // publish failure does not fail the run
         }
       }
     }
@@ -327,12 +373,11 @@ export class PipelineRunService {
       where: { id: runId },
       data: {
         status: finalStatus,
-        generatedPost,
+        generatedPost: generatedPost as any,
         completedAt: new Date(),
       },
     })
 
-    // Silently promote agent prompts to the shared library for reuse
     new LibraryAgentService().promoteFromRun(pipeline).catch(() => {})
   }
 
@@ -427,34 +472,49 @@ export class PipelineRunService {
   private renderImageFigure(image: InlineImageMeta): string {
     const src = image.relativePath ?? image.path ?? image.url ?? ''
     const caption = image.caption?.trim()
-    return `<figure>\n<img src="./${escapeHtml(src)}" alt="${escapeHtml(image.alt)}" />${caption ? `\n<figcaption>${escapeHtml(caption)}</figcaption>` : ''}\n</figure>`
+    return `<figure>\n<img data-ap-src="${escapeHtml(src)}" src="./${escapeHtml(src)}" alt="${escapeHtml(image.alt)}" />${caption ? `\n<figcaption>${escapeHtml(caption)}</figcaption>` : ''}\n</figure>`
   }
 
-  private async prepareInlineImagesForWordPress(
-    body: string,
-    inlineImages: InlineImageMeta[],
-    destination: any,
-    secret: string,
-  ): Promise<string> {
-    let nextBody = body
-    for (const image of inlineImages) {
-      if (!image.path || !image.relativePath) continue
-      try {
-        const result = await wp.uploadMedia(
-          destination.siteUrl,
-          destination.username ?? '',
-          secret,
-          readFileSync(image.path),
-          basename(image.relativePath),
-        )
-        nextBody = nextBody
-          .replaceAll(`src="./${image.relativePath}"`, `src="${result.url}"`)
-          .replaceAll(`src="${image.relativePath}"`, `src="${result.url}"`)
-      } catch {
-        // Inline image upload failure is non-fatal; leave local src in generated artifact.
-      }
+  private async publishToWordPress(
+    generatedPost: GeneratedPost,
+    pipeline: { wpCategoryIds?: unknown },
+    destination: {
+      siteUrl: string
+      username: string | null
+      encryptedSecret: string
+      defaultStatus: string
+      defaultCategoryIds?: unknown
+    },
+  ): Promise<PublishToWordPressResult> {
+    const credentials = wordpressCredentials(destination)
+    const inlineInputs = toInlineUploadInputs(generatedPost.inlineImages ?? [])
+    const { body, uploaded, failed } = await wp.uploadInlineImages(
+      credentials,
+      generatedPost.body,
+      inlineInputs,
+    )
+
+    if (failed.length > 0) {
+      throw new Error(`Failed to upload inline image(s): ${failed.join('; ')}`)
     }
-    return nextBody
+
+    const thumbnailBuffer = generatedPost.thumbnailLocalPath
+      ? readFileSync(generatedPost.thumbnailLocalPath)
+      : undefined
+
+    const result = await wp.publish(
+      credentials,
+      {
+        title: generatedPost.title,
+        excerpt: generatedPost.excerpt,
+        content: body,
+        status: destination.defaultStatus as 'draft' | 'publish',
+        categoryIds: resolveCategoryIds(pipeline, destination),
+      },
+      thumbnailBuffer,
+    )
+
+    return { ...result, inlineUploads: uploaded }
   }
 
   async publishRun(runId: string) {
@@ -476,29 +536,8 @@ export class PipelineRunService {
     })
 
     try {
-      const secret = decrypt(destination.encryptedSecret)
-      const post = run.generatedPost as any
-      const thumbnailBuffer = post.thumbnailLocalPath
-        ? readFileSync(post.thumbnailLocalPath as string)
-        : undefined
-      const publishBody = await this.prepareInlineImagesForWordPress(
-        post.body,
-        post.inlineImages ?? [],
-        destination,
-        secret,
-      )
-      const result = await wp.publish(
-        destination.siteUrl,
-        destination.username ?? '',
-        secret,
-        {
-          title: post.title,
-          excerpt: post.excerpt,
-          content: publishBody,
-          status: destination.defaultStatus as 'draft' | 'publish',
-        },
-        thumbnailBuffer,
-      )
+      const post = run.generatedPost as unknown as GeneratedPost
+      const result = await this.publishToWordPress(post, run.pipeline, destination)
 
       await db.publishAttempt.update({
         where: { id: attempt.id },
@@ -507,7 +546,14 @@ export class PipelineRunService {
 
       await db.pipelineRun.update({
         where: { id: runId },
-        data: { status: 'posted' },
+        data: {
+          status: 'posted',
+          generatedPost: {
+            ...post,
+            publishedUrl: result.postUrl,
+            wordpressMedia: result.inlineUploads,
+          } as any,
+        },
       })
 
       return { ok: true, remoteUrl: result.postUrl }

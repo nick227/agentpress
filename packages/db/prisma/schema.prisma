@@ -51,8 +51,7 @@ model Pipeline {
   category     String?
   status       String             @default("draft")
   destinationId String?
-  researchSourceId String?
-  researchSummaryPromptId String?
+  wpCategoryIds Json?
   bodyComposer Json?
   dryRun       Boolean            @default(true)
   scheduleMode String             @default("manual")
@@ -166,8 +165,9 @@ model Destination {
   authType        String           @default("application_password")
   username        String?
   encryptedSecret String
-  defaultStatus   String           @default("draft")
-  createdAt       DateTime         @default(now())
+  defaultStatus     String           @default("draft")
+  defaultCategoryIds Json?
+  createdAt         DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   publishAttempts PublishAttempt[]
 }

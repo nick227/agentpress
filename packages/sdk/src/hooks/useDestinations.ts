@@ -15,6 +15,20 @@ export function useDestinations(accountId: string) {
   })
 }
 
+export function useWordPressCategories(destinationId?: string) {
+  return useQuery({
+    queryKey: ['wordpress-categories', destinationId],
+    queryFn: async () => {
+      const { data, error, response } = await getApiClient().GET('/api/destinations/{destinationId}/wordpress/categories', {
+        params: { path: { destinationId: destinationId! } },
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    enabled: Boolean(destinationId),
+  })
+}
+
 export function useCreateDestination() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -28,6 +42,7 @@ export function useCreateDestination() {
       username?: string
       secret: string
       defaultStatus?: 'draft' | 'publish'
+      defaultCategoryIds?: number[]
     }) => {
       const { data, error, response } = await getApiClient().POST('/api/accounts/{accountId}/destinations', {
         params: { path: { accountId } },
@@ -38,6 +53,34 @@ export function useCreateDestination() {
     },
     onSuccess: (_data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: ['destinations', accountId] })
+    },
+  })
+}
+
+export function useUpdateDestination() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      destinationId,
+      accountId,
+      ...body
+    }: {
+      destinationId: string
+      accountId: string
+      name?: string
+      defaultStatus?: 'draft' | 'publish'
+      defaultCategoryIds?: number[] | null
+    }) => {
+      const { data, error, response } = await getApiClient().PATCH('/api/destinations/{destinationId}', {
+        params: { path: { destinationId } },
+        body,
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    onSuccess: (_data, { accountId, destinationId }) => {
+      queryClient.invalidateQueries({ queryKey: ['destinations', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['wordpress-categories', destinationId] })
     },
   })
 }
