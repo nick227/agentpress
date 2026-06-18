@@ -25,8 +25,11 @@ function formatPipeline(p: any) {
     name: p.name,
     slug: p.slug,
     description: p.description ?? undefined,
+    category: p.category ?? undefined,
     status: p.status,
     destinationId: p.destinationId ?? undefined,
+    researchSourceId: p.researchSourceId ?? undefined,
+    researchSummaryPromptId: p.researchSummaryPromptId ?? undefined,
     dryRun: p.dryRun,
     scheduleMode: p.scheduleMode,
     frequency: p.frequency ?? undefined,
@@ -125,7 +128,7 @@ export class PipelineService {
     }
   }
 
-  async create(accountId: string, data: { name: string; description?: string }) {
+  async create(accountId: string, data: { name: string; description?: string; category?: string }) {
     const slug = await uniqueSlug(accountId, toSlug(data.name))
     const p = await db.pipeline.create({
       data: {
@@ -133,6 +136,7 @@ export class PipelineService {
         name: data.name,
         slug,
         description: data.description,
+        category: data.category,
       },
       include: {
         variables: true,
@@ -225,6 +229,11 @@ export class PipelineService {
 
     const varKeys = new Set(p.variables.map((v) => v.key))
     const agentUidSet = new Set(uids)
+    const researchSources = await db.researchSource.findMany({
+      where: { accountId: p.accountId },
+      select: { slug: true },
+    })
+    const researchSourceSlugs = new Set(researchSources.map((source) => source.slug))
 
     for (const agent of p.agents) {
       const refs = [...agent.systemPrompt.matchAll(/\{([^}]+)\}/g), ...agent.userPrompt.matchAll(/\{([^}]+)\}/g)]
@@ -235,6 +244,15 @@ export class PipelineService {
           const uid = parts[1]
           if (uid && !agentUidSet.has(uid)) {
             warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown agent UID "${uid}"`, path: `agents.${agent.uid}` })
+          }
+        } else if (ref === 'research' || ref.startsWith('research.')) {
+          if (!p.researchSourceId) {
+            warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references research, but no research feed is selected`, path: `agents.${agent.uid}` })
+          }
+        } else if (ref.includes('.')) {
+          const [root] = ref.split('.')
+          if (root && !varKeys.has(root) && !researchSourceSlugs.has(root)) {
+            warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown variable or research source "${root}"`, path: `agents.${agent.uid}` })
           }
         } else if (!varKeys.has(ref)) {
           warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown variable "${ref}"`, path: `agents.${agent.uid}` })

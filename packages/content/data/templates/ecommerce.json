@@ -2,7 +2,7 @@
   {
     "id": "product-description",
     "name": "Product Description",
-    "description": "Compelling product copy with a benefit-led headline, full description, and a structured features list. Converts browsers into buyers by leading with value, not specs.",
+    "description": "Compelling product copy. A product-angle planner maps benefits and structure (scratch), then headline, short description, and full description agents produce the final output.",
     "category": "ecommerce",
     "categoryLabel": "E-commerce",
     "tags": ["product", "ecommerce", "copywriting", "conversion"],
@@ -64,38 +64,47 @@
     ],
     "agents": [
       {
+        "uid": "angle_planner",
+        "name": "Product Angle Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan e-commerce product copy before any prose is written. Your plan identifies: the primary customer benefit (not feature), 3–4 supporting benefit angles, feature-to-benefit mapping notes, and ideal customer profile beat. This plan is used by the writing agents and does not appear in the published product page separately.",
+        "userPrompt": "Plan product page copy.\n\nProduct: {product_name}\nType: {product_type}\nKey features: {key_features}\nTarget customer: {target_customer}\nPrice point: {price_point}\nBrand tone: {brand_tone}\n\nProvide:\n1. Primary benefit (one sentence — customer outcome, not feature)\n2. 3–4 supporting benefit angles (one sentence each)\n3. Feature-to-benefit mapping (brief bullets)\n4. Ideal customer beat (one sentence)"
+      },
+      {
         "uid": "headline_writer",
         "name": "Headline Writer",
         "outputTarget": "title",
         "outputFormat": "text",
-        "sortOrder": 0,
+        "sortOrder": 1,
         "systemPrompt": "You write product page headlines that lead with the customer's primary benefit, not the product's features. Under 70 characters. Punchy, specific, and compelling. Return only the headline.",
-        "userPrompt": "Write a benefit-led product headline.\n\nProduct: {product_name}\nType: {product_type}\nKey features: {key_features}\nTarget customer: {target_customer}\nBrand tone: {brand_tone}\n\nHeadline:"
+        "userPrompt": "Write a benefit-led product headline.\n\nProduct: {product_name}\nType: {product_type}\nTarget customer: {target_customer}\nBrand tone: {brand_tone}\nProduct angle plan:\n{agents.angle_planner.output}\n\nHeadline:"
       },
       {
         "uid": "excerpt_writer",
         "name": "Short Description",
         "outputTarget": "excerpt",
         "outputFormat": "text",
-        "sortOrder": 1,
+        "sortOrder": 2,
         "systemPrompt": "You write short product descriptions for search result previews and category pages. 150–160 characters. Lead with the top benefit. Include the product name. Return only the description.",
-        "userPrompt": "Write a short product description.\n\nHeadline: {agents.headline_writer.output}\nProduct: {product_name}\nType: {product_type}\nTarget customer: {target_customer}\n\nShort description:"
+        "userPrompt": "Write a short product description.\n\nHeadline: {agents.headline_writer.output}\nProduct: {product_name}\nType: {product_type}\nTarget customer: {target_customer}\nProduct angle plan:\n{agents.angle_planner.output}\n\nShort description:"
       },
       {
         "uid": "description_writer",
         "name": "Full Description Writer",
         "outputTarget": "body",
         "outputFormat": "text",
-        "sortOrder": 2,
+        "sortOrder": 3,
         "systemPrompt": "You write full e-commerce product descriptions in Markdown. Structure: a compelling 2–3 sentence opening paragraph (benefits-first, not features-first), then ## Why You'll Love It (3–4 benefit-focused paragraphs, each starting with a bold benefit), then ## Features (bullet list of specs and features), then ## Who It's For (1 paragraph describing the ideal customer). Use active voice. Never say 'we' — address the customer as 'you'.",
-        "userPrompt": "Write a complete product description.\n\nHeadline: {agents.headline_writer.output}\nProduct: {product_name}\nType: {product_type}\nKey features: {key_features}\nTarget customer: {target_customer}\nPrice point: {price_point}\nBrand tone: {brand_tone}\n\nLead with benefits the customer cares about, not a list of specs."
+        "userPrompt": "Write a complete product description.\n\nHeadline: {agents.headline_writer.output}\nProduct: {product_name}\nType: {product_type}\nKey features: {key_features}\nTarget customer: {target_customer}\nPrice point: {price_point}\nBrand tone: {brand_tone}\nProduct angle plan (follow benefit angles):\n{agents.angle_planner.output}\n\nLead with benefits the customer cares about, not a list of specs."
       }
     ]
   },
   {
     "id": "category-page",
     "name": "Category Page",
-    "description": "SEO-friendly category or collection page copy that helps search engines understand the page topic while guiding shoppers to what they need. Includes an intro paragraph and an FAQ section.",
+    "description": "SEO-friendly category or collection page copy. An SEO planner maps structure (scratch), then title, meta description, and content agents produce the final page.",
     "category": "ecommerce",
     "categoryLabel": "E-commerce",
     "tags": ["seo", "category", "ecommerce", "collection"],
@@ -148,31 +157,40 @@
     ],
     "agents": [
       {
+        "uid": "seo_planner",
+        "name": "SEO Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan e-commerce category page content before any copy is written. Your plan identifies: keyword placement strategy, intro angle, 3–4 buying criteria to cover, product type sections, and 3–4 FAQ questions. This plan is used by the content writer and does not appear in the published page separately.",
+        "userPrompt": "Plan a category page.\n\nCategory: {category_name}\nTarget keyword: {target_keyword}\nProduct types: {product_types}\nShopper intent: {buyer_intent}\nBrand tone: {brand_tone}\n\nProvide:\n1. Intro angle (one sentence — include keyword naturally)\n2. Buying criteria (3–4 bullets)\n3. Product type section notes (one sentence per type)\n4. FAQ questions (3–4)"
+      },
+      {
         "uid": "page_title_writer",
         "name": "Page Title Writer",
         "outputTarget": "title",
         "outputFormat": "text",
-        "sortOrder": 0,
+        "sortOrder": 1,
         "systemPrompt": "You write SEO-optimized HTML page titles for e-commerce category pages. Include the category name and target keyword naturally. Under 60 characters. Return only the title.",
-        "userPrompt": "Write an SEO page title for this category page.\n\nCategory: {category_name}\nTarget keyword: {target_keyword}\n\nPage title:"
+        "userPrompt": "Write an SEO page title for this category page.\n\nCategory: {category_name}\nTarget keyword: {target_keyword}\nSEO plan:\n{agents.seo_planner.output}\n\nPage title:"
       },
       {
         "uid": "meta_writer",
         "name": "Meta Description",
         "outputTarget": "excerpt",
         "outputFormat": "text",
-        "sortOrder": 1,
+        "sortOrder": 2,
         "systemPrompt": "You write meta descriptions for e-commerce category pages. 150–160 characters. Include the target keyword, mention the variety of products available, and include an implicit or explicit CTA. Return only the meta description.",
-        "userPrompt": "Write a meta description for this category page.\n\nCategory: {category_name}\nTarget keyword: {target_keyword}\nProduct types: {product_types}\n\nMeta description:"
+        "userPrompt": "Write a meta description for this category page.\n\nCategory: {category_name}\nTarget keyword: {target_keyword}\nProduct types: {product_types}\nSEO plan:\n{agents.seo_planner.output}\n\nMeta description:"
       },
       {
         "uid": "content_writer",
         "name": "Category Content Writer",
         "outputTarget": "body",
         "outputFormat": "text",
-        "sortOrder": 2,
+        "sortOrder": 3,
         "systemPrompt": "You write SEO-friendly category page content for e-commerce sites in Markdown. Structure: 2–3 sentence intro paragraph (include target keyword in first sentence), ## What to Look For (3–4 buying criteria in bullet points with brief explanations), ## Types of [Category] (one short paragraph per product type if provided), ## Frequently Asked Questions (3–4 common questions with concise answers). Helpful, clear, and authoritative — like a knowledgeable salesperson.",
-        "userPrompt": "Write category page content.\n\nCategory: {category_name}\nTarget keyword: {target_keyword}\nProduct types available: {product_types}\nShopper intent: {buyer_intent}\nBrand tone: {brand_tone}\n\nHelp shoppers understand their options and feel confident choosing."
+        "userPrompt": "Write category page content.\n\nCategory: {category_name}\nTarget keyword: {target_keyword}\nProduct types available: {product_types}\nShopper intent: {buyer_intent}\nBrand tone: {brand_tone}\nSEO plan (follow structure from this):\n{agents.seo_planner.output}\n\nHelp shoppers understand their options and feel confident choosing."
       }
     ]
   }

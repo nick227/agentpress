@@ -1,0 +1,188 @@
+[
+  {
+    "id": "professional-resume",
+    "name": "Professional Resume",
+    "description": "A complete ATS-friendly resume. An experience planner maps achievements (scratch), then summary, resume body, and document title agents produce the final output.",
+    "category": "resumes",
+    "categoryLabel": "Resumes",
+    "tags": ["resume", "cv", "job-search", "career", "ats"],
+    "variables": [
+      {
+        "key": "full_name",
+        "label": "Full Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Jordan Lee",
+        "hint": "The candidate's full name"
+      },
+      {
+        "key": "target_role",
+        "label": "Target Role",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Senior Product Manager at a Series B SaaS startup",
+        "hint": "The specific role being applied for — include level and company type if possible"
+      },
+      {
+        "key": "experience_summary",
+        "label": "Work Experience Summary",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "5 years PM at fintech startups; launched 3 products from 0-to-1; managed teams of up to 8 engineers",
+        "hint": "Paste a rough summary of your experience — years, companies, key wins. Doesn't need to be polished."
+      },
+      {
+        "key": "key_skills",
+        "label": "Key Skills",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "product strategy, roadmapping, Figma, SQL, stakeholder management, Agile/Scrum",
+        "hint": "Comma-separated list of relevant technical and soft skills"
+      },
+      {
+        "key": "industry",
+        "label": "Industry",
+        "type": "text",
+        "required": false,
+        "defaultValue": "technology",
+        "exampleValue": "B2B SaaS",
+        "hint": "The industry or sector — shapes vocabulary and emphasis"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "experience_planner",
+        "name": "Experience Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan professional resumes before any copy is written. Your plan identifies: top 3 achievements to highlight (CAR format notes), skills to emphasize for the target role, experience section structure, and summary angle. This plan is used by the writing agents and does not appear in the final resume document fields separately.",
+        "userPrompt": "Plan a resume for this candidate.\n\nCandidate: {full_name}\nTarget role: {target_role}\nExperience: {experience_summary}\nSkills: {key_skills}\nIndustry: {industry}\n\nProvide:\n1. Summary angle (one sentence)\n2. Top 3 achievements to highlight (brief CAR notes)\n3. Skills to emphasize (ordered list)\n4. Experience section structure (roles to include)"
+      },
+      {
+        "uid": "summary_writer",
+        "name": "Professional Summary",
+        "outputTarget": "excerpt",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write professional resume summaries — the 3–4 line section at the top of a resume. Great summaries: state the candidate's level and specialty, highlight 2–3 measurable achievements or capabilities, and position them for the target role without being a generic list of adjectives. No 'results-driven professional'. No 'passionate team player'. Be specific and quantified where possible. Return only the summary — no label, no heading.",
+        "userPrompt": "Write a professional resume summary.\n\nCandidate: {full_name}\nTarget role: {target_role}\nExperience: {experience_summary}\nSkills: {key_skills}\nIndustry: {industry}\nExperience plan:\n{agents.experience_planner.output}\n\n3–4 lines. Specific. Quantified. Written in third person or as a statement (no 'I'). Summary:"
+      },
+      {
+        "uid": "resume_writer",
+        "name": "Resume Body",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write professional resume content in Markdown. Format: ## Professional Summary (paste from input), ## Core Skills (two-column bullet list), ## Professional Experience (each role as ### Company | Role | Date Range, followed by 3–4 achievement bullets using the CAR format: Context, Action, Result — quantified where possible), ## Education (brief). Achievement bullets start with strong action verbs. ATS-friendly: no tables, no columns, no graphics in the output. Do not include contact information.",
+        "userPrompt": "Write a complete resume in Markdown.\n\nName: {full_name}\nTarget role: {target_role}\nSummary: {agents.summary_writer.output}\nExperience: {experience_summary}\nSkills: {key_skills}\nIndustry: {industry}\nExperience plan (follow achievement and structure notes):\n{agents.experience_planner.output}\n\nFormat each achievement bullet as: [Strong verb] [what you did] [quantified result]. Write the full resume."
+      },
+      {
+        "uid": "title_writer",
+        "name": "Resume Title",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 3,
+        "systemPrompt": "You write resume document titles — the metadata title used when saving or sharing the document. Format: '[Full Name] — [Job Title] Resume'. Return only the title.",
+        "userPrompt": "Write a resume document title.\n\nName: {full_name}\nTarget role: {target_role}\n\nFormat: [Name] — [Role] Resume. Title:"
+      }
+    ]
+  },
+  {
+    "id": "cover-letter",
+    "name": "Cover Letter",
+    "description": "A personalized cover letter. An angle planner maps the story (scratch), then subject and letter agents write the final copy.",
+    "category": "resumes",
+    "categoryLabel": "Resumes",
+    "tags": ["cover-letter", "job-search", "career", "hiring"],
+    "variables": [
+      {
+        "key": "applicant_name",
+        "label": "Applicant Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Jordan Lee",
+        "hint": "The applicant's full name"
+      },
+      {
+        "key": "target_role",
+        "label": "Role Being Applied For",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Senior Product Manager",
+        "hint": "Exact job title from the listing"
+      },
+      {
+        "key": "company_name",
+        "label": "Company Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Acme Corp",
+        "hint": "The company you're applying to"
+      },
+      {
+        "key": "key_qualification",
+        "label": "Your Strongest Qualification",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Led three 0-to-1 product launches in fintech, including one that grew to 50k users in 6 months",
+        "hint": "The single most relevant thing you've done — the story the cover letter builds around"
+      },
+      {
+        "key": "why_company",
+        "label": "Why This Company",
+        "type": "text",
+        "required": false,
+        "defaultValue": "the company's mission and growth trajectory",
+        "exampleValue": "Acme's shift to AI-native workflows aligns with where I've been building for the past 3 years",
+        "hint": "What specifically attracts you to this company — be genuine, not generic"
+      },
+      {
+        "key": "tone",
+        "label": "Tone",
+        "type": "text",
+        "required": false,
+        "defaultValue": "confident and direct",
+        "exampleValue": "warm and conversational",
+        "hint": "Voice of the letter — matches the company culture if known"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "angle_planner",
+        "name": "Angle Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan cover letters before any copy is written. Your plan identifies: the hook angle (not 'I am writing to apply'), the story beat for the key qualification, how to connect to the company specifically, and the closing ask tone. This plan is used by the writing agents and does not appear in the sent letter.",
+        "userPrompt": "Plan a cover letter.\n\nApplicant: {applicant_name}\nRole: {target_role}\nCompany: {company_name}\nKey qualification: {key_qualification}\nWhy this company: {why_company}\nTone: {tone}\n\nProvide:\n1. Hook angle (one sentence)\n2. Story beat for key qualification (one sentence)\n3. Company connection angle (one sentence)\n4. Closing ask tone (one sentence)"
+      },
+      {
+        "uid": "title_writer",
+        "name": "Subject Line",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write cover letter email subject lines. Format: 'Application — [Role] | [Name]'. Return only the subject line.",
+        "userPrompt": "Write a cover letter email subject line.\n\nRole: {target_role}\nCompany: {company_name}\nName: {applicant_name}\n\nSubject:"
+      },
+      {
+        "uid": "cover_letter_writer",
+        "name": "Cover Letter Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write cover letters that get read. Great cover letters: open with a strong hook (not 'I am writing to apply for'), tell one specific story that demonstrates the candidate's most relevant qualification, connect that story to the company's current situation or needs, and close with a confident ask — not a groveling hope. Under 350 words. Three to four paragraphs. No bullet points. Written in first person. Do not repeat information that would just restate the resume.",
+        "userPrompt": "Write a cover letter.\n\nApplicant: {applicant_name}\nRole: {target_role}\nCompany: {company_name}\nKey qualification: {key_qualification}\nWhy this company: {why_company}\nTone: {tone}\nAngle plan:\n{agents.angle_planner.output}\n\nUnder 350 words. Open with a hook. Tell the story of the key qualification. Connect it to this company specifically. End with confidence."
+      }
+    ]
+  }
+]

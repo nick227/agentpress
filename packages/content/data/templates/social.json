@@ -2,7 +2,7 @@
   {
     "id": "linkedin-post",
     "name": "LinkedIn Post",
-    "description": "A high-engagement LinkedIn post with a strong hook, structured body, and a conversation-starting question. Optimized for the LinkedIn algorithm — short paragraphs, white space, and a clear point of view.",
+    "description": "A high-engagement LinkedIn post. A hook planner maps the opener (scratch), then a post writer produces the full published post in the body.",
     "category": "social",
     "categoryLabel": "Social & Email",
     "tags": ["linkedin", "social-media", "thought-leadership"],
@@ -56,12 +56,12 @@
     "agents": [
       {
         "uid": "hook_writer",
-        "name": "Hook Writer",
-        "outputTarget": "excerpt",
+        "name": "Hook Planner",
+        "outputTarget": "scratch",
         "outputFormat": "text",
         "sortOrder": 0,
-        "systemPrompt": "You write irresistible LinkedIn post hooks — the first 1–2 lines that appear before 'See more'. A great hook creates curiosity, makes a bold claim, or promises a specific insight. Return only 1–2 short sentences. No hashtags.",
-        "userPrompt": "Write a LinkedIn hook for this topic.\n\nTopic: {topic}\nAuthor role: {author_role}\nTone: {tone}\n\nHook (1–2 short lines only):"
+        "systemPrompt": "You plan LinkedIn post hooks before the full post is written. A great hook creates curiosity, makes a bold claim, or promises a specific insight. Your plan includes: the hook (1–2 short lines), 3 body beat angles, and CTA question angle. This plan is used by the post writer and does not appear as separate published copy.",
+        "userPrompt": "Plan a LinkedIn post.\n\nTopic: {topic}\nAuthor role: {author_role}\nTone: {tone}\n\nProvide:\n1. Hook (1–2 short lines for before 'See more')\n2. Three body beat angles (one sentence each)\n3. CTA question angle (one sentence)"
       },
       {
         "uid": "post_writer",
@@ -69,8 +69,8 @@
         "outputTarget": "body",
         "outputFormat": "text",
         "sortOrder": 1,
-        "systemPrompt": "You write high-performing LinkedIn posts. Rules: start with the hook (already written), use very short paragraphs (1–2 sentences each), add white space between every paragraph, be specific with numbers or examples, end with a CTA question, add 3–5 relevant hashtags on the final line. No bullet points — use line breaks only. Total length: 150–300 words.",
-        "userPrompt": "Write a complete LinkedIn post.\n\nHook (use this as the opening): {agents.hook_writer.output}\n\nTopic: {topic}\nAuthor role: {author_role}\nAudience: {audience}\nTone: {tone}\nCall to action: {call_to_action}\n\nWrite the full post including the hook, body, CTA question, and hashtags."
+        "systemPrompt": "You write high-performing LinkedIn posts. Rules: start with the hook (from the plan), use very short paragraphs (1–2 sentences each), add white space between every paragraph, be specific with numbers or examples, end with a CTA question, add 3–5 relevant hashtags on the final line. No bullet points — use line breaks only. Total length: 150–300 words.",
+        "userPrompt": "Write a complete LinkedIn post.\n\nPost plan (use hook and beats from this):\n{agents.hook_writer.output}\n\nTopic: {topic}\nAuthor role: {author_role}\nAudience: {audience}\nTone: {tone}\nCall to action: {call_to_action}\n\nWrite the full post including the hook, body, CTA question, and hashtags."
       }
     ]
   },

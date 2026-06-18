@@ -1,0 +1,125 @@
+[
+  {
+    "id": "twitter-thread",
+    "name": "Twitter / X Thread",
+    "description": "A high-engagement Twitter/X thread. A planner maps the outline (scratch), then a thread writer produces the complete thread — hook through close — in the body.",
+    "category": "tweets",
+    "categoryLabel": "Tweets",
+    "tags": ["twitter", "x", "thread", "social-media", "viral"],
+    "variables": [
+      {
+        "key": "topic",
+        "label": "Thread Topic",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "How to negotiate a salary increase without losing the offer",
+        "hint": "The central idea or lesson the thread teaches — be specific"
+      },
+      {
+        "key": "tweet_count",
+        "label": "Number of Tweets",
+        "type": "text",
+        "required": false,
+        "defaultValue": "10",
+        "exampleValue": "8",
+        "hint": "Including the hook tweet and closing tweet — usually 8–15"
+      },
+      {
+        "key": "audience",
+        "label": "Target Audience",
+        "type": "text",
+        "required": false,
+        "defaultValue": "general Twitter audience",
+        "exampleValue": "early-career professionals and job seekers",
+        "hint": "Who should be reading and sharing this thread"
+      },
+      {
+        "key": "author_persona",
+        "label": "Author Perspective",
+        "type": "text",
+        "required": false,
+        "defaultValue": "experienced practitioner",
+        "exampleValue": "someone who has hired 200+ people and negotiated dozens of offers",
+        "hint": "The author's credibility angle — what experience gives them authority here"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "outline_writer",
+        "name": "Thread Outline",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You create Twitter thread outlines. A great thread outline: states the hook promise, lists 6–12 specific points (each one tweet of value), and ends with a recap + CTA. Each point is one sentence describing exactly what that tweet will say — not 'talk about X' but 'The specific thing most people get wrong about X is Y.' Return the outline as a numbered list. This outline is used by the thread writer and does not appear in the published thread.",
+        "userPrompt": "Create a {tweet_count}-tweet thread outline.\n\nTopic: {topic}\nAudience: {audience}\nAuthor perspective: {author_persona}\n\nNumbered list. Tweet 1 = hook (the promise). Tweets 2–{tweet_count-1} = one point each, stated as a specific claim or insight. Final tweet = recap + follow CTA."
+      },
+      {
+        "uid": "thread_writer",
+        "name": "Thread Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write complete Twitter/X threads. Tweet 1 is the hook — bold promise, under 240 characters, ends with 'Thread 🧵' or 'Here's how:'. Tweets 2+ open with a number (2/, 3/, etc.), make one clear point each, under 280 characters, and add standalone value. No filler. The final tweet recaps in 2 sentences and asks a question or invites a retweet. Write every tweet as it would appear — not descriptions.",
+        "userPrompt": "Write the complete {tweet_count}-tweet Twitter thread.\n\nTopic: {topic}\nAudience: {audience}\nAuthor perspective: {author_persona}\nOutline:\n{agents.outline_writer.output}\n\nWrite all tweets including the hook (tweet 1). Number tweets 2+ as 2/, 3/, etc. Each under 280 characters. Last tweet: recap + question or CTA."
+      }
+    ]
+  },
+  {
+    "id": "single-viral-tweet",
+    "name": "Single Viral Tweet",
+    "description": "A single high-engagement tweet. A scratch agent drafts variations, then a final agent picks and polishes the winning tweet into the body.",
+    "category": "tweets",
+    "categoryLabel": "Tweets",
+    "tags": ["twitter", "x", "viral", "engagement", "single-tweet"],
+    "variables": [
+      {
+        "key": "topic",
+        "label": "Topic or Idea",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Most productivity advice is designed for people who already have their life together",
+        "hint": "The idea, take, or insight you want to express"
+      },
+      {
+        "key": "format",
+        "label": "Tweet Format",
+        "type": "text",
+        "required": false,
+        "defaultValue": "hot take",
+        "exampleValue": "unpopular opinion",
+        "hint": "hot take / unpopular opinion / contrarian fact / reframe / story setup / list"
+      },
+      {
+        "key": "niche",
+        "label": "Your Niche / Account Type",
+        "type": "text",
+        "required": false,
+        "defaultValue": "general",
+        "exampleValue": "startup founder building in public",
+        "hint": "The type of account posting this — shapes voice and references"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "variation_writer",
+        "name": "Variation Writer",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You draft single high-engagement tweet variations for evaluation. Formats that perform: hot take, unpopular opinion, contrarian reframe, specific observation, story setup with a twist. Each under 240 characters. No hashtags. Label A, B, C with distinct angles. These drafts are used internally — only the final tweet is published.",
+        "userPrompt": "Write 3 tweet variations for the following idea.\n\nIdea: {topic}\nFormat: {format}\nNiche: {niche}\n\nEach under 240 characters. No hashtags. Label A, B, C. Distinct angle for each."
+      },
+      {
+        "uid": "tweet_writer",
+        "name": "Final Tweet Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You pick the strongest tweet from a set of options and polish it for publication. Evaluate on: specificity, tension, originality. Return only the final tweet — no label, no explanation, no hashtags unless they earn their place.",
+        "userPrompt": "Pick the strongest tweet from these three options, polish if needed, and return only the final tweet.\n\nOptions:\n{agents.variation_writer.output}\n\nFinal tweet:"
+      }
+    ]
+  }
+]

@@ -6,6 +6,22 @@ const blogTemplates: ContentTemplate[] = require('../data/templates/blog.json')
 const socialTemplates: ContentTemplate[] = require('../data/templates/social.json')
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ecommerceTemplates: ContentTemplate[] = require('../data/templates/ecommerce.json')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const scriptTemplates: ContentTemplate[] = require('../data/templates/scripts.json')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const storyTemplates: ContentTemplate[] = require('../data/templates/stories.json')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const sketchTemplates: ContentTemplate[] = require('../data/templates/sketches.json')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const coldEmailTemplates: ContentTemplate[] = require('../data/templates/cold-emails.json')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const nicheTemplates: ContentTemplate[] = require('../data/templates/niche.json')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const resumeTemplates: ContentTemplate[] = require('../data/templates/resumes.json')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const commercialTemplates: ContentTemplate[] = require('../data/templates/commercials.json')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const tweetTemplates: ContentTemplate[] = require('../data/templates/tweets.json')
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const seoVariablePacks: VariablePack[] = require('../data/variable-packs/seo.json')
@@ -16,6 +32,14 @@ const productVariablePacks: VariablePack[] = require('../data/variable-packs/pro
 
 const ALL_TEMPLATES: ContentTemplate[] = [
   ...blogTemplates,
+  ...scriptTemplates,
+  ...storyTemplates,
+  ...sketchTemplates,
+  ...coldEmailTemplates,
+  ...nicheTemplates,
+  ...resumeTemplates,
+  ...commercialTemplates,
+  ...tweetTemplates,
   ...socialTemplates,
   ...ecommerceTemplates,
 ]

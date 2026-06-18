@@ -16,7 +16,13 @@ interface Props {
   onDeleted: () => void
 }
 
-const OUTPUT_TARGETS = ['body', 'title', 'excerpt', 'thumbnail_prompt'] as const
+const OUTPUT_TARGETS = [
+  { value: 'body', label: 'Body (section)' },
+  { value: 'title', label: 'Title' },
+  { value: 'excerpt', label: 'Excerpt' },
+  { value: 'thumbnail_prompt', label: 'Thumbnail prompt' },
+  { value: 'scratch', label: 'Scratch (planning only)' },
+] as const
 const OUTPUT_FORMATS = ['text', 'markdown', 'json'] as const
 
 export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) {
@@ -131,7 +137,7 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onDeleted }: Props) 
             className="w-full h-9 rounded border border-input-border bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {OUTPUT_TARGETS.map((t) => (
-              <option key={t} value={t}>{t}</option>
+              <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
         </Field>

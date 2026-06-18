@@ -78,11 +78,11 @@ components:
       properties:
         research:
           type: object
-          required: [checked, newVideos, results]
+          required: [checked, newItems, results]
           properties:
             checked:
               type: integer
-            newVideos:
+            newItems:
               type: integer
             results:
               type: array
@@ -96,7 +96,7 @@ components:
                     type: string
                   newItem:
                     type: boolean
-                  videoTitle:
+                  itemTitle:
                     type: string
                   error:
                     type: string
@@ -157,6 +157,13 @@ components:
       properties:
         destinationId:
           type: string
+          nullable: true
+        researchSourceId:
+          type: string
+          nullable: true
+        researchSummaryPromptId:
+          type: string
+          nullable: true
         dryRun:
           type: boolean
         scheduleMode:
@@ -236,7 +243,7 @@ components:
           type: string
         outputTarget:
           type: string
-          enum: [title, excerpt, thumbnail_prompt, body]
+          enum: [title, excerpt, thumbnail_prompt, body, scratch]
         outputFormat:
           type: string
           enum: [text, markdown, json]
@@ -261,7 +268,7 @@ components:
           type: string
         outputTarget:
           type: string
-          enum: [title, excerpt, thumbnail_prompt, body]
+          enum: [title, excerpt, thumbnail_prompt, body, scratch]
         outputFormat:
           type: string
           enum: [text, markdown, json]
@@ -284,11 +291,20 @@ components:
           type: string
         description:
           type: string
+        category:
+          type: string
         status:
           type: string
           enum: [draft, active, paused, archived]
         destinationId:
           type: string
+          nullable: true
+        researchSourceId:
+          type: string
+          nullable: true
+        researchSummaryPromptId:
+          type: string
+          nullable: true
         dryRun:
           type: boolean
         scheduleMode:
@@ -332,6 +348,8 @@ components:
           type: string
         description:
           type: string
+        category:
+          type: string
         status:
           type: string
           enum: [draft, active, paused, archived]
@@ -357,7 +375,12 @@ components:
           type: string
         thumbnailPrompt:
           type: string
+        thumbnailStatus:
+          type: string
+          enum: [generating, done, failed]
         thumbnailUrl:
+          type: string
+        thumbnailLocalPath:
           type: string
         body:
           type: string
@@ -665,7 +688,7 @@ components:
 
     ResearchSource:
       type: object
-      required: [id, accountId, name, slug, youtubeUrl, status, createdAt, updatedAt]
+      required: [id, accountId, name, slug, sourceType, sourceUrl, status, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -677,9 +700,12 @@ components:
           type: string
         category:
           type: string
-        youtubeUrl:
+        sourceType:
           type: string
-        channelId:
+          enum: [youtube, reddit, rss]
+        sourceUrl:
+          type: string
+        externalId:
           type: string
         status:
           type: string
@@ -698,22 +724,22 @@ components:
 
     ResearchItem:
       type: object
-      required: [id, sourceId, videoId, videoTitle, videoUrl, publishedAt, createdAt, updatedAt]
+      required: [id, sourceId, externalId, title, itemUrl, publishedAt, createdAt, updatedAt]
       properties:
         id:
           type: string
         sourceId:
           type: string
-        videoId:
+        externalId:
           type: string
-        videoTitle:
+        title:
           type: string
-        videoUrl:
+        itemUrl:
           type: string
         publishedAt:
           type: string
           format: date-time
-        transcript:
+        content:
           type: string
         summaryCount:
           type: integer
@@ -1160,6 +1186,13 @@ paths:
                   enum: [draft, active, paused, archived]
                 destinationId:
                   type: string
+                  nullable: true
+                researchSourceId:
+                  type: string
+                  nullable: true
+                researchSummaryPromptId:
+                  type: string
+                  nullable: true
                 dryRun:
                   type: boolean
                 scheduleMode:
@@ -1796,13 +1829,17 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, youtubeUrl]
+              required: [name, sourceUrl]
               properties:
                 name:
                   type: string
+                sourceType:
+                  type: string
+                  enum: [youtube, reddit, rss]
+                  default: youtube
                 category:
                   type: string
-                youtubeUrl:
+                sourceUrl:
                   type: string
       responses:
         '201':
@@ -1861,7 +1898,7 @@ paths:
                   type: string
                 category:
                   type: string
-                youtubeUrl:
+                sourceUrl:
                   type: string
                 status:
                   type: string
@@ -1907,7 +1944,7 @@ paths:
     post:
       operationId: checkResearchSource
       tags: [research]
-      summary: Check for new YouTube video and fetch transcript
+      summary: Fetch latest content from a research source
       security:
         - bearerAuth: []
       responses:
@@ -1921,12 +1958,14 @@ paths:
                 properties:
                   data:
                     type: object
-                    required: [checked, newItem]
+                    required: [checked, newItem, newCount]
                     properties:
                       checked:
                         type: boolean
                       newItem:
                         type: boolean
+                      newCount:
+                        type: integer
                       item:
                         $ref: '#/components/schemas/ResearchItem'
 
@@ -1986,7 +2025,7 @@ paths:
     get:
       operationId: getResearchItem
       tags: [research]
-      summary: Get a research item (with transcript)
+      summary: Get a research item (with content)
       security:
         - bearerAuth: []
       responses:

@@ -368,6 +368,39 @@ async function main() {
       systemPrompt: 'You write social media hooks and newsletter blurbs that make people stop scrolling. You are specific, direct, and slightly provocative. You do not start with "In this video" or "Check out". You write for an audience that is smart and skeptical.',
       userPrompt: 'Write one short social hook (2–4 sentences) based on the most interesting or surprising thing in this transcript. Make it specific enough to be intriguing without being clickbait. Write it as a standalone blurb.\n\n{transcript}',
     },
+    // ── Financial-specific prompts ──────────────────────────────────────────
+    {
+      name: 'Ticker Extractor',
+      description: 'Pull every stock ticker mentioned with its sentiment and the reason cited.',
+      isDefault: false,
+      sortOrder: 5,
+      systemPrompt: 'You are a financial analyst assistant. Extract all stock ticker symbols and company names mentioned in the provided content. For each, determine the sentiment (bullish, bearish, neutral) and the specific reason given. Be concise and precise. Only report what is explicitly stated or strongly implied — do not invent reasoning.',
+      userPrompt: 'Extract all stock tickers and companies mentioned in the following content. For each:\n- Ticker symbol (if mentioned) and company name\n- Sentiment: bullish / bearish / neutral\n- Reason: one sentence quoting or paraphrasing the specific argument made\n\nFormat as a table with columns: Ticker | Company | Sentiment | Reason\n\nIf no tickers are mentioned, say so.\n\n{transcript}',
+    },
+    {
+      name: 'Market Sentiment',
+      description: 'Overall market mood gauge — bull/bear/neutral with the key drivers cited.',
+      isDefault: false,
+      sortOrder: 6,
+      systemPrompt: 'You are a market sentiment analyst. You read financial content and produce a clear, evidence-based assessment of the overall market mood expressed. You distinguish between short-term and long-term sentiment when both are present. You quote or closely paraphrase the specific statements driving your assessment.',
+      userPrompt: 'Assess the overall market sentiment expressed in the following content.\n\nProvide:\n1. Overall sentiment: Bullish / Bearish / Neutral / Mixed (with a 1–10 conviction score, where 1 = weakly held, 10 = strongly convicted)\n2. Short-term outlook (days–weeks): summarize in one sentence\n3. Long-term outlook (months–years): summarize in one sentence\n4. Top 3 bullish signals mentioned (quote or paraphrase)\n5. Top 3 bearish signals mentioned (quote or paraphrase)\n6. Key catalysts or events being watched\n\n{transcript}',
+    },
+    {
+      name: 'Risk Flags',
+      description: 'Identify every risk, warning sign, or concern raised — prioritized by severity.',
+      isDefault: false,
+      sortOrder: 7,
+      systemPrompt: 'You are a risk analyst. You read financial and market commentary and extract every risk factor, warning sign, or concern mentioned. You classify each by type (macro, sector, company-specific, technical, regulatory, liquidity) and by the severity implied by the source. You do not fabricate risks not mentioned in the content.',
+      userPrompt: 'Identify all risks, warning signs, and concerns mentioned in the following content.\n\nFor each risk:\n- Risk description (one sentence)\n- Type: macro / sector / company-specific / technical / regulatory / liquidity / other\n- Severity implied: high / medium / low\n- Direct quote or close paraphrase from the content\n\nRank by severity (highest first). If no risks are explicitly mentioned, say so.\n\n{transcript}',
+    },
+    {
+      name: 'Trade Ideas',
+      description: 'Concrete trade setups, entries, targets, and stops mentioned in the content.',
+      isDefault: false,
+      sortOrder: 8,
+      systemPrompt: 'You are a trading desk assistant. You extract specific, actionable trade ideas from financial commentary. You only report trades explicitly discussed — you do not invent setups. For each trade you identify the instrument, direction, rationale, and any price levels mentioned (entry, target, stop). You flag speculative or educational trades separately from high-conviction calls.',
+      userPrompt: 'Extract all concrete trade ideas, setups, or recommendations mentioned in the following content.\n\nFor each trade idea:\n- Instrument (ticker, sector, asset class)\n- Direction: Long / Short / Neutral hedge\n- Time horizon: day trade / swing / position / long-term\n- Entry price or zone (if mentioned)\n- Price target (if mentioned)\n- Stop loss (if mentioned)\n- Rationale: one sentence summarizing why\n- Conviction level implied: speculative / moderate / high\n\nIf no specific trades are mentioned, say so clearly.\n\n{transcript}',
+    },
   ]
 
   console.log('\nSeeding summary prompts...')
@@ -386,12 +419,21 @@ async function main() {
 
   // Seed research sources
   const RESEARCH_SOURCES = [
-    { name: 'Vaush', slug: 'vaush', category: 'politics', youtubeUrl: 'https://www.youtube.com/@Vaush' },
-    { name: 'ZipTrader', slug: 'ziptrader', category: 'financial', youtubeUrl: 'https://www.youtube.com/@ZipTrader' },
-    { name: 'Spencer Invests', slug: 'spencer-invests', category: 'financial', youtubeUrl: 'https://www.youtube.com/@SpencerInvests' },
-    { name: 'Stock Moe', slug: 'stock-moe', category: 'financial', youtubeUrl: 'https://www.youtube.com/@StockMoe' },
-    { name: 'Tom Nash TV', slug: 'tom-nash-tv', category: 'financial', youtubeUrl: 'https://www.youtube.com/@TomNashTV' },
-    { name: 'Meet Kevin', slug: 'meet-kevin', category: 'financial', youtubeUrl: 'https://www.youtube.com/@MeetKevin' },
+    // YouTube — politics
+    { name: 'Vaush', slug: 'vaush', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Vaush' },
+    // YouTube — financial
+    { name: 'ZipTrader', slug: 'ziptrader', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@ZipTrader' },
+    { name: 'Spencer Invests', slug: 'spencer-invests', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@SpencerInvests' },
+    { name: 'Stock Moe', slug: 'stock-moe', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@StockMoe' },
+    { name: 'Tom Nash TV', slug: 'tom-nash-tv', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@TomNashTV' },
+    { name: 'Meet Kevin', slug: 'meet-kevin', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@MeetKevin' },
+    // Reddit — financial
+    { name: 'WallStreetBets', slug: 'wallstreetbets', category: 'financial', sourceType: 'reddit', sourceUrl: 'https://www.reddit.com/r/wallstreetbets' },
+    { name: 'r/stocks', slug: 'r-stocks', category: 'financial', sourceType: 'reddit', sourceUrl: 'https://www.reddit.com/r/stocks' },
+    // RSS — financial
+    { name: 'Reuters Business', slug: 'reuters-business', category: 'financial', sourceType: 'rss', sourceUrl: 'https://feeds.reuters.com/reuters/businessNews' },
+    { name: 'Yahoo Finance', slug: 'yahoo-finance', category: 'financial', sourceType: 'rss', sourceUrl: 'https://finance.yahoo.com/rss/topstories' },
+    { name: 'MarketWatch', slug: 'marketwatch', category: 'financial', sourceType: 'rss', sourceUrl: 'https://feeds.marketwatch.com/marketwatch/topstories' },
   ]
 
   console.log('\nSeeding research sources...')
@@ -402,7 +444,7 @@ async function main() {
       create: { accountId: account.id, status: 'active', ...src },
     })
   }
-  console.log(`  ${RESEARCH_SOURCES.length} sources seeded`)
+  console.log(`  ${RESEARCH_SOURCES.length} sources seeded (YouTube, Reddit, RSS)`)
 
   // Seed library agents
   console.log('\nSeeding library agents...')
@@ -441,7 +483,7 @@ async function main() {
   console.log('  Account:  Demo Blog')
   console.log('  Pipeline: SEO Blog Post (4 agents)')
   console.log(`  Library:  ${LIBRARY_AGENTS.length} agents seeded`)
-  console.log(`  Research: ${RESEARCH_SOURCES.length} sources seeded (1 politics, 5 financial)`)
+  console.log(`  Research: ${RESEARCH_SOURCES.length} sources seeded (YouTube ×6, Reddit ×2, RSS ×3)`)
   console.log('  Prompts:  5 summary prompts seeded')
 }
 

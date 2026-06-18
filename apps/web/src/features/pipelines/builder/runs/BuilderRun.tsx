@@ -114,15 +114,22 @@ export function BuilderRun({ runId, pipeline }: Props) {
             </Section>
           )}
 
-          {post.thumbnailUrl && (
+          {post.thumbnailPrompt && (
             <Section title="Thumbnail">
-              <img src={post.thumbnailUrl} alt="Generated thumbnail" className="rounded max-w-sm w-full" />
-            </Section>
-          )}
-
-          {post.thumbnailPrompt && !post.thumbnailUrl && (
-            <Section title="Thumbnail prompt">
-              <p className="text-sm text-muted-foreground">{post.thumbnailPrompt}</p>
+              {post.thumbnailStatus === 'generating' ? (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground h-32 border rounded bg-muted/20">
+                  <Loader2 size={15} className="animate-spin" />
+                  Generating with DALL-E…
+                </div>
+              ) : post.thumbnailUrl ? (
+                <img src={post.thumbnailUrl} alt="Generated thumbnail" className="rounded max-w-sm w-full" />
+              ) : post.thumbnailStatus === 'failed' ? (
+                <div className="text-sm text-destructive border border-destructive/20 rounded p-3 bg-destructive/5">
+                  Image generation failed
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">{post.thumbnailPrompt}</p>
+              )}
             </Section>
           )}
 

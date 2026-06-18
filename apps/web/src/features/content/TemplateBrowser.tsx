@@ -16,7 +16,19 @@ interface Props {
   onClose: () => void
 }
 
-const CATEGORY_ORDER = ['blog', 'social', 'ecommerce']
+const CATEGORY_ORDER = [
+  'blog',
+  'scripts',
+  'stories',
+  'sketches',
+  'cold-emails',
+  'niche',
+  'resumes',
+  'commercials',
+  'tweets',
+  'social',
+  'ecommerce',
+]
 
 export function TemplateBrowser({ accountId, accountSlug, onClose }: Props) {
   const { data, isLoading } = useContentTemplates()

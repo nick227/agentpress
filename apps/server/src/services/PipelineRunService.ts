@@ -1,15 +1,18 @@
+import { readFileSync } from 'fs'
 import { db } from '@project/db'
 import { OpenAIService } from './OpenAIService'
 import { PromptRenderService } from './PromptRenderService'
 import { OutputAssetService } from './OutputAssetService'
 import { WordPressService } from './WordPressService'
 import { LibraryAgentService } from './LibraryAgentService'
+import { ResearchContextService } from './ResearchContextService'
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
 
 const ai = new OpenAIService()
 const renderer = new PromptRenderService()
 const assets = new OutputAssetService()
 const wp = new WordPressService()
+const researchContext = new ResearchContextService()
 
 const ENC_KEY = (process.env.SESSION_SECRET ?? 'change-me-in-production-32chars!!').padEnd(32, '0').slice(0, 32)
 
@@ -45,6 +48,8 @@ export class PipelineRunService {
     if (!pipeline) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
 
     const dryRun = dryRunOverride !== undefined ? dryRunOverride : pipeline.dryRun
+    const resolvedResearch = await researchContext.resolveForPipeline(pipeline)
+    const runVariables = { ...variables, ...resolvedResearch }
 
     // Create the run record first
     const run = await db.pipelineRun.create({
@@ -53,13 +58,13 @@ export class PipelineRunService {
         pipelineId: pipeline.id,
         status: 'running',
         dryRun,
-        variables: variables as any,
+        variables: runVariables as any,
         destinationId: dryRun ? null : (pipeline.destinationId ?? null),
       },
     })
 
     // Execute asynchronously — return run immediately so the client can poll
-    this._executeRun(run.id, pipeline, variables, dryRun).catch(async (err) => {
+    this._executeRun(run.id, pipeline, runVariables, dryRun).catch(async (err) => {
       await db.pipelineRun.update({
         where: { id: run.id },
         data: { status: 'failed', error: String(err.message), completedAt: new Date() },
@@ -112,6 +117,8 @@ export class PipelineRunService {
           case 'body':
             bodyParts.push(output)
             break
+          case 'scratch':
+            break // stored in agentOutputs only — not published
         }
 
         await db.agentRun.update({
@@ -129,24 +136,36 @@ export class PipelineRunService {
 
     generatedPost.body = bodyParts.join('\n\n')
 
-    // Generate thumbnail image if a prompt was produced
+    // Signal to UI poller that image generation is starting
     if (generatedPost.thumbnailPrompt) {
+      generatedPost.thumbnailStatus = 'generating'
+      await db.pipelineRun.update({ where: { id: runId }, data: { generatedPost } })
+
       try {
         const imageUrl = await ai.generateImage(generatedPost.thumbnailPrompt)
-        if (imageUrl) generatedPost.thumbnailUrl = imageUrl
+        if (imageUrl) {
+          generatedPost.thumbnailUrl = imageUrl
+          generatedPost.thumbnailStatus = 'done'
+        } else {
+          generatedPost.thumbnailStatus = 'failed'
+        }
       } catch {
-        // image generation failure is non-fatal
+        generatedPost.thumbnailStatus = 'failed'
       }
     }
 
-    // Save output assets
-    await assets.saveRunAssets(
+    // Save output assets — also downloads thumbnail.png from DALL-E URL if available
+    const { thumbnailLocalPath } = await assets.saveRunAssets(
       runId,
       pipeline.account.slug,
       pipeline.slug,
       generatedPost,
       agentOutputs,
     )
+
+    if (thumbnailLocalPath) {
+      generatedPost.thumbnailLocalPath = thumbnailLocalPath
+    }
 
     let finalStatus = 'completed'
 
@@ -164,6 +183,9 @@ export class PipelineRunService {
 
         try {
           const secret = decrypt(destination.encryptedSecret)
+          const thumbnailBuffer = generatedPost.thumbnailLocalPath
+            ? readFileSync(generatedPost.thumbnailLocalPath as string)
+            : undefined
           const result = await wp.publish(
             destination.siteUrl,
             destination.username ?? '',
@@ -174,6 +196,7 @@ export class PipelineRunService {
               content: generatedPost.body,
               status: destination.defaultStatus as 'draft' | 'publish',
             },
+            thumbnailBuffer,
           )
 
           await db.publishAttempt.update({
@@ -231,6 +254,9 @@ export class PipelineRunService {
     try {
       const secret = decrypt(destination.encryptedSecret)
       const post = run.generatedPost as any
+      const thumbnailBuffer = post.thumbnailLocalPath
+        ? readFileSync(post.thumbnailLocalPath as string)
+        : undefined
       const result = await wp.publish(
         destination.siteUrl,
         destination.username ?? '',
@@ -241,6 +267,7 @@ export class PipelineRunService {
           content: post.body,
           status: destination.defaultStatus as 'draft' | 'publish',
         },
+        thumbnailBuffer,
       )
 
       await db.publishAttempt.update({

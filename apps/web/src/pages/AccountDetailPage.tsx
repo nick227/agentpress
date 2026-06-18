@@ -170,7 +170,14 @@ export function AccountDetailPage() {
                       : ' · No runs yet'}
                   </p>
                 </div>
-                <PipelineStatusBadge status={pipeline.status} />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {pipeline.category && (
+                    <span className="text-xs px-2 py-0.5 rounded font-medium bg-muted text-muted-foreground capitalize">
+                      {pipeline.category}
+                    </span>
+                  )}
+                  <PipelineStatusBadge status={pipeline.status} />
+                </div>
               </Link>
             ))}
           </div>
@@ -197,7 +204,7 @@ export function AccountDetailPage() {
           <EmptyState
             icon={FlaskConical}
             title="No research sources"
-            description="Add a YouTube channel to collect daily transcripts and summaries."
+            description="Add a feed to collect research content and summaries."
             action={{ label: 'New Source', onClick: () => setShowCreateResearch(true) }}
           />
         ) : (
@@ -213,7 +220,7 @@ export function AccountDetailPage() {
                   <div>
                     <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {source.itemCount ?? 0} video{(source.itemCount ?? 0) !== 1 ? 's' : ''}
+                      {source.itemCount ?? 0} {source.sourceType === 'youtube' ? 'video' : source.sourceType === 'reddit' ? 'digest' : 'article'}{(source.itemCount ?? 0) !== 1 ? 's' : ''}
                       {source.lastChecked
                         ? ` · Checked ${new Date(source.lastChecked).toLocaleDateString()}`
                         : ' · Never checked'}
@@ -268,7 +275,7 @@ export function AccountDetailPage() {
 }
 
 function SyncResultDialog({ result, onClose }: { result: SyncResult; onClose: () => void }) {
-  const totalNew = result.research.newVideos
+  const totalNew = result.research.newItems
   const totalStarted = result.pipelines.started
 
   return (
@@ -290,7 +297,7 @@ function SyncResultDialog({ result, onClose }: { result: SyncResult; onClose: ()
             </div>
             <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${totalNew > 0 ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
               <CheckCircle2 size={11} />
-              {totalNew} new video{totalNew !== 1 ? 's' : ''}
+              {totalNew} new item{totalNew !== 1 ? 's' : ''}
             </div>
             <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${totalStarted > 0 ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'}`}>
               <Zap size={11} />
@@ -314,11 +321,11 @@ function SyncResultDialog({ result, onClose }: { result: SyncResult; onClose: ()
                     )}
                     <div className="min-w-0">
                       <span className="font-medium">{r.sourceName}</span>
-                      {r.newItem && r.videoTitle && (
-                        <span className="text-muted-foreground"> — {r.videoTitle}</span>
+                      {r.newItem && r.itemTitle && (
+                        <span className="text-muted-foreground"> — {r.itemTitle}</span>
                       )}
                       {!r.newItem && !r.error && (
-                        <span className="text-muted-foreground"> — no new video</span>
+                        <span className="text-muted-foreground"> — no new items</span>
                       )}
                       {r.error && (
                         <span className="text-destructive"> — {r.error}</span>

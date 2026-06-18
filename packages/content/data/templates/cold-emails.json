@@ -1,0 +1,236 @@
+[
+  {
+    "id": "b2b-cold-outreach",
+    "name": "B2B Cold Outreach",
+    "description": "A personalized cold email for B2B sales. A prospect planner maps the angle (scratch), then subject and email agents write the final copy.",
+    "category": "cold-emails",
+    "categoryLabel": "Cold Emails",
+    "tags": ["sales", "outreach", "b2b", "email", "cold"],
+    "variables": [
+      {
+        "key": "prospect_name",
+        "label": "Prospect First Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Sarah",
+        "hint": "The recipient's first name"
+      },
+      {
+        "key": "prospect_company",
+        "label": "Prospect Company",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Acme Corp",
+        "hint": "The company you're reaching out to"
+      },
+      {
+        "key": "pain_point",
+        "label": "Pain Point or Challenge",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "scaling a sales team without losing deal quality",
+        "hint": "The specific problem this prospect likely has — be concrete"
+      },
+      {
+        "key": "offer",
+        "label": "What You Offer",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "a sales coaching platform that cuts ramp time by 40%",
+        "hint": "Your product or service and its primary benefit"
+      },
+      {
+        "key": "sender_name",
+        "label": "Your Name",
+        "type": "text",
+        "required": false,
+        "defaultValue": "the sender",
+        "exampleValue": "Marcus",
+        "hint": "Your first name — used in the sign-off"
+      },
+      {
+        "key": "social_proof",
+        "label": "Social Proof (Optional)",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "We helped HubSpot reduce ramp time from 6 months to 10 weeks",
+        "hint": "A specific result or logo name — leave blank if none available"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "prospect_planner",
+        "name": "Prospect Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan B2B cold outreach emails before any copy is written. Your plan identifies: the specific hook for line 1 (something about them, not you), how pain connects to offer in one sentence, whether social proof fits and where, and the low-commitment CTA angle. This plan is used by the writing agents and does not appear in the sent email.",
+        "userPrompt": "Plan a cold outreach email.\n\nProspect: {prospect_name} at {prospect_company}\nPain point: {pain_point}\nOffer: {offer}\nSocial proof: {social_proof}\n\nProvide:\n1. Line 1 hook angle (specific to them)\n2. Pain-to-offer bridge (one sentence)\n3. Social proof placement note (or 'skip')\n4. CTA angle (low commitment)\n\nOne sentence per item."
+      },
+      {
+        "uid": "subject_writer",
+        "name": "Subject Line Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write cold email subject lines that get opened. The best cold subject lines are short (under 6 words), specific to the recipient or their situation, and create just enough curiosity without being clickbait. They never use 'quick question', 'touching base', or a generic benefit statement. Return only the subject line — no 'Subject:' prefix, no quotes.",
+        "userPrompt": "Write a cold email subject line.\n\nProspect: {prospect_name} at {prospect_company}\nPain point: {pain_point}\nOffer: {offer}\nOutreach plan:\n{agents.prospect_planner.output}\n\nSubject line:"
+      },
+      {
+        "uid": "email_writer",
+        "name": "Email Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write B2B cold emails that get replies. Rules: under 120 words, 3 short paragraphs, one CTA. Structure: line 1 is specific to them (not about you), line 2 connects their pain to your offer in one sentence, line 3 is social proof if available, final line is a low-commitment CTA. No fluffy openers. No 'I hope this finds you well.' Sign with the sender's name only.",
+        "userPrompt": "Write a cold outreach email.\n\nSubject: {agents.subject_writer.output}\nProspect: {prospect_name} at {prospect_company}\nPain point: {pain_point}\nOffer: {offer}\nSender: {sender_name}\nSocial proof: {social_proof}\nOutreach plan:\n{agents.prospect_planner.output}\n\nUnder 120 words. Three short paragraphs. One CTA. Sign off with just the sender's first name."
+      }
+    ]
+  },
+  {
+    "id": "follow-up-email",
+    "name": "Follow-Up Email",
+    "description": "A 3-touch follow-up sequence for a cold email that got no response. A sequence planner maps each touch (scratch), then subject and body agents write the final emails.",
+    "category": "cold-emails",
+    "categoryLabel": "Cold Emails",
+    "tags": ["follow-up", "sales", "email", "sequence"],
+    "variables": [
+      {
+        "key": "prospect_name",
+        "label": "Prospect First Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Sarah",
+        "hint": "The recipient's first name"
+      },
+      {
+        "key": "original_email_topic",
+        "label": "Original Email Topic",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "reducing sales ramp time with coaching software",
+        "hint": "What the first email was about — in a few words"
+      },
+      {
+        "key": "new_angle",
+        "label": "New Angle or Value Add",
+        "type": "text",
+        "required": false,
+        "defaultValue": "a case study or relevant insight",
+        "exampleValue": "a 2-minute video walkthrough of our ROI calculator",
+        "hint": "What new thing you can offer in follow-up 2 — resource, case study, insight"
+      },
+      {
+        "key": "sender_name",
+        "label": "Your Name",
+        "type": "text",
+        "required": false,
+        "defaultValue": "the sender",
+        "exampleValue": "Marcus",
+        "hint": "Your first name"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "sequence_planner",
+        "name": "Sequence Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan 3-email cold follow-up sequences before any copy is written. Email 1 (Day 3): reframe angle. Email 2 (Day 7): add genuine value. Email 3 (Day 14): graceful close. For each email note: subject angle, core message, and CTA. This plan is used by the writing agents and does not appear in the sent emails.",
+        "userPrompt": "Plan a 3-email follow-up sequence.\n\nProspect: {prospect_name}\nOriginal topic: {original_email_topic}\nNew angle for email 2: {new_angle}\n\nFor each email (1, 2, 3): subject angle, core message (one sentence), CTA note."
+      },
+      {
+        "uid": "title_writer",
+        "name": "Subject Lines",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write subject lines for a 3-email follow-up sequence. Each subject line must be different — no 'Re:' thread hijacking on email 2 or 3. Email 1: add a new hook. Email 2: add value. Email 3: close the loop gracefully. Each under 6 words. Return all three on separate lines, labeled 'Email 1:', 'Email 2:', 'Email 3:'.",
+        "userPrompt": "Write subject lines for a 3-email follow-up sequence.\n\nProspect: {prospect_name}\nOriginal topic: {original_email_topic}\nSequence plan:\n{agents.sequence_planner.output}\n\nReturn three subject lines labeled Email 1, 2, 3."
+      },
+      {
+        "uid": "sequence_writer",
+        "name": "Sequence Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write 3-email cold follow-up sequences. Each email is distinct and stands alone — no 'just following up', no 'bumping this to the top of your inbox'. Email 1 (Day 3): reframe the original angle, shorter than the original. Email 2 (Day 7): add genuine value — a resource, insight, or case study that is useful regardless of whether they buy. Email 3 (Day 14): graceful close — give them an easy out while leaving the door open. All three under 80 words each. Format clearly labeled.",
+        "userPrompt": "Write a 3-email follow-up sequence.\n\nSubject lines:\n{agents.title_writer.output}\n\nProspect: {prospect_name}\nOriginal topic: {original_email_topic}\nNew angle for email 2: {new_angle}\nSender: {sender_name}\nSequence plan:\n{agents.sequence_planner.output}\n\nWrite Email 1, Email 2, and Email 3 clearly labeled with the subject line and body for each."
+      }
+    ]
+  },
+  {
+    "id": "linkedin-outreach",
+    "name": "LinkedIn Connection Message",
+    "description": "A LinkedIn connection request message and initial DM. A planner maps the approach (scratch), then body agents write both messages.",
+    "category": "cold-emails",
+    "categoryLabel": "Cold Emails",
+    "tags": ["linkedin", "outreach", "social", "networking"],
+    "variables": [
+      {
+        "key": "prospect_name",
+        "label": "Prospect First Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Jordan",
+        "hint": "Their first name"
+      },
+      {
+        "key": "connection_reason",
+        "label": "Reason for Connecting",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Saw your post about scaling B2B sales teams — we work in the same space",
+        "hint": "Specific, genuine reason — reference a post, shared interest, or mutual context"
+      },
+      {
+        "key": "your_context",
+        "label": "Who You Are (Brief)",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "I run a sales enablement startup serving mid-market SaaS companies",
+        "hint": "One line about you — optional but helps legitimacy"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "outreach_planner",
+        "name": "Outreach Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan LinkedIn outreach before any messages are written. Your plan covers: connection note angle (specific, under 300 chars), DM angle after acceptance (value or low-stakes ask), and what to avoid (pitching, generic openers). This plan is used by the writing agents and does not appear in the sent messages.",
+        "userPrompt": "Plan LinkedIn outreach.\n\nProspect: {prospect_name}\nReason: {connection_reason}\nYour context: {your_context}\n\nProvide:\n1. Connection note angle (one sentence)\n2. DM angle after acceptance (one sentence)\n3. What to avoid (one sentence)"
+      },
+      {
+        "uid": "connection_writer",
+        "name": "Connection Request Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write LinkedIn connection request notes. LinkedIn connection requests are under 300 characters. The best ones are specific (reference something real), not salesy, and feel like one person talking to another. No 'I'd love to add you to my network.' Return only the connection request note.",
+        "userPrompt": "Write a LinkedIn connection request note.\n\nProspect: {prospect_name}\nReason: {connection_reason}\nYour context: {your_context}\nOutreach plan:\n{agents.outreach_planner.output}\n\nUnder 300 characters. Specific. No pitch. No 'I came across your profile'. Note:"
+      },
+      {
+        "uid": "dm_writer",
+        "name": "Initial DM Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write LinkedIn DMs sent after a connection is accepted. The best LinkedIn DMs are: short (under 80 words), reference the specific reason you connected, share something of value or make a low-stakes ask, and end with one clear question. They are never a pitch deck in text form. No 'I noticed we're both in the same industry.' Sign off with only your first name.",
+        "userPrompt": "Write an initial LinkedIn DM to send after connection is accepted.\n\nConnection note used: {agents.connection_writer.output}\nProspect: {prospect_name}\nYour context: {your_context}\nOutreach plan:\n{agents.outreach_planner.output}\n\nUnder 80 words. One specific observation. One question or low-commitment CTA. No pitch."
+      }
+    ]
+  }
+]

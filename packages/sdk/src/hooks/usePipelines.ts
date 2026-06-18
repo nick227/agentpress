@@ -61,7 +61,9 @@ export function useUpdatePipeline() {
       name?: string
       description?: string
       status?: 'draft' | 'active' | 'paused' | 'archived'
-      destinationId?: string
+      destinationId?: string | null
+      researchSourceId?: string | null
+      researchSummaryPromptId?: string | null
       dryRun?: boolean
       scheduleMode?: 'manual' | 'recurring'
       frequency?: 'daily' | 'weekly' | 'monthly'

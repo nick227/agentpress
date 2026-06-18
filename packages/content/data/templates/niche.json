@@ -1,0 +1,245 @@
+[
+  {
+    "id": "financial-commentary",
+    "name": "Financial Market Commentary",
+    "description": "A research-fed market commentary post. An analyst synthesizes research (scratch), then a commentary writer produces the published post with title, excerpt, and thumbnail.",
+    "category": "niche",
+    "categoryLabel": "Niche Verticals",
+    "tags": ["finance", "markets", "investing", "commentary", "research-fed"],
+    "variables": [
+      {
+        "key": "research",
+        "label": "Research Input",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "",
+        "hint": "Auto-populated from connected research source — financial news, Reddit, or YouTube transcripts"
+      },
+      {
+        "key": "market_focus",
+        "label": "Market Focus",
+        "type": "text",
+        "required": false,
+        "defaultValue": "US equities",
+        "exampleValue": "tech sector and AI stocks",
+        "hint": "Which market, sector, or asset class this commentary focuses on"
+      },
+      {
+        "key": "time_horizon",
+        "label": "Outlook Horizon",
+        "type": "text",
+        "required": false,
+        "defaultValue": "near-term",
+        "exampleValue": "this week's price action",
+        "hint": "Intraday, near-term (days-weeks), or longer-term (months)"
+      },
+      {
+        "key": "tone",
+        "label": "Commentary Tone",
+        "type": "text",
+        "required": false,
+        "defaultValue": "analytical and objective",
+        "exampleValue": "cautiously bullish with clear risk disclosure",
+        "hint": "How the commentary should feel — analytical, bullish, bearish, neutral"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "analyst",
+        "name": "Research Analyst",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You synthesize financial research into a structured brief for a commentary writer. Extract: key facts from source material, 3–5 specific observations with tickers/levels/catalysts, the central market take, and what to watch. Distinguish facts, analysis, and opinion. Never fabricate data. This brief is used by the commentary writer and does not appear in the published post.",
+        "userPrompt": "Synthesize this research into a market commentary brief.\n\nResearch / Source Material:\n{research}\n\nMarket focus: {market_focus}\nOutlook horizon: {time_horizon}\nTone: {tone}\n\nProvide:\n1. Central market take (one sentence)\n2. Key facts (bullet list from source)\n3. 3–5 observations with specific tickers/levels/catalysts\n4. What to watch\n5. Risk disclosure note"
+      },
+      {
+        "uid": "commentary_writer",
+        "name": "Commentary Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You are a financial market analyst writing commentary for a finance blog. You turn research briefs into clear, evidence-based prose. You distinguish between facts (what happened), analysis (why it matters), and opinion (what to watch). You cite specific tickers, levels, and catalysts from the brief. You never fabricate data. You include a risk disclosure at the end.",
+        "userPrompt": "Write a market commentary based on this research brief.\n\nResearch brief:\n{agents.analyst.output}\n\nMarket focus: {market_focus}\nOutlook horizon: {time_horizon}\nTone: {tone}\n\nStructure: opening take (1 paragraph), key observations (3–5 specific points), what to watch, brief risk disclosure. 400–600 words."
+      },
+      {
+        "uid": "title_writer",
+        "name": "Title Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write financial blog post titles. Finance titles that perform include a specific market signal, ticker, or event — not vague. Under 70 characters. Return only the title — no quotes.",
+        "userPrompt": "Write a title for this market commentary post.\n\nCommentary:\n{agents.commentary_writer.output}\n\nTitle:"
+      },
+      {
+        "uid": "excerpt_writer",
+        "name": "Excerpt Writer",
+        "outputTarget": "excerpt",
+        "outputFormat": "text",
+        "sortOrder": 3,
+        "systemPrompt": "You write meta excerpts for financial blog posts. 150–160 characters. State the specific market take — not vague. Include a ticker or event if present. Return only the excerpt.",
+        "userPrompt": "Write a meta excerpt for this financial commentary post.\n\nTitle: {agents.title_writer.output}\nCommentary: {agents.commentary_writer.output}\n\nExcerpt:"
+      },
+      {
+        "uid": "thumbnail_prompter",
+        "name": "Thumbnail Prompt",
+        "outputTarget": "thumbnail_prompt",
+        "outputFormat": "text",
+        "sortOrder": 4,
+        "systemPrompt": "You write DALL-E image prompts for financial blog thumbnails. Finance thumbnails that perform: stock charts, bold color (red/green), clean composition, no text. Return only the image prompt.",
+        "userPrompt": "Write a DALL-E image prompt for a financial blog thumbnail.\n\nPost title: {agents.title_writer.output}\nMarket focus: {market_focus}\n\nRequirements: professional financial editorial style, bold composition, no text or numbers, no copyright symbols or logos. Suggest either: a dramatic stock chart visualization, an abstract financial concept, or a photorealistic editorial scene."
+      }
+    ]
+  },
+  {
+    "id": "health-wellness-article",
+    "name": "Health & Wellness Article",
+    "description": "A research-backed health and wellness article. A planner maps structure (scratch), then title, excerpt, and article agents write the published piece.",
+    "category": "niche",
+    "categoryLabel": "Niche Verticals",
+    "tags": ["health", "wellness", "medical", "lifestyle", "science"],
+    "variables": [
+      {
+        "key": "topic",
+        "label": "Health Topic",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "The effect of cold exposure on metabolic rate",
+        "hint": "The specific health or wellness subject — be precise"
+      },
+      {
+        "key": "target_reader",
+        "label": "Target Reader",
+        "type": "text",
+        "required": false,
+        "defaultValue": "health-conscious general readers",
+        "exampleValue": "adults over 40 interested in longevity",
+        "hint": "Who this article is written for — shapes vocabulary and assumed knowledge"
+      },
+      {
+        "key": "evidence_stance",
+        "label": "Evidence Stance",
+        "type": "text",
+        "required": false,
+        "defaultValue": "present current evidence fairly",
+        "exampleValue": "cautiously optimistic — evidence is promising but not conclusive",
+        "hint": "How to handle the science: established consensus, emerging research, or contested area"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "planner",
+        "name": "Article Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan health and wellness articles before any prose is written. Your plan identifies: the central question, evidence summary (established vs emerging vs contested), 3–4 section angles, practical implications beat, and caution/warning note. This plan is used by the writing agents and does not appear in the published article.",
+        "userPrompt": "Plan a health article.\n\nTopic: {topic}\nTarget reader: {target_reader}\nEvidence stance: {evidence_stance}\n\nProvide:\n1. Central question (one sentence)\n2. Evidence summary (established / emerging / contested — 2–3 bullets)\n3. Section angles (3–4, one sentence each)\n4. Practical implications beat\n5. Caution note for readers"
+      },
+      {
+        "uid": "title_writer",
+        "name": "Title Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write health article titles that are clear, accurate, and avoid sensationalism. The best health titles promise a specific insight without overstating the evidence. Under 70 characters. Return only the title.",
+        "userPrompt": "Write a title for this health article.\n\nTopic: {topic}\nReader: {target_reader}\nEvidence stance: {evidence_stance}\nArticle plan:\n{agents.planner.output}\n\nTitle:"
+      },
+      {
+        "uid": "excerpt_writer",
+        "name": "Excerpt Writer",
+        "outputTarget": "excerpt",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write meta excerpts for health articles. 150–160 characters. State the key finding or promise clearly. Do not overstate. Return only the excerpt.",
+        "userPrompt": "Write a meta excerpt for this health article.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nArticle plan:\n{agents.planner.output}\n\nExcerpt:"
+      },
+      {
+        "uid": "article_writer",
+        "name": "Article Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 3,
+        "systemPrompt": "You write health and wellness articles that are accurate, balanced, and accessible. You distinguish between established science, emerging research, and anecdote. You note when evidence is limited or contested. You do not make health claims you cannot support. You write for general readers — no jargon without explanation. Format in Markdown: use ## for sections, avoid bullet overload. Include a note about consulting a healthcare professional where appropriate.",
+        "userPrompt": "Write a health article.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nTarget reader: {target_reader}\nEvidence stance: {evidence_stance}\nArticle plan (follow section angles):\n{agents.planner.output}\n\nStructure: engaging opening, what the research shows, practical implications, what to watch out for, bottom line. 700–1000 words."
+      }
+    ]
+  },
+  {
+    "id": "legal-faq",
+    "name": "Legal FAQ Article",
+    "description": "A plain-language FAQ article on a legal topic. A planner maps questions and structure (scratch), then title, excerpt, and FAQ agents write the published piece.",
+    "category": "niche",
+    "categoryLabel": "Niche Verticals",
+    "tags": ["legal", "law", "faq", "plain-language", "compliance"],
+    "variables": [
+      {
+        "key": "legal_topic",
+        "label": "Legal Topic",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "tenant rights when a landlord refuses to return a security deposit",
+        "hint": "The specific legal question or situation being addressed"
+      },
+      {
+        "key": "jurisdiction",
+        "label": "Jurisdiction",
+        "type": "text",
+        "required": false,
+        "defaultValue": "United States (general)",
+        "exampleValue": "California",
+        "hint": "Country, state, or note 'general' if covering principles not specifics"
+      },
+      {
+        "key": "reader_knowledge",
+        "label": "Reader Knowledge Level",
+        "type": "text",
+        "required": false,
+        "defaultValue": "no legal background",
+        "exampleValue": "small business owner unfamiliar with employment law",
+        "hint": "Assumed knowledge of the reader — keeps the FAQ appropriately simple"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "planner",
+        "name": "FAQ Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan legal FAQ articles before any prose is written. Your plan lists 6–10 questions readers would actually search for, notes jurisdiction-specific caveats, and flags where laws vary. This plan is used by the FAQ writer and does not appear in the published article.",
+        "userPrompt": "Plan a legal FAQ article.\n\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\nReader: {reader_knowledge}\n\nProvide:\n1. Overview angle (one sentence)\n2. 6–10 FAQ questions (as readers would search them)\n3. Jurisdiction caveats (2–3 notes)\n4. Disclaimer emphasis note"
+      },
+      {
+        "uid": "title_writer",
+        "name": "Title Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write FAQ article titles for legal topics. Effective legal FAQ titles often mirror the actual search query a person would type when they have a problem. Under 70 characters. Return only the title.",
+        "userPrompt": "Write a title for this legal FAQ article.\n\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\nFAQ plan:\n{agents.planner.output}\n\nTitle:"
+      },
+      {
+        "uid": "excerpt_writer",
+        "name": "Excerpt Writer",
+        "outputTarget": "excerpt",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write meta excerpts for legal FAQ articles. 150–160 characters. State who the article helps and what it covers. Must not be a legal claim. Return only the excerpt.",
+        "userPrompt": "Write a meta excerpt for this legal FAQ.\n\nTitle: {agents.title_writer.output}\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\n\nExcerpt:"
+      },
+      {
+        "uid": "faq_writer",
+        "name": "FAQ Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 3,
+        "systemPrompt": "You write plain-language legal FAQ articles for general readers. You explain legal concepts clearly without oversimplifying. You note jurisdiction-specific rules where relevant and flag where laws vary. You do not give specific legal advice — you explain how the law generally works. Open with a one-paragraph overview. Then write 6–10 FAQ questions and answers using ## for each Q. End with a standard disclaimer in a blockquote: 'This article is for informational purposes only and is not legal advice. Consult a licensed attorney in your jurisdiction for advice specific to your situation.'",
+        "userPrompt": "Write a legal FAQ article.\n\nTitle: {agents.title_writer.output}\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\nReader: {reader_knowledge}\nFAQ plan (follow questions from this):\n{agents.planner.output}\n\nWrite 6–10 common questions and clear, accurate answers. Use plain language. Include the disclaimer at the end."
+      }
+    ]
+  }
+]

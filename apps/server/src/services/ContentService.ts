@@ -18,6 +18,7 @@ export class ContentService {
 
     const pipeline = await pipelines.create(accountId, {
       name: name ?? template.name,
+      category: template.category,
     })
 
     const pipelineId = pipeline.id

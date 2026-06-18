@@ -1,0 +1,152 @@
+[
+  {
+    "id": "comedy-sketch",
+    "name": "Comedy Sketch",
+    "description": "A two-character comedic scene. A game planner maps the sketch structure (scratch), then title and script agents write the final piece.",
+    "category": "sketches",
+    "categoryLabel": "Sketches",
+    "tags": ["comedy", "sketch", "dialogue", "two-person", "script"],
+    "variables": [
+      {
+        "key": "premise",
+        "label": "Sketch Premise",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "A job interview where the interviewer doesn't understand what the job is",
+        "hint": "The core absurd or comedic situation — one sentence"
+      },
+      {
+        "key": "character_a",
+        "label": "Character A",
+        "type": "text",
+        "required": false,
+        "defaultValue": "Character A",
+        "exampleValue": "SARAH, the overly enthusiastic interviewer",
+        "hint": "Name and brief description of the first character"
+      },
+      {
+        "key": "character_b",
+        "label": "Character B",
+        "type": "text",
+        "required": false,
+        "defaultValue": "Character B",
+        "exampleValue": "JAMES, a confused applicant for a job he didn't apply for",
+        "hint": "Name and brief description of the second character"
+      },
+      {
+        "key": "style",
+        "label": "Comedy Style",
+        "type": "text",
+        "required": false,
+        "defaultValue": "absurdist",
+        "exampleValue": "dry office comedy in the style of The Office",
+        "hint": "Style or reference (e.g. SNL, absurdist, cringe comedy, satire)"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "game_planner",
+        "name": "Game Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan two-person comedy sketches before dialogue is written. Every great sketch has a game — an absurd rule established and escalated three times. Your plan identifies: the game (one sentence), normal world beat, weird thing introduction, three escalation beats, and button ending. This plan is used by the sketch writer and does not appear in the final script.",
+        "userPrompt": "Plan a comedy sketch.\n\nPremise: {premise}\nCharacters: {character_a} and {character_b}\nStyle: {style}\n\nProvide:\n1. The game (absurd rule — one sentence)\n2. Normal world beat\n3. Weird thing introduction\n4. Three escalation beats (one sentence each)\n5. Button ending beat"
+      },
+      {
+        "uid": "title_writer",
+        "name": "Title Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You title comedy sketches. Sketch titles are short, often state the premise plainly (the comedy isn't in the title), or use a deliberate ironic mismatch. Under 7 words. Return only the title — no quotes.",
+        "userPrompt": "Title this sketch.\n\nPremise: {premise}\nCharacters: {character_a} and {character_b}\nStyle: {style}\nGame plan:\n{agents.game_planner.output}\n\nTitle:"
+      },
+      {
+        "uid": "sketch_writer",
+        "name": "Sketch Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write two-person comedy sketches. Every great sketch has a game — an absurd rule that is established and then escalated three times. Your format: establish the normal world, introduce the weird thing, play the game (yes-and escalation), then button hard and get off. Stage directions are minimal and practical. Dialogue is sharp — no line longer than 3 sentences. Characters have distinct voices. Format using standard screenplay style: CHARACTER NAME (in caps) followed by their line.",
+        "userPrompt": "Write a 2–4 minute two-person comedy sketch.\n\nTitle: {agents.title_writer.output}\nPremise: {premise}\n{character_a}\n{character_b}\nStyle: {style}\nGame plan (follow exactly):\n{agents.game_planner.output}\n\nIdentify the game in a parenthetical at the top before the script begins. Then write the full sketch. Button hard. Get off the stage."
+      }
+    ]
+  },
+  {
+    "id": "satirical-article",
+    "name": "Satirical Article",
+    "description": "A satirical piece in the style of The Onion or McSweeney's. An angle planner maps the bit (scratch), then lede and body agents write the published article.",
+    "category": "sketches",
+    "categoryLabel": "Sketches",
+    "tags": ["satire", "parody", "comedy", "opinion", "onion-style"],
+    "variables": [
+      {
+        "key": "target",
+        "label": "Target (What's Being Satirized)",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "corporate wellness programs",
+        "hint": "The trend, institution, behavior, or cultural moment being satirized"
+      },
+      {
+        "key": "angle",
+        "label": "Satirical Angle",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Presented as a sincere corporate press release celebrating 'mandatory fun'",
+        "hint": "The specific comedic frame — what absurd position is the article taking sincerely?"
+      },
+      {
+        "key": "format",
+        "label": "Article Format",
+        "type": "text",
+        "required": false,
+        "defaultValue": "news article",
+        "exampleValue": "op-ed written by a corporation",
+        "hint": "Form the piece takes: news article, press release, op-ed, advice column, listicle, etc."
+      }
+    ],
+    "agents": [
+      {
+        "uid": "angle_planner",
+        "name": "Angle Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan satirical articles before any prose is written. Your plan identifies: the absurd premise stated earnestly, the lede angle, 3–4 escalating absurd details to include, and fake expert quote angles. This plan is used by the writing agents and does not appear in the published article.",
+        "userPrompt": "Plan a satirical {format}.\n\nTarget: {target}\nAngle: {angle}\n\nProvide:\n1. Absurd premise (stated earnestly — one sentence)\n2. Lede angle (one sentence)\n3. Three escalating absurd details (one sentence each)\n4. Fake expert quote angles (2 brief notes)"
+      },
+      {
+        "uid": "title_writer",
+        "name": "Headline Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write satirical article headlines in the style of The Onion. The best satirical headlines state the absurd thing completely earnestly — there is no winking. The comedy comes from taking the target's logic to its obvious conclusion. Under 12 words. Return only the headline.",
+        "userPrompt": "Write a satirical headline.\n\nTarget: {target}\nAngle: {angle}\nFormat: {format}\nAngle plan:\n{agents.angle_planner.output}\n\nHeadline:"
+      },
+      {
+        "uid": "lede_writer",
+        "name": "Lede Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write the lede paragraph for satirical articles — the 2–3 sentence opening that establishes the bit and commits fully to the premise. No winking. No signals that this is satire. Deadpan delivery is everything. Return only the lede.",
+        "userPrompt": "Write the lede paragraph for this satirical {format}.\n\nHeadline: {agents.title_writer.output}\nTarget: {target}\nAngle: {angle}\nAngle plan (use lede angle from this):\n{agents.angle_planner.output}\n\nLede:"
+      },
+      {
+        "uid": "body_writer",
+        "name": "Satirist",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 3,
+        "systemPrompt": "You write satirical articles in the style of The Onion and McSweeney's. You commit fully to the bit — no meta-commentary, no winking at the audience, no breaking the fourth wall. The comedy lives in the gap between the earnest tone and the absurd content. Include fake quotes from fake experts, statistics that are technically plausible but absurd, and at least one escalating detail in the final paragraph. Maintain the voice of the format throughout.",
+        "userPrompt": "Write the body of this satirical {format} (continuing after the lede).\n\nHeadline: {agents.title_writer.output}\nTarget: {target}\nAngle: {angle}\nAngle plan (include escalating details and fake quotes from this):\n{agents.angle_planner.output}\n\nLede already written:\n{agents.lede_writer.output}\n\nContinue in the same deadpan voice. 400–600 words total including lede. End with a detail that escalates the absurdity."
+      }
+    ]
+  }
+]

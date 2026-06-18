@@ -1,0 +1,197 @@
+[
+  {
+    "id": "tv-commercial-script",
+    "name": "30-Second TV/Radio Spot",
+    "description": "A produced 30-second commercial script. A concept planner maps the creative brief (scratch), then script, spot title, and key frame agents produce the final output.",
+    "category": "commercials",
+    "categoryLabel": "Commercials",
+    "tags": ["tv", "radio", "ad", "commercial", "30-second", "script"],
+    "variables": [
+      {
+        "key": "product_name",
+        "label": "Product or Brand Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Notion",
+        "hint": "The product, service, or brand being advertised"
+      },
+      {
+        "key": "key_benefit",
+        "label": "Single Key Benefit",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Notion replaces five apps with one",
+        "hint": "The ONE benefit this ad communicates — 30 seconds can only say one thing well"
+      },
+      {
+        "key": "target_audience",
+        "label": "Target Audience",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "remote workers aged 25–40 who feel overwhelmed by tools",
+        "hint": "Who the ad speaks to — demographics and mindset"
+      },
+      {
+        "key": "tone",
+        "label": "Ad Tone",
+        "type": "text",
+        "required": false,
+        "defaultValue": "confident and clear",
+        "exampleValue": "warm and slightly humorous",
+        "hint": "The emotional register: humorous, emotional, inspirational, direct, cinematic, etc."
+      },
+      {
+        "key": "call_to_action",
+        "label": "Call to Action",
+        "type": "text",
+        "required": false,
+        "defaultValue": "Try it free",
+        "exampleValue": "Visit notion.so today",
+        "hint": "The closing CTA — what the viewer should do next"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "concept_writer",
+        "name": "Concept Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan TV commercial concepts before scripts are written. A good concept states: the insight (human truth the ad taps into), the idea (how it brings that truth to life), scene beats for a 30-second spot, and the payoff (how it connects to the brand). This plan is used by the script writer and does not appear in the final script as separate copy.",
+        "userPrompt": "Plan a 30-second TV commercial.\n\nBrand: {product_name}\nKey benefit: {key_benefit}\nAudience: {target_audience}\nTone: {tone}\n\nProvide:\n1. Insight (human truth — one sentence)\n2. Creative idea (one sentence)\n3. Scene beats (0:00–0:30 in 5-second increments)\n4. Payoff / CTA connection (one sentence)"
+      },
+      {
+        "uid": "script_writer",
+        "name": "Commercial Script",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write produced TV/radio commercial scripts. Format for a 30-second spot: scene headings in caps (EXT. / INT.), action lines in standard prose, VO (voiceover) in parentheses with the script on the same line, SUPER: for text on screen, MUSIC: for audio cues. Timing notes in brackets: [0:00–0:05]. Dialogue is punchy — 30 seconds is about 70–80 words of spoken content. Every second counts.",
+        "userPrompt": "Write a produced 30-second commercial script.\n\nBrand: {product_name}\nKey benefit: {key_benefit}\nAudience: {target_audience}\nTone: {tone}\nCTA: {call_to_action}\nConcept plan:\n{agents.concept_writer.output}\n\nFormat with timing, scene directions, VO, and SUPER. Every second of the 30 must be accounted for."
+      },
+      {
+        "uid": "title_writer",
+        "name": "Spot Title",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You name TV commercial spots. Ad agencies give spots short internal names that capture the central idea ('The Leap', 'First Day', 'Just Ask'). Under 4 words. Return only the spot name — no quotes.",
+        "userPrompt": "Name this TV spot.\n\nBrand: {product_name}\nConcept plan:\n{agents.concept_writer.output}\n\nSpot name:"
+      },
+      {
+        "uid": "thumbnail_prompter",
+        "name": "Key Frame Image",
+        "outputTarget": "thumbnail_prompt",
+        "outputFormat": "text",
+        "sortOrder": 3,
+        "systemPrompt": "You write DALL-E image prompts for TV commercial key frames — the single image that captures the emotional peak of the spot. Return only the image prompt.",
+        "userPrompt": "Write a DALL-E image prompt for the key visual frame of this commercial.\n\nSpot: {agents.title_writer.output}\nBrand: {product_name}\nTone: {tone}\nConcept plan:\n{agents.concept_writer.output}\n\nA single cinematic frame that captures the emotional peak. No text. Film quality. Professional advertising photography or direction."
+      }
+    ]
+  },
+  {
+    "id": "social-media-ad",
+    "name": "Social Media Ad Script",
+    "description": "A 15–30 second paid social ad script. A hook planner maps the scroll-stopper (scratch), then script, headline, and thumbnail agents produce the final output.",
+    "category": "commercials",
+    "categoryLabel": "Commercials",
+    "tags": ["paid-social", "facebook", "instagram", "ad", "ugc", "short"],
+    "variables": [
+      {
+        "key": "product_name",
+        "label": "Product or Brand",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Calm app",
+        "hint": "The product or service being advertised"
+      },
+      {
+        "key": "pain_point",
+        "label": "Audience Pain Point",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Can't sleep, mind racing at night",
+        "hint": "The specific problem your audience has — the hook will address this"
+      },
+      {
+        "key": "unique_offer",
+        "label": "Unique Offer or Differentiator",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Sleep stories narrated by celebrities, new content weekly",
+        "hint": "What makes this product different from alternatives"
+      },
+      {
+        "key": "platform",
+        "label": "Platform",
+        "type": "text",
+        "required": false,
+        "defaultValue": "Instagram / Facebook",
+        "exampleValue": "TikTok",
+        "hint": "Platform affects tone — TikTok is rawer, Meta prefers polish"
+      },
+      {
+        "key": "call_to_action",
+        "label": "Call to Action",
+        "type": "text",
+        "required": false,
+        "defaultValue": "Try free for 7 days",
+        "exampleValue": "Download now — link in bio",
+        "hint": "The closing CTA"
+      },
+      {
+        "key": "ad_length",
+        "label": "Ad Length (seconds)",
+        "type": "text",
+        "required": false,
+        "defaultValue": "30",
+        "exampleValue": "15",
+        "hint": "15 or 30 seconds"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "hook_writer",
+        "name": "Hook Planner",
+        "outputTarget": "scratch",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You plan paid social ad hooks before scripts are written. The best hooks: state the pain bluntly, make a surprising claim, or open a loop. They never start with the brand name. Your plan includes: hook line (1–2 spoken sentences), problem beat, solution beat, proof beat, and CTA beat with timing. This plan is used by the script writer and does not appear as separate published copy.",
+        "userPrompt": "Plan a {ad_length}-second paid social ad.\n\nProduct: {product_name}\nPain point: {pain_point}\nDifferentiator: {unique_offer}\nPlatform: {platform}\n\nProvide:\n1. Hook line (first 3 seconds — 1–2 sentences)\n2. Problem beat (timing + angle)\n3. Solution beat (timing + angle)\n4. Proof beat (timing + angle)\n5. CTA beat (timing + angle)"
+      },
+      {
+        "uid": "ad_writer",
+        "name": "Ad Script Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write paid social ad scripts (15–30 seconds). Format: [HOOK 0:00–0:03], [PROBLEM 0:03–0:10], [SOLUTION 0:10–0:20], [PROOF 0:20–0:25], [CTA 0:25–0:30]. Adjust timing for 15 seconds by compressing. Write every spoken word. Include [ON SCREEN TEXT:] for key callouts. Conversational, direct, fast-paced. No corporate speak.",
+        "userPrompt": "Write a complete {ad_length}-second paid social ad script.\n\nHook plan:\n{agents.hook_writer.output}\n\nProduct: {product_name}\nPain point: {pain_point}\nDifferentiator: {unique_offer}\nPlatform: {platform}\nCTA: {call_to_action}\n\nEvery second accounted for with timing markers. Write every spoken word."
+      },
+      {
+        "uid": "title_writer",
+        "name": "Ad Headline",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write paid social ad headlines — the text above or below the video on Facebook/Instagram. Under 40 characters, benefit-forward, no emoji. Return only the headline.",
+        "userPrompt": "Write the ad headline (text shown with the video on {platform}).\n\nProduct: {product_name}\nKey benefit addressed: {pain_point}\nHook plan:\n{agents.hook_writer.output}\n\nUnder 40 characters. Benefit-forward. Headline:"
+      },
+      {
+        "uid": "thumbnail_prompter",
+        "name": "Thumbnail / Static Creative",
+        "outputTarget": "thumbnail_prompt",
+        "outputFormat": "text",
+        "sortOrder": 3,
+        "systemPrompt": "You write DALL-E image prompts for paid social ad thumbnails or static creative. High-performing social ad creatives: show a relatable human in a moment of pain or transformation, bold composition, no text required. Return only the image prompt.",
+        "userPrompt": "Write a DALL-E image prompt for the thumbnail or static creative for this social ad.\n\nProduct: {product_name}\nPain point: {pain_point}\nPlatform: {platform}\n\nShow a real human moment — either the pain or the transformation. Bold. Relatable. No text. No logos. Photorealistic."
+      }
+    ]
+  }
+]
