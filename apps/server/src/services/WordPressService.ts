@@ -1,4 +1,3 @@
-import { readFileSync } from 'fs'
 import { mimeTypeForAsset } from './OutputAssetService'
 
 export type WordPressCredentials = {
@@ -24,7 +23,7 @@ export type WordPressCategory = {
 }
 
 export type InlineImageUploadInput = {
-  localPath: string
+  buffer: Buffer
   relativePath: string
   filename: string
   alt: string
@@ -177,20 +176,23 @@ export class WordPressService {
     images: InlineImageUploadInput[],
   ): Promise<UploadInlineImagesResult> {
     const uploads = await Promise.all(images.map(async (image) => {
-      if (!image.localPath || !image.relativePath) {
+      if (!image.buffer?.length || !image.relativePath) {
         return { image, error: image.relativePath || 'unknown image' }
       }
 
       try {
         const result = await this.uploadMedia(
           credentials,
-          readFileSync(image.localPath),
+          image.buffer,
           image.filename,
           { alt: image.alt, caption: image.caption, title: image.alt },
         )
         return { image, result }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        let message = err instanceof Error ? err.message : String(err)
+        if (message.includes('fetch failed')) {
+          message = `${message}. Check that WordPress is reachable from the server.`
+        }
         return { image, error: `${image.relativePath}: ${message}` }
       }
     }))

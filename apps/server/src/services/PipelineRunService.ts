@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs'
-import { basename } from 'path'
+import { basename, join } from 'path'
+import { LibraryAgentService } from './LibraryAgentService'
 import { db, Prisma } from '@project/db'
 import { OpenAIService } from './OpenAIService'
 import { getImageProvider, getImageModelLabel } from './imageProviders'
@@ -12,7 +13,7 @@ import {
   type InlineImageUploadResult,
   type WordPressCredentials,
 } from './WordPressService'
-import { LibraryAgentService } from './LibraryAgentService'
+import { resolveExistingPath } from './runImagePaths'
 import { ResearchContextService } from './ResearchContextService'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
 
@@ -124,16 +125,47 @@ function wordpressCredentials(destination: {
   }
 }
 
-function toInlineUploadInputs(images: InlineImageMeta[]): InlineImageUploadInput[] {
-  return images
-    .filter((image) => image.path && image.relativePath)
-    .map((image) => ({
-      localPath: image.path as string,
-      relativePath: image.relativePath as string,
-      filename: basename(image.relativePath as string),
+interface PublishRunContext {
+  outputFolder?: string | null
+  assets: Array<{ filename: string; path: string }>
+}
+
+async function resolveInlineUploadInputs(
+  run: PublishRunContext,
+  images: InlineImageMeta[],
+): Promise<InlineImageUploadInput[]> {
+  const inputs: InlineImageUploadInput[] = []
+  for (const image of images) {
+    if (!image.relativePath) continue
+    const buffer = await assets.readImageBytes({
+      path: image.path,
+      relativePath: image.relativePath,
+      url: image.url,
+      outputFolder: run.outputFolder ?? undefined,
+      runAssets: run.assets,
+    })
+    if (!buffer) {
+      throw Object.assign(
+        new Error(`Inline image file not found: ${image.relativePath}`),
+        { statusCode: 500 },
+      )
+    }
+    inputs.push({
+      buffer,
+      relativePath: image.relativePath,
+      filename: basename(image.relativePath),
       alt: image.alt,
       caption: image.caption,
-    }))
+    })
+  }
+  return inputs
+}
+
+function resolveThumbnailLocalPath(post: GeneratedPost, outputFolder?: string | null): string | undefined {
+  return resolveExistingPath(
+    post.thumbnailLocalPath,
+    outputFolder ? join(outputFolder, 'thumbnail.png') : undefined,
+  )
 }
 
 export class PipelineRunService {
@@ -372,7 +404,7 @@ export class PipelineRunService {
       }
     }
 
-    const { thumbnailLocalPath } = await assets.saveRunAssets(
+    const { folder, thumbnailLocalPath } = await assets.saveRunAssets(
       runId,
       pipeline.account.slug,
       pipeline.slug,
@@ -383,6 +415,11 @@ export class PipelineRunService {
     if (thumbnailLocalPath) {
       generatedPost.thumbnailLocalPath = thumbnailLocalPath
     }
+
+    const runImageAssets = await db.runAsset.findMany({
+      where: { pipelineRunId: runId, type: 'image' },
+      select: { filename: true, path: true },
+    })
 
     let finalStatus = 'completed'
 
@@ -398,7 +435,12 @@ export class PipelineRunService {
         })
 
         try {
-          const result = await this.publishToWordPress(generatedPost, pipeline, destination)
+          const result = await this.publishToWordPress(
+            generatedPost,
+            { outputFolder: folder, assets: runImageAssets },
+            pipeline,
+            destination,
+          )
           generatedPost.publishedUrl = result.postUrl
           generatedPost.wordpressMedia = result.inlineUploads
           finalStatus = 'posted'
@@ -560,6 +602,7 @@ export class PipelineRunService {
 
   private async publishToWordPress(
     generatedPost: GeneratedPost,
+    run: PublishRunContext,
     pipeline: { wpCategoryIds?: unknown },
     destination: {
       siteUrl: string
@@ -570,7 +613,7 @@ export class PipelineRunService {
     },
   ): Promise<PublishToWordPressResult> {
     const credentials = wordpressCredentials(destination)
-    const inlineInputs = toInlineUploadInputs(generatedPost.inlineImages ?? [])
+    const inlineInputs = await resolveInlineUploadInputs(run, generatedPost.inlineImages ?? [])
     const { body, uploaded, failed } = await wp.uploadInlineImages(
       credentials,
       generatedPost.body,
@@ -581,9 +624,8 @@ export class PipelineRunService {
       throw new Error(`Failed to upload inline image(s): ${failed.join('; ')}`)
     }
 
-    const thumbnailBuffer = generatedPost.thumbnailLocalPath
-      ? readFileSync(generatedPost.thumbnailLocalPath)
-      : undefined
+    const thumbnailPath = resolveThumbnailLocalPath(generatedPost, run.outputFolder)
+    const thumbnailBuffer = thumbnailPath ? readFileSync(thumbnailPath) : undefined
 
     const result = await wp.publish(
       credentials,
@@ -603,7 +645,10 @@ export class PipelineRunService {
   async publishRun(runId: string) {
     const run = await db.pipelineRun.findUnique({
       where: { id: runId },
-      include: { pipeline: true },
+      include: {
+        pipeline: true,
+        assets: { where: { type: 'image' }, select: { filename: true, path: true } },
+      },
     })
     if (!run) throw Object.assign(new Error('Run not found'), { statusCode: 404 })
     if (!run.generatedPost) throw Object.assign(new Error('Run has no generated content'), { statusCode: 400 })
@@ -620,7 +665,12 @@ export class PipelineRunService {
 
     try {
       const post = run.generatedPost as unknown as GeneratedPost
-      const result = await this.publishToWordPress(post, run.pipeline, destination)
+      const result = await this.publishToWordPress(
+        post,
+        { outputFolder: run.outputFolder, assets: run.assets },
+        run.pipeline,
+        destination,
+      )
 
       await db.publishAttempt.update({
         where: { id: attempt.id },

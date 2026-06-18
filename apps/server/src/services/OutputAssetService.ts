@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { basename, dirname, join, relative, resolve, sep } from 'path'
 import { db } from '@project/db'
 import { buildPostHtml, type RunAgentPrompt } from './runArtifacts'
+import { outputFolderImagePath, parseImageAssetId, resolveExistingPath, runAssetPath } from './runImagePaths'
 
 export type { RunAgentPrompt }
 
@@ -94,11 +95,11 @@ export class OutputAssetService {
     label: string
   }): Promise<{ path: string; relativePath: string } | null> {
     try {
-      if (!existsSync(input.sourcePath)) return null
+      if (!existsSync(resolve(input.sourcePath))) return null
       const folder = this.getRunFolder(input.accountSlug, input.pipelineSlug, input.runId)
       const absolutePath = join(folder, input.relativePath)
       mkdirSync(dirname(absolutePath), { recursive: true })
-      copyFileSync(input.sourcePath, absolutePath)
+      copyFileSync(resolve(input.sourcePath), absolutePath)
       await db.runAsset.create({
         data: {
           pipelineRunId: input.runId,
@@ -138,10 +139,10 @@ export class OutputAssetService {
       thumbnailLocalPath = generatedPost.thumbnailLocalPath
     } else if (generatedPost.thumbnailUrl) {
       try {
-        const res = await fetch(generatedPost.thumbnailUrl)
-        if (res.ok) {
+        const buffer = await this.imageBuffer(generatedPost.thumbnailUrl)
+        if (buffer) {
           const thumbPath = join(folder, 'thumbnail.png')
-          writeFileSync(thumbPath, Buffer.from(await res.arrayBuffer()))
+          writeFileSync(thumbPath, buffer)
           assets.push({ type: 'image', label: 'Thumbnail', filename: 'thumbnail.png', path: thumbPath })
           thumbnailLocalPath = thumbPath
         }
@@ -210,6 +211,32 @@ export class OutputAssetService {
       filename: basename(asset.path),
       buffer: readFileSync(resolved),
     }
+  }
+
+  async readImageBytes(input: {
+    path?: string
+    relativePath?: string
+    url?: string
+    outputFolder?: string
+    runAssets?: Array<{ filename: string; path: string }>
+  }): Promise<Buffer | null> {
+    const localPath = resolveExistingPath(
+      input.path,
+      outputFolderImagePath(input.outputFolder, input.relativePath),
+      input.relativePath && input.runAssets ? runAssetPath(input.runAssets, input.relativePath) : undefined,
+    )
+    if (localPath) return readFileSync(localPath)
+
+    const imageAssetId = parseImageAssetId(input.url)
+    if (imageAssetId) {
+      const file = await this.getImageAssetFile(imageAssetId)
+      if (file) return file.buffer
+    }
+
+    if (input.url?.startsWith('data:') || input.url?.startsWith('http')) {
+      return this.imageBuffer(input.url)
+    }
+    return null
   }
 
   private async imageBuffer(imageUrl: string): Promise<Buffer | null> {
