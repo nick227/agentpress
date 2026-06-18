@@ -41,10 +41,15 @@ export class OutputAssetService {
       const absolutePath = join(folder, input.relativePath)
       mkdirSync(dirname(absolutePath), { recursive: true })
 
-      const res = await fetch(input.imageUrl)
-      if (!res.ok) return null
+      const buffer = input.imageUrl.startsWith('data:')
+        ? Buffer.from(input.imageUrl.split(',')[1] ?? '', 'base64')
+        : await fetch(input.imageUrl).then(async (res) => {
+            if (!res.ok) return null
+            return Buffer.from(await res.arrayBuffer())
+          })
+      if (!buffer) return null
 
-      writeFileSync(absolutePath, Buffer.from(await res.arrayBuffer()))
+      writeFileSync(absolutePath, buffer)
       await db.runAsset.create({
         data: {
           pipelineRunId: input.runId,

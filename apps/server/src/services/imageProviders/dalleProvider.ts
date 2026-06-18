@@ -20,10 +20,10 @@ function resolveModel(): string {
 }
 
 function resolveSize(model: string): string {
-  const allowed = MODEL_SIZES[model] ?? MODEL_SIZES['dall-e-2']
+  const allowed = MODEL_SIZES[model] ?? MODEL_SIZES['dall-e-2']!
   const requested = process.env.OPENAI_IMAGE_SIZE
   if (requested && allowed.includes(requested)) return requested
-  return allowed[0]
+  return allowed[0]!
 }
 
 export class DalleProvider implements ImageProvider {
@@ -36,9 +36,9 @@ export class DalleProvider implements ImageProvider {
       prompt: options.prompt,
       n: 1,
       size: resolveSize(model) as '256x256' | '512x512' | '1024x1024' | '1792x1024' | '1024x1792',
-      response_format: 'url',
     })
-    const url = response.data?.[0]?.url
+    const image = response.data?.[0]
+    const url = image?.url ?? (image?.b64_json ? `data:image/png;base64,${image.b64_json}` : undefined)
     return url ? { url } : null
   }
 }
