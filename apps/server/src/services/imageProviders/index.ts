@@ -1,4 +1,4 @@
-import { OpenAIImageProvider } from './openaiImageProvider'
+import { OpenAIImageProvider, resolveImageModel } from './openaiImageProvider'
 import type { ImageProvider } from './types'
 
 const openaiImageProvider = new OpenAIImageProvider()
@@ -19,5 +19,5 @@ export function getImageModelLabel(): string {
   return resolveImageModel()
 }
 
-export { resolveImageModel } from './openaiImageProvider'
+export { resolveImageModel }
 export type { ImageProvider, ImageGenerateOptions, ImageGenerateResult } from './types'
