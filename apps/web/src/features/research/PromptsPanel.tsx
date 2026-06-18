@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 
 type SummaryPrompt = components['schemas']['SummaryPrompt']
 
-const PLACEHOLDER_HINT = `Use {transcript} to inject the video transcript.`
+const PLACEHOLDER_HINT = `Use {transcript} to inject the collected item content.`
 
 export function PromptsPanel() {
   const { data, isLoading } = useSummaryPrompts()
@@ -25,7 +25,7 @@ export function PromptsPanel() {
         <div>
           <h1 className="text-base font-semibold">Summary Prompts</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Reusable AI prompts applied to any video transcript. Use <code className="font-mono bg-muted px-1 rounded">{'{{transcript}}'}</code> in your user prompt.
+            Reusable AI prompts applied to collected research content. Use <code className="font-mono bg-muted px-1 rounded">{'{{transcript}}'}</code> in your user prompt.
           </p>
         </div>
         <Button size="sm" onClick={() => setShowNew(true)}>

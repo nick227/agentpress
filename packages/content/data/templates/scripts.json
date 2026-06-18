@@ -2,7 +2,7 @@
   {
     "id": "youtube-script",
     "name": "YouTube Script",
-    "description": "A complete YouTube video script. A planner maps structure and key points (scratch), then three agents write the hook, main content, and CTA in sequence — each referencing what came before so the script flows as one cohesive performance.",
+    "description": "A complete YouTube video script. A planner maps structure and key points (not included), then three agents write the hook, main content, and CTA in sequence — each referencing what came before so the script flows as one cohesive performance.",
     "category": "scripts",
     "categoryLabel": "Scripts",
     "tags": ["youtube", "video", "script", "content-creator"],
@@ -48,7 +48,7 @@
       {
         "uid": "planner",
         "name": "Script Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan YouTube video scripts before any dialogue is written. Your plan gives the writing agents everything they need: the hook angle, the 3–5 main content points with supporting examples, the emotional arc of the video, and the CTA. This plan is used by the writing agents and does not appear in the final script.",
@@ -104,7 +104,7 @@
   {
     "id": "podcast-script",
     "name": "Podcast Episode Script",
-    "description": "A solo podcast episode. A planner maps the episode structure (scratch), then three body agents write the intro, main segments, and outro — each handed off to the next so the episode has a single coherent arc.",
+    "description": "A solo podcast episode. A planner maps the episode structure (not included), then three body agents write the intro, main segments, and outro — each handed off to the next so the episode has a single coherent arc.",
     "category": "scripts",
     "categoryLabel": "Scripts",
     "tags": ["podcast", "audio", "script", "solo"],
@@ -150,7 +150,7 @@
       {
         "uid": "planner",
         "name": "Episode Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan solo podcast episodes. Your plan gives the writing agents a clear episode structure: the teaser hook, the main argument or lesson, 3–4 talking points with specific supporting details, and the outro direction. This plan is used by the writing agents and does not appear in the final script.",

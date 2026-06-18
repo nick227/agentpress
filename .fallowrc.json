@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "apps/server/src/index.ts",
+    "apps/web/src/main.tsx",
+    "apps/server/src/scripts/smoke-openai.ts",
+    "apps/server/src/scripts/smoke-youtube.ts"
+  ],
+  "ignoreExports": [
+    {
+      "file": "apps/server/src/handlers/**/*.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "apps/server/src/plugins/security.ts",
+      "exports": ["bearerAuth"]
+    },
+    {
+      "file": "apps/web/src/components/ui/Card.tsx",
+      "exports": ["CardHeader", "CardFooter"]
+    },
+    {
+      "file": "apps/web/src/components/ui/Button.tsx",
+      "exports": ["ButtonProps"]
+    },
+    {
+      "file": "apps/web/src/components/ui/Input.tsx",
+      "exports": ["InputProps"]
+    },
+    {
+      "file": "apps/web/src/components/ui/Textarea.tsx",
+      "exports": ["TextareaProps"]
+    }
+  ],
+  "usedClassMembers": [
+    {
+      "implements": "FeedAdapter",
+      "members": ["resolveSource", "fetchLatest"]
+    }
+  ]
+}

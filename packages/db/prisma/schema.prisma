@@ -53,6 +53,7 @@ model Pipeline {
   destinationId String?
   researchSourceId String?
   researchSummaryPromptId String?
+  bodyComposer Json?
   dryRun       Boolean            @default(true)
   scheduleMode String             @default("manual")
   frequency    String?
@@ -129,6 +130,9 @@ model AgentRun {
   outputTarget         String
   renderedSystemPrompt String      @db.Text
   renderedUserPrompt   String      @db.Text
+  inputHash            String?
+  cacheStatus          String?
+  reusedFromAgentRunId String?
   outputText           String?     @db.Text
   outputJson           Json?
   status               String      @default("queued")
@@ -136,6 +140,8 @@ model AgentRun {
   sortOrder            Int         @default(0)
   startedAt            DateTime?
   completedAt          DateTime?
+
+  @@index([agentUid, inputHash])
 }
 
 model RunAsset {

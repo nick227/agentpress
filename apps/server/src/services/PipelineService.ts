@@ -30,6 +30,7 @@ function formatPipeline(p: any) {
     destinationId: p.destinationId ?? undefined,
     researchSourceId: p.researchSourceId ?? undefined,
     researchSummaryPromptId: p.researchSummaryPromptId ?? undefined,
+    bodyComposer: p.bodyComposer ?? undefined,
     dryRun: p.dryRun,
     scheduleMode: p.scheduleMode,
     frequency: p.frequency ?? undefined,

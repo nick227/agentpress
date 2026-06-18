@@ -2,7 +2,7 @@
   {
     "id": "professional-resume",
     "name": "Professional Resume",
-    "description": "A complete ATS-friendly resume. An experience planner maps achievements (scratch), then summary, resume body, and document title agents produce the final output.",
+    "description": "A complete ATS-friendly resume. An experience planner maps achievements (not included), then summary, resume body, and document title agents produce the final output.",
     "category": "resumes",
     "categoryLabel": "Resumes",
     "tags": ["resume", "cv", "job-search", "career", "ats"],
@@ -57,7 +57,7 @@
       {
         "uid": "experience_planner",
         "name": "Experience Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan professional resumes before any copy is written. Your plan identifies: top 3 achievements to highlight (CAR format notes), skills to emphasize for the target role, experience section structure, and summary angle. This plan is used by the writing agents and does not appear in the final resume document fields separately.",
@@ -95,7 +95,7 @@
   {
     "id": "cover-letter",
     "name": "Cover Letter",
-    "description": "A personalized cover letter. An angle planner maps the story (scratch), then subject and letter agents write the final copy.",
+    "description": "A personalized cover letter. An angle planner maps the story (not included), then subject and letter agents write the final copy.",
     "category": "resumes",
     "categoryLabel": "Resumes",
     "tags": ["cover-letter", "job-search", "career", "hiring"],
@@ -159,7 +159,7 @@
       {
         "uid": "angle_planner",
         "name": "Angle Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan cover letters before any copy is written. Your plan identifies: the hook angle (not 'I am writing to apply'), the story beat for the key qualification, how to connect to the company specifically, and the closing ask tone. This plan is used by the writing agents and does not appear in the sent letter.",

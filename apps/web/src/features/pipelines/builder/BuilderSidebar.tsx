@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen } from 'lucide-react'
+import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Rows3 } from 'lucide-react'
 import type { components } from '@project/sdk'
 import { useUpdatePipeline } from '@project/sdk'
 import { toast } from 'sonner'
@@ -102,6 +102,12 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
         icon={<Settings size={13} />}
         active={selection.type === 'setup'}
         onClick={() => onSelect({ type: 'setup' })}
+      />
+      <SidebarItem
+        label="Body Composer"
+        icon={<Rows3 size={13} />}
+        active={selection.type === 'composer'}
+        onClick={() => onSelect({ type: 'composer' })}
       />
 
       {/* Variables */}

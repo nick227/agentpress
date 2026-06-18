@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Play, Zap, Plus, Trash2, Globe, ChevronDown } from 'lucide-react'
+import { Play, Zap, Plus, Trash2, Globe, ChevronDown, FlaskConical } from 'lucide-react'
 import type { components } from '@project/sdk'
 import {
   useUpdatePipeline,
@@ -8,6 +8,8 @@ import {
   useDestinations,
   useCreateDestination,
   useDeleteDestination,
+  useResearchSources,
+  useSummaryPrompts,
 } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -24,13 +26,19 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   const update = useUpdatePipeline()
   const startRun = useStartPipelineRun()
   const { data: destinationsData, refetch: refetchDestinations } = useDestinations(pipeline.accountId)
+  const { data: researchData } = useResearchSources(pipeline.accountId)
+  const { data: promptData } = useSummaryPrompts()
   const createDestination = useCreateDestination()
   const deleteDestination = useDeleteDestination()
   const destinations = destinationsData?.data ?? []
+  const researchSources = researchData?.data ?? []
+  const summaryPrompts = promptData?.data ?? []
 
   const [nameInput, setNameInput] = useState(pipeline.name)
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showAddDestination, setShowAddDestination] = useState(false)
+  const [forceRegenerate, setForceRegenerate] = useState(false)
+  const [forceRegenerateAgentUids, setForceRegenerateAgentUids] = useState<string[]>([])
   const [runVars, setRunVars] = useState<Record<string, string>>(() => {
     const defaults: Record<string, string> = {}
     for (const v of pipeline.variables) {
@@ -60,10 +68,24 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   }
 
   async function handleRun() {
-    const result = await startRun.mutateAsync({ pipelineId, variables: runVars, dryRun })
+    const result = await startRun.mutateAsync({
+      pipelineId,
+      variables: runVars,
+      dryRun,
+      forceRegenerate,
+      forceRegenerateAgentUids: forceRegenerate ? undefined : forceRegenerateAgentUids,
+    })
     toast.success(dryRun ? 'Dry run started' : 'Live run started')
     setShowRunDialog(false)
+    setForceRegenerate(false)
+    setForceRegenerateAgentUids([])
     onRunCreated(result.data.id)
+  }
+
+  function toggleForceAgent(uid: string) {
+    setForceRegenerateAgentUids((current) => (
+      current.includes(uid) ? current.filter((item) => item !== uid) : [...current, uid]
+    ))
   }
 
   async function handleAddDestination() {
@@ -89,7 +111,7 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
     await deleteDestination.mutateAsync({ destinationId, accountId: pipeline.accountId })
     toast.success('Destination removed')
     if (pipeline.destinationId === destinationId) {
-      await handleSave({ destinationId: undefined })
+      await handleSave({ destinationId: null })
     }
     refetchDestinations()
   }
@@ -226,6 +248,52 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
         )}
       </div>
 
+      {/* Research */}
+      <div className="space-y-2">
+        <Label>Research</Label>
+        <Row label="Feed">
+          <select
+            value={pipeline.researchSourceId ?? ''}
+            onChange={(e) => handleSave({
+              researchSourceId: e.target.value || null,
+              researchSummaryPromptId: e.target.value ? pipeline.researchSummaryPromptId : null,
+            })}
+            className="w-full h-8 rounded border border-input-border bg-background px-2 text-sm"
+          >
+            <option value="">No research feed</option>
+            {researchSources.map((source) => (
+              <option key={source.id} value={source.id}>
+                {source.name} ({source.sourceType})
+              </option>
+            ))}
+          </select>
+        </Row>
+        {pipeline.researchSourceId && (
+          <>
+            <Row label="Summary">
+              <select
+                value={pipeline.researchSummaryPromptId ?? ''}
+                onChange={(e) => handleSave({ researchSummaryPromptId: e.target.value || null })}
+                className="w-full h-8 rounded border border-input-border bg-background px-2 text-sm"
+              >
+                <option value="">Default summary prompt</option>
+                {summaryPrompts.map((prompt) => (
+                  <option key={prompt.id} value={prompt.id}>
+                    {prompt.name}{prompt.isDefault ? ' (default)' : ''}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <div className="flex items-start gap-2 rounded border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+              <FlaskConical size={13} className="mt-0.5 shrink-0" />
+              <span>
+                This feed is the default <code className="font-mono text-foreground">{'{research.summary}'}</code>. Any connected feed can also be referenced by slug, such as <code className="font-mono text-foreground">{'{ziptrader.summary}'}</code>.
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Run mode + Schedule — collapsed into a compact row group */}
       <div className="space-y-3">
         <Label>Settings</Label>
@@ -337,6 +405,39 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
                 />
                 Dry run (preview only, don't publish)
               </label>
+
+              <div className="border rounded p-3 bg-muted/20 space-y-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={forceRegenerate}
+                    onChange={(e) => setForceRegenerate(e.target.checked)}
+                  />
+                  Force regenerate all outputs
+                </label>
+                {!forceRegenerate && pipeline.agents.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Force selected agents</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {pipeline.agents.map((agent) => {
+                        const active = forceRegenerateAgentUids.includes(agent.uid)
+                        return (
+                          <button
+                            key={agent.uid}
+                            type="button"
+                            onClick={() => toggleForceAgent(agent.uid)}
+                            className={`px-2 py-1 rounded border text-xs transition-colors ${
+                              active ? 'bg-foreground text-background border-foreground' : 'border-input-border hover:bg-muted'
+                            }`}
+                          >
+                            {agent.uid}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="px-5 pb-4 flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={() => setShowRunDialog(false)}>

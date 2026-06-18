@@ -32,7 +32,7 @@ export function useResearchSource(idOrSlug: string) {
 export function useCreateResearchSource() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ accountId, ...body }: { accountId: string; name: string; category?: string; youtubeUrl: string }) => {
+    mutationFn: async ({ accountId, ...body }: { accountId: string; name: string; sourceType?: 'youtube' | 'reddit' | 'rss'; category?: string; sourceUrl: string }) => {
       const { data, error, response } = await getApiClient().POST('/api/accounts/{accountId}/research', {
         params: { path: { accountId } },
         body,
@@ -49,7 +49,7 @@ export function useCreateResearchSource() {
 export function useUpdateResearchSource() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ sourceId, ...body }: { sourceId: string; name?: string; category?: string; youtubeUrl?: string; status?: 'active' | 'paused' }) => {
+    mutationFn: async ({ sourceId, ...body }: { sourceId: string; name?: string; category?: string; sourceUrl?: string; status?: 'active' | 'paused' }) => {
       const { data, error, response } = await getApiClient().PATCH('/api/research/{sourceId}', {
         params: { path: { sourceId } },
         body,

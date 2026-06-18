@@ -2,7 +2,7 @@
   {
     "id": "financial-commentary",
     "name": "Financial Market Commentary",
-    "description": "A research-fed market commentary post. An analyst synthesizes research (scratch), then a commentary writer produces the published post with title, excerpt, and thumbnail.",
+    "description": "A research-fed market commentary post. An analyst synthesizes research (not included), then a commentary writer produces the published post with title, excerpt, and thumbnail.",
     "category": "niche",
     "categoryLabel": "Niche Verticals",
     "tags": ["finance", "markets", "investing", "commentary", "research-fed"],
@@ -48,7 +48,7 @@
       {
         "uid": "analyst",
         "name": "Research Analyst",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You synthesize financial research into a structured brief for a commentary writer. Extract: key facts from source material, 3–5 specific observations with tickers/levels/catalysts, the central market take, and what to watch. Distinguish facts, analysis, and opinion. Never fabricate data. This brief is used by the commentary writer and does not appear in the published post.",
@@ -95,7 +95,7 @@
   {
     "id": "health-wellness-article",
     "name": "Health & Wellness Article",
-    "description": "A research-backed health and wellness article. A planner maps structure (scratch), then title, excerpt, and article agents write the published piece.",
+    "description": "A research-backed health and wellness article. A planner maps structure (not included), then title, excerpt, and article agents write the published piece.",
     "category": "niche",
     "categoryLabel": "Niche Verticals",
     "tags": ["health", "wellness", "medical", "lifestyle", "science"],
@@ -132,7 +132,7 @@
       {
         "uid": "planner",
         "name": "Article Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan health and wellness articles before any prose is written. Your plan identifies: the central question, evidence summary (established vs emerging vs contested), 3–4 section angles, practical implications beat, and caution/warning note. This plan is used by the writing agents and does not appear in the published article.",
@@ -170,7 +170,7 @@
   {
     "id": "legal-faq",
     "name": "Legal FAQ Article",
-    "description": "A plain-language FAQ article on a legal topic. A planner maps questions and structure (scratch), then title, excerpt, and FAQ agents write the published piece.",
+    "description": "A plain-language FAQ article on a legal topic. A planner maps questions and structure (not included), then title, excerpt, and FAQ agents write the published piece.",
     "category": "niche",
     "categoryLabel": "Niche Verticals",
     "tags": ["legal", "law", "faq", "plain-language", "compliance"],
@@ -207,7 +207,7 @@
       {
         "uid": "planner",
         "name": "FAQ Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan legal FAQ articles before any prose is written. Your plan lists 6–10 questions readers would actually search for, notes jurisdiction-specific caveats, and flags where laws vary. This plan is used by the FAQ writer and does not appear in the published article.",

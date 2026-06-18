@@ -27,6 +27,12 @@ const ASSET_ICON: Record<string, React.ReactNode> = {
   image: <Image size={13} />,
 }
 
+const CACHE_STATUS: Record<string, { label: string; className: string }> = {
+  generated: { label: 'generated', className: 'bg-blue-100 text-blue-700' },
+  reused: { label: 'reused', className: 'bg-green-100 text-green-700' },
+  failed: { label: 'failed', className: 'bg-red-100 text-red-700' },
+}
+
 export function BuilderRun({ runId, pipeline }: Props) {
   const { data, isLoading } = usePipelineRun(runId)
   const publish = usePublishRun()
@@ -215,11 +221,21 @@ export function BuilderRun({ runId, pipeline }: Props) {
                       {ar.agentName}{' '}
                       <span className="text-muted-foreground font-normal">→ {ar.outputTarget}</span>
                     </p>
-                    <span className={cn('flex items-center gap-1 text-xs', info.color)}>
-                      {info.icon}
-                      {info.label}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {ar.cacheStatus && (
+                        <span className={cn('px-1.5 py-0.5 rounded text-[11px] font-medium', CACHE_STATUS[ar.cacheStatus]?.className)}>
+                          {CACHE_STATUS[ar.cacheStatus]?.label ?? ar.cacheStatus}
+                        </span>
+                      )}
+                      <span className={cn('flex items-center gap-1 text-xs', info.color)}>
+                        {info.icon}
+                        {info.label}
+                      </span>
+                    </div>
                   </div>
+                  {ar.cacheStatus === 'reused' && ar.reusedFromAgentRunId && (
+                    <p className="text-xs text-muted-foreground">Reused from agent run {ar.reusedFromAgentRunId}</p>
+                  )}
                   {ar.outputText && (
                     <pre className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/30 rounded p-2 max-h-40 overflow-y-auto">
                       {ar.outputText}

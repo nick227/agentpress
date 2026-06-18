@@ -6,7 +6,12 @@
     "build": "pnpm --filter './packages/*' build && pnpm --filter './apps/*' build",
     "typecheck": "pnpm --recursive typecheck",
     "lint": "pnpm --recursive lint",
-    "test": "pnpm --recursive test",
+    "test:static": "pnpm test:static:types && pnpm test:static:dead-code",
+    "test:static:types": "pnpm --filter web test:static && pnpm --filter server test:static",
+    "test:static:dead-code": "fallow dead-code --fail-on-issues",
+    "test:static:web": "pnpm --filter web test:static",
+    "test:static:server": "pnpm --filter server test:static",
+    "test": "pnpm test:static && pnpm --recursive test",
     "bootstrap": "tsx scripts/bootstrap.ts",
     "sdk:generate": "pnpm --filter @project/sdk generate",
     "sdk:check": "tsx scripts/check-sdk-drift.ts",
@@ -20,6 +25,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.0",
     "eslint": "^8.0.0",
+    "fallow": "^2.99.0",
     "js-yaml": "^4.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"

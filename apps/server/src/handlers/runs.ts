@@ -4,8 +4,12 @@ import { db } from '@project/db'
 const svc = new PipelineRunService()
 
 export async function startPipelineRun(request: any, reply: any) {
-  const { variables, dryRun } = request.body
-  const run = await svc.startRun(request.params.pipelineId, variables, dryRun)
+  const { variables, dryRun, forceRegenerate, forceRegenerateAgentUids } = request.body
+  const run = await svc.startRun(request.params.pipelineId, variables, {
+    dryRun,
+    forceRegenerate,
+    forceRegenerateAgentUids,
+  })
   return reply.status(201).send({ data: run })
 }
 
@@ -47,6 +51,9 @@ export async function getPipelineRun(request: any, reply: any) {
       outputTarget: a.outputTarget,
       renderedSystemPrompt: a.renderedSystemPrompt,
       renderedUserPrompt: a.renderedUserPrompt,
+      inputHash: a.inputHash ?? undefined,
+      cacheStatus: a.cacheStatus ?? undefined,
+      reusedFromAgentRunId: a.reusedFromAgentRunId ?? undefined,
       outputText: a.outputText ?? undefined,
       outputJson: a.outputJson ?? undefined,
       status: a.status,

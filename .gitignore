@@ -15,6 +15,7 @@ packages/sdk/src/generated/
 
 # Runtime output
 outputs/
+.fallow
 
 # Logs
 *.log

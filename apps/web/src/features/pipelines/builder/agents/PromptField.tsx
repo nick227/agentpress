@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { Sparkles, ChevronDown } from 'lucide-react'
 import type { components } from '@project/sdk'
-import { usePromptAssist } from '@project/sdk'
+import { usePromptAssist, useResearchSources } from '@project/sdk'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,7 @@ interface Props {
 
 export function PromptField({ label, value, onChange, promptKind, pipeline, agent, placeholder }: Props) {
   const promptAssist = usePromptAssist()
+  const { data: researchData } = useResearchSources(pipeline.accountId)
   const [showAssist, setShowAssist] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [suggested, setSuggested] = useState('')
@@ -41,6 +42,7 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
   }
 
   const agentsBefore = pipeline.agents.filter((a) => a.sortOrder < agent.sortOrder)
+  const researchSources = researchData?.data ?? []
 
   async function handleAssist() {
     const result = await promptAssist.mutateAsync({
@@ -72,7 +74,7 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
               Insert ref <ChevronDown size={11} />
             </Button>
             {showRefMenu && (
-              <div className="absolute right-0 top-8 w-48 bg-surface border rounded shadow-lg z-20 py-1">
+              <div className="absolute right-0 top-8 w-64 bg-surface border rounded shadow-lg z-20 py-1">
                 {pipeline.variables.length > 0 && (
                   <>
                     <p className="px-3 py-1 text-xs text-muted-foreground font-medium">Variables</p>
@@ -103,7 +105,29 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
                     ))}
                   </>
                 )}
-                {pipeline.variables.length === 0 && agentsBefore.length === 0 && (
+                {researchSources.length > 0 && (
+                  <>
+                    <p className="px-3 py-1 text-xs text-muted-foreground font-medium">Research feeds</p>
+                    {researchSources.map((source) => (
+                      <div key={source.id} className="px-1">
+                        <p className="px-2 pt-1 text-[11px] text-muted-foreground truncate">{source.name}</p>
+                        <div className="grid grid-cols-2 gap-1 pb-1">
+                          {(['summary', 'date'] as const).map((field) => (
+                            <button
+                              key={field}
+                              type="button"
+                              className="text-left px-2 py-1.5 text-xs hover:bg-muted font-mono rounded truncate"
+                              onClick={() => { insertAtCursor(`{${source.slug}.${field}}`); setShowRefMenu(false) }}
+                            >
+                              {`{${source.slug}.${field}}`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {pipeline.variables.length === 0 && agentsBefore.length === 0 && researchSources.length === 0 && (
                   <p className="px-3 py-2 text-xs text-muted-foreground">No references available</p>
                 )}
               </div>

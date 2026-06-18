@@ -74,7 +74,7 @@ export function ResearchSourcePage() {
       <div className="flex-1 overflow-auto">
         {selection.type === 'info' && <ResearchInfoPanel source={source} accountSlug={accountSlug!} />}
         {selection.type === 'prompts' && <PromptsPanel />}
-        {selection.type === 'item' && <ResearchItemPanel itemId={selection.id} />}
+        {selection.type === 'item' && <ResearchItemPanel itemId={selection.id} sourceSlug={source.slug} sourceType={source.sourceType} />}
       </div>
     </div>
   )

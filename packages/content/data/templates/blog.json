@@ -2,7 +2,7 @@
   {
     "id": "seo-blog-post",
     "name": "SEO Blog Post",
-    "description": "A complete SEO-optimized blog post. A planner agent builds the outline first (scratch), then separate agents write the intro, body sections, and conclusion — each aware of what came before — so the post reads as one coherent piece.",
+    "description": "A complete SEO-optimized blog post. A planner agent builds the outline first (not included), then separate agents write the intro, body sections, and conclusion — each aware of what came before — so the post reads as one coherent piece.",
     "category": "blog",
     "categoryLabel": "Blog Content",
     "tags": ["seo", "long-form", "content-marketing"],
@@ -57,7 +57,7 @@
       {
         "uid": "planner",
         "name": "Post Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You are a senior content strategist. You plan SEO blog posts before a word of the article is written. Your plan gives the writing agents everything they need: a clear argument, a logical section order, the keyword placement strategy, and a specific angle for each section. Your output is used directly by the writing agents — it does not appear in the published post.",
@@ -122,7 +122,7 @@
   {
     "id": "listicle",
     "name": "Listicle",
-    "description": "A numbered list post. A planner agent maps out all items first (scratch), then an intro agent and a list writer build the article in sections — so each item is fully developed and the whole piece reads cohesively.",
+    "description": "A numbered list post. A planner agent maps out all items first (not included), then an intro agent and a list writer build the article in sections — so each item is fully developed and the whole piece reads cohesively.",
     "category": "blog",
     "categoryLabel": "Blog Content",
     "tags": ["list", "seo", "shareable"],
@@ -177,7 +177,7 @@
       {
         "uid": "planner",
         "name": "List Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan listicle articles. Your job is to choose the exact items, order them by importance or usefulness, and give each item a one-line rationale explaining why it belongs on this list and what unique angle to take. This plan is used by the writing agent and does not appear in the final post.",
@@ -279,7 +279,7 @@
       {
         "uid": "planner",
         "name": "Review Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan product reviews. Your job is to structure the review so it's genuinely useful to someone deciding whether to buy. You identify which features are most important to this specific audience, what the likely pros and cons are for that audience, and what the verdict angle should be. This plan is used by the writing agents and does not appear in the final review.",

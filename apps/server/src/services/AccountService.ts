@@ -105,7 +105,7 @@ export class AccountService {
       where: { accountId, status: 'active' },
     })
 
-    const researchResults: Array<{ sourceName: string; sourceId: string; newItem: boolean; videoTitle?: string; error?: string }> = []
+    const researchResults: Array<{ sourceName: string; sourceId: string; newItem: boolean; itemTitle?: string; error?: string }> = []
 
     for (const source of sources) {
       try {
@@ -114,7 +114,7 @@ export class AccountService {
           sourceName: source.name,
           sourceId: source.id,
           newItem: result.newItem,
-          videoTitle: result.newItem && result.item ? (result.item as any).videoTitle : undefined,
+          itemTitle: result.newItem && result.item ? (result.item as any).title : undefined,
         })
       } catch (err: any) {
         researchResults.push({ sourceName: source.name, sourceId: source.id, newItem: false, error: err.message ?? 'Unknown error' })
@@ -157,7 +157,7 @@ export class AccountService {
     return {
       research: {
         checked: researchResults.length,
-        newVideos: researchResults.filter((r) => r.newItem).length,
+        newItems: researchResults.filter((r) => r.newItem).length,
         results: researchResults,
       },
       pipelines: {

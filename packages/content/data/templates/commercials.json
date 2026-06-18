@@ -2,7 +2,7 @@
   {
     "id": "tv-commercial-script",
     "name": "30-Second TV/Radio Spot",
-    "description": "A produced 30-second commercial script. A concept planner maps the creative brief (scratch), then script, spot title, and key frame agents produce the final output.",
+    "description": "A produced 30-second commercial script. A concept planner maps the creative brief (not included), then script, spot title, and key frame agents produce the final output.",
     "category": "commercials",
     "categoryLabel": "Commercials",
     "tags": ["tv", "radio", "ad", "commercial", "30-second", "script"],
@@ -57,7 +57,7 @@
       {
         "uid": "concept_writer",
         "name": "Concept Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan TV commercial concepts before scripts are written. A good concept states: the insight (human truth the ad taps into), the idea (how it brings that truth to life), scene beats for a 30-second spot, and the payoff (how it connects to the brand). This plan is used by the script writer and does not appear in the final script as separate copy.",
@@ -95,7 +95,7 @@
   {
     "id": "social-media-ad",
     "name": "Social Media Ad Script",
-    "description": "A 15–30 second paid social ad script. A hook planner maps the scroll-stopper (scratch), then script, headline, and thumbnail agents produce the final output.",
+    "description": "A 15–30 second paid social ad script. A hook planner maps the scroll-stopper (not included), then script, headline, and thumbnail agents produce the final output.",
     "category": "commercials",
     "categoryLabel": "Commercials",
     "tags": ["paid-social", "facebook", "instagram", "ad", "ugc", "short"],
@@ -159,7 +159,7 @@
       {
         "uid": "hook_writer",
         "name": "Hook Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan paid social ad hooks before scripts are written. The best hooks: state the pain bluntly, make a surprising claim, or open a loop. They never start with the brand name. Your plan includes: hook line (1–2 spoken sentences), problem beat, solution beat, proof beat, and CTA beat with timing. This plan is used by the script writer and does not appear as separate published copy.",

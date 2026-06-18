@@ -22,20 +22,6 @@ export class OpenAIService {
     return response.choices[0]?.message?.content ?? ''
   }
 
-  async generateJson(systemPrompt: string, userPrompt: string): Promise<unknown> {
-    const model = process.env.OPENAI_TEXT_MODEL ?? 'gpt-4o'
-    const response = await getClient().chat.completions.create({
-      model,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-    })
-    const text = response.choices[0]?.message?.content ?? '{}'
-    return JSON.parse(text)
-  }
-
   async generateImage(prompt: string): Promise<string | null> {
     const model = process.env.OPENAI_IMAGE_MODEL ?? 'dall-e-3'
     const response = await getClient().images.generate({

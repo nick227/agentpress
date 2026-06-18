@@ -9,6 +9,30 @@ import { Input } from '@/components/ui/Input'
 
 type ResearchSource = components['schemas']['ResearchSource']
 
+const TYPE_LABELS: Record<string, { urlLabel: string; externalIdLabel: string; checkLabel: string; newLabel: (n: number) => string; noNewLabel: string }> = {
+  youtube: {
+    urlLabel: 'YouTube URL',
+    externalIdLabel: 'Channel ID',
+    checkLabel: 'Check for new video',
+    newLabel: () => 'New video found and transcript fetched!',
+    noNewLabel: 'No new videos since last check.',
+  },
+  reddit: {
+    urlLabel: 'Subreddit URL',
+    externalIdLabel: 'Subreddit',
+    checkLabel: "Fetch today's posts",
+    newLabel: (n) => `${n} new digest${n !== 1 ? 's' : ''} fetched!`,
+    noNewLabel: "Already have today's digest.",
+  },
+  rss: {
+    urlLabel: 'Feed URL',
+    externalIdLabel: 'Feed URL',
+    checkLabel: 'Fetch latest articles',
+    newLabel: (n) => `${n} new article${n !== 1 ? 's' : ''} fetched!`,
+    noNewLabel: 'No new articles since last check.',
+  },
+}
+
 interface Props {
   source: ResearchSource
   accountSlug: string
@@ -21,20 +45,22 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
   const deleteSource = useDeleteResearchSource()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(source.name)
-  const [youtubeUrl, setYoutubeUrl] = useState(source.youtubeUrl)
+  const [sourceUrl, setSourceUrl] = useState(source.sourceUrl)
   const [category, setCategory] = useState(source.category ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const labels = TYPE_LABELS[source.sourceType] ?? TYPE_LABELS.youtube!
 
   async function handleCheck() {
     try {
       const result = await checkSource.mutateAsync(source.id)
       const r = result.data
       if (!r.checked) {
-        toast.error('Could not resolve YouTube channel. Check the URL.')
+        toast.error('Could not resolve source. Check the URL.')
       } else if (r.newItem) {
-        toast.success('New video found and transcript fetched!')
+        toast.success(labels.newLabel(r.newCount))
       } else {
-        toast('No new videos since last check.')
+        toast(labels.noNewLabel)
       }
     } catch (err: any) {
       toast.error(err.message ?? 'Check failed')
@@ -43,7 +69,7 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
 
   async function handleSave() {
     try {
-      await updateSource.mutateAsync({ sourceId: source.id, name, youtubeUrl, category: category || undefined })
+      await updateSource.mutateAsync({ sourceId: source.id, name, sourceUrl, category: category || undefined })
       toast.success('Source updated')
       setEditing(false)
     } catch (err: any) {
@@ -61,20 +87,22 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
     }
   }
 
+  const itemWord = source.sourceType === 'youtube' ? 'video' : source.sourceType === 'reddit' ? 'digest' : 'article'
+
   return (
     <div className="p-6 max-w-2xl">
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-lg font-semibold">{source.name}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {source.itemCount ?? 0} video{(source.itemCount ?? 0) !== 1 ? 's' : ''} collected
+            {source.itemCount ?? 0} {itemWord}{(source.itemCount ?? 0) !== 1 ? 's' : ''} collected
             {source.lastChecked ? ` · Last checked ${new Date(source.lastChecked).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" loading={checkSource.isPending} onClick={handleCheck}>
             <RefreshCw size={13} />
-            Check for new video
+            {labels.checkLabel}
           </Button>
           <Button variant="ghost" size="icon-sm" onClick={() => setEditing((v) => !v)}>
             <Pencil size={13} />
@@ -89,34 +117,30 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
             <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1">YouTube URL</label>
-            <Input value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} className="h-8 text-sm" />
+            <label className="block text-xs font-medium mb-1">{labels.urlLabel}</label>
+            <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} className="h-8 text-sm" />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Category</label>
-            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. politics" className="h-8 text-sm" />
+            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. financial" className="h-8 text-sm" />
           </div>
           <div className="flex gap-2">
-            <Button size="sm" loading={updateSource.isPending} onClick={handleSave}>
-              Save
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
+            <Button size="sm" loading={updateSource.isPending} onClick={handleSave}>Save</Button>
+            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
           </div>
         </div>
       ) : (
         <div className="border rounded-lg p-4 space-y-3 mb-6">
-          <Row label="YouTube URL">
-            <a
-              href={source.youtubeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-sm text-accent hover:underline truncate"
-            >
-              {source.youtubeUrl}
+          <Row label={labels.urlLabel}>
+            <a href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-accent hover:underline truncate">
+              {source.sourceUrl}
               <ExternalLink size={11} />
             </a>
+          </Row>
+          <Row label="Type">
+            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-muted text-foreground capitalize">
+              {source.sourceType}
+            </span>
           </Row>
           {source.category && (
             <Row label="Category">
@@ -125,9 +149,9 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
               </span>
             </Row>
           )}
-          {source.channelId && (
-            <Row label="Channel ID">
-              <span className="text-sm font-mono text-muted-foreground">{source.channelId}</span>
+          {source.externalId && (
+            <Row label={labels.externalIdLabel}>
+              <span className="text-sm font-mono text-muted-foreground">{source.externalId}</span>
             </Row>
           )}
           <Row label="Status">
@@ -143,7 +167,7 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
 
       <div className="border-t pt-4">
         <p className="text-xs text-muted-foreground mb-3">
-          Summaries are stored here and can be referenced in pipeline runs as <code className="font-mono bg-muted px-1 rounded text-xs">{'{{research}}'}</code> variables (coming soon).
+          Reference this feed's latest summary as <code className="font-mono bg-muted px-1 rounded text-xs">{`{${source.slug}.summary}`}</code>. Open an item to use a date-pinned reference.
         </p>
         {!confirmDelete ? (
           <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
@@ -152,12 +176,8 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
           </Button>
         ) : (
           <div className="flex gap-2">
-            <Button variant="destructive" size="sm" loading={deleteSource.isPending} onClick={handleDelete}>
-              Delete source
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-              Cancel
-            </Button>
+            <Button variant="destructive" size="sm" loading={deleteSource.isPending} onClick={handleDelete}>Delete source</Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>Cancel</Button>
           </div>
         )}
       </div>

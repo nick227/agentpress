@@ -47,7 +47,7 @@ export function ResearchSidebar({ source, itemsPage, itemsLoading, page, onPageC
 
         <div className="px-3 pt-4 pb-1">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Videos · {total}
+            Items · {total}
           </span>
         </div>
 
@@ -58,15 +58,15 @@ export function ResearchSidebar({ source, itemsPage, itemsLoading, page, onPageC
             ))}
           </div>
         ) : items.length === 0 ? (
-          <p className="px-4 py-1.5 text-xs text-muted-foreground">No videos yet — click "Check for new video"</p>
+          <p className="px-4 py-1.5 text-xs text-muted-foreground">No items collected yet.</p>
         ) : (
           items.map((item) => (
             <SidebarItem
               key={item.id}
-              label={item.videoTitle}
+              label={item.title}
               sublabel={
                 new Date(item.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
-                (item.summaryCount ? ` · ${item.summaryCount} summary` : '')
+                (item.summaryCount ? ` · ${item.summaryCount} summar${item.summaryCount !== 1 ? 'ies' : 'y'}` : '')
               }
               icon={<Video size={12} className="text-muted-foreground shrink-0" />}
               active={selection.type === 'item' && selection.id === item.id}

@@ -11,9 +11,11 @@ type SummaryPrompt = components['schemas']['SummaryPrompt']
 
 interface Props {
   itemId: string
+  sourceType?: string
+  sourceSlug: string
 }
 
-export function ResearchItemPanel({ itemId }: Props) {
+export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }: Props) {
   const { data: itemData, isLoading: itemLoading } = useResearchItem(itemId)
   const { data: summariesData } = useResearchSummaries(itemId)
   const { data: promptsData } = useSummaryPrompts()
@@ -37,17 +39,20 @@ export function ResearchItemPanel({ itemId }: Props) {
   }
 
   if (!item) return <div className="p-6 text-sm text-muted-foreground">Item not found.</div>
+  const itemDate = new Date(item.publishedAt).toISOString().slice(0, 10)
+  const exactSummaryRef = `{${sourceSlug}.${itemDate}.summary}`
 
   return (
     <div className="p-6 max-w-3xl">
       {/* Header */}
       <div className="mb-5">
-        <h1 className="text-base font-semibold leading-snug mb-1">{item.videoTitle}</h1>
+        <h1 className="text-base font-semibold leading-snug mb-1">{item.title}</h1>
         <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-          <span>Published {new Date(item.publishedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-          <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-accent hover:underline">
-            Watch on YouTube <ExternalLink size={10} />
+          <span>{new Date(item.publishedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+          <a href={item.itemUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-accent hover:underline">
+            {sourceType === 'youtube' ? 'Watch on YouTube' : sourceType === 'reddit' ? 'View on Reddit' : 'Read article'} <ExternalLink size={10} />
           </a>
+          <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{exactSummaryRef}</span>
         </div>
       </div>
 
@@ -65,7 +70,7 @@ export function ResearchItemPanel({ itemId }: Props) {
               prompt={prompt}
               summary={summaryByPromptId[prompt.id]}
               itemId={itemId}
-              hasTranscript={Boolean(item.transcript)}
+              hasTranscript={Boolean(item.content)}
             />
           ))}
         </div>
@@ -79,15 +84,15 @@ export function ResearchItemPanel({ itemId }: Props) {
           className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors mb-2"
         >
           {showTranscript ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          Transcript
-          {item.transcript ? ` · ~${Math.round(item.transcript.length / 5).toLocaleString()} words` : ' — not available'}
+          {sourceType === 'youtube' ? 'Transcript' : 'Content'}
+          {item.content ? ` · ~${Math.round(item.content.length / 5).toLocaleString()} words` : ' — not available'}
         </button>
         {showTranscript && (
           <div className="border rounded-lg p-4 bg-muted/20 max-h-80 overflow-y-auto">
-            {item.transcript ? (
-              <pre className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap font-mono">{item.transcript}</pre>
+            {item.content ? (
+              <pre className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap font-mono">{item.content}</pre>
             ) : (
-              <p className="text-sm text-muted-foreground">Transcript not available for this video.</p>
+              <p className="text-sm text-muted-foreground">Content not available for this item.</p>
             )}
           </div>
         )}
@@ -157,12 +162,12 @@ function SummaryCard({
 
       {status === 'failed' && (
         <p className="text-xs text-destructive mt-1">
-          {hasTranscript ? 'Generation failed — click Retry.' : 'No transcript available for this video.'}
+          {hasTranscript ? 'Generation failed — click Retry.' : 'No content available for this item.'}
         </p>
       )}
 
       {status === 'none' && !hasTranscript && (
-        <p className="text-xs text-muted-foreground mt-1">No transcript available.</p>
+        <p className="text-xs text-muted-foreground mt-1">No content available.</p>
       )}
     </div>
   )

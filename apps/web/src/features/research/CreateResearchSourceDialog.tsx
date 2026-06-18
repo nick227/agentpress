@@ -1,22 +1,38 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { X, Youtube, MessageSquare, Rss } from 'lucide-react'
 import { useCreateResearchSource } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
-const CATEGORIES = [
-  'politics',
-  'technology',
-  'finance',
-  'health',
-  'entertainment',
-  'sports',
-  'education',
-  'science',
-  'business',
-  'culture',
+const CATEGORIES = ['politics', 'technology', 'financial', 'health', 'entertainment', 'sports', 'education', 'science', 'business', 'culture']
+
+const SOURCE_TYPES = [
+  {
+    id: 'youtube',
+    label: 'YouTube',
+    icon: Youtube,
+    urlLabel: 'Channel URL',
+    placeholder: 'https://www.youtube.com/@handle',
+    hint: 'Supports @handle, /channel/, /c/, /user/ formats',
+  },
+  {
+    id: 'reddit',
+    label: 'Reddit',
+    icon: MessageSquare,
+    urlLabel: 'Subreddit URL',
+    placeholder: 'https://www.reddit.com/r/wallstreetbets',
+    hint: 'Collects a daily digest of the top posts',
+  },
+  {
+    id: 'rss',
+    label: 'RSS Feed',
+    icon: Rss,
+    urlLabel: 'Feed URL',
+    placeholder: 'https://feeds.reuters.com/reuters/businessNews',
+    hint: 'Any standard RSS or Atom feed',
+  },
 ]
 
 interface Props {
@@ -28,21 +44,24 @@ interface Props {
 export function CreateResearchSourceDialog({ accountId, accountSlug, onClose }: Props) {
   const navigate = useNavigate()
   const create = useCreateResearchSource()
+  const [sourceType, setSourceType] = useState('youtube')
   const [name, setName] = useState('')
-  const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [sourceUrl, setSourceUrl] = useState('')
   const [category, setCategory] = useState('')
   const [customCategory, setCustomCategory] = useState('')
 
   const effectiveCategory = category === '__custom__' ? customCategory.trim() : category
+  const typeConfig = SOURCE_TYPES.find((t) => t.id === sourceType)!
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !youtubeUrl.trim()) return
+    if (!name.trim() || !sourceUrl.trim()) return
     try {
       const result = await create.mutateAsync({
         accountId,
         name: name.trim(),
-        youtubeUrl: youtubeUrl.trim(),
+        sourceType: sourceType as 'youtube' | 'reddit' | 'rss',
+        sourceUrl: sourceUrl.trim(),
         category: effectiveCategory || undefined,
       })
       toast.success('Research source created')
@@ -63,28 +82,53 @@ export function CreateResearchSourceDialog({ accountId, accountSlug, onClose }: 
           </Button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {/* Source type picker */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5">Source type</label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {SOURCE_TYPES.map((t) => {
+                const Icon = t.icon
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => { setSourceType(t.id); setSourceUrl('') }}
+                    className={`flex flex-col items-center gap-1 py-2 px-1 rounded border text-xs font-medium transition-colors ${
+                      sourceType === t.id
+                        ? 'border-foreground bg-foreground/5 text-foreground'
+                        : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {t.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-medium mb-1">Name</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Vaush"
+              placeholder={sourceType === 'reddit' ? 'e.g. WallStreetBets' : sourceType === 'rss' ? 'e.g. Reuters Business' : 'e.g. Vaush'}
               className="h-8 text-sm"
               autoFocus
             />
           </div>
+
           <div>
-            <label className="block text-xs font-medium mb-1">YouTube Channel URL</label>
+            <label className="block text-xs font-medium mb-1">{typeConfig.urlLabel}</label>
             <Input
-              value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
-              placeholder="https://www.youtube.com/@Vaush"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              placeholder={typeConfig.placeholder}
               className="h-8 text-sm"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Supports @handle, /channel/, /c/, /user/ formats
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{typeConfig.hint}</p>
           </div>
+
           <div>
             <label className="block text-xs font-medium mb-1">Category <span className="text-muted-foreground font-normal">(optional)</span></label>
             <div className="flex flex-wrap gap-1.5 mb-2">
@@ -124,11 +168,10 @@ export function CreateResearchSourceDialog({ accountId, accountSlug, onClose }: 
               />
             )}
           </div>
+
           <div className="flex gap-2 justify-end pt-1">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" loading={create.isPending} disabled={!name.trim() || !youtubeUrl.trim()}>
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+            <Button type="submit" size="sm" loading={create.isPending} disabled={!name.trim() || !sourceUrl.trim()}>
               Create
             </Button>
           </div>

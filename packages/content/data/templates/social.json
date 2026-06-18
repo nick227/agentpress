@@ -2,7 +2,7 @@
   {
     "id": "linkedin-post",
     "name": "LinkedIn Post",
-    "description": "A high-engagement LinkedIn post. A hook planner maps the opener (scratch), then a post writer produces the full published post in the body.",
+    "description": "A high-engagement LinkedIn post. A hook planner maps the opener (not included), then a post writer produces the full published post in the body.",
     "category": "social",
     "categoryLabel": "Social & Email",
     "tags": ["linkedin", "social-media", "thought-leadership"],
@@ -57,7 +57,7 @@
       {
         "uid": "hook_writer",
         "name": "Hook Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan LinkedIn post hooks before the full post is written. A great hook creates curiosity, makes a bold claim, or promises a specific insight. Your plan includes: the hook (1–2 short lines), 3 body beat angles, and CTA question angle. This plan is used by the post writer and does not appear as separate published copy.",

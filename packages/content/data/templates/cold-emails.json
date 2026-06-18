@@ -2,7 +2,7 @@
   {
     "id": "b2b-cold-outreach",
     "name": "B2B Cold Outreach",
-    "description": "A personalized cold email for B2B sales. A prospect planner maps the angle (scratch), then subject and email agents write the final copy.",
+    "description": "A personalized cold email for B2B sales. A prospect planner maps the angle (not included), then subject and email agents write the final copy.",
     "category": "cold-emails",
     "categoryLabel": "Cold Emails",
     "tags": ["sales", "outreach", "b2b", "email", "cold"],
@@ -66,7 +66,7 @@
       {
         "uid": "prospect_planner",
         "name": "Prospect Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan B2B cold outreach emails before any copy is written. Your plan identifies: the specific hook for line 1 (something about them, not you), how pain connects to offer in one sentence, whether social proof fits and where, and the low-commitment CTA angle. This plan is used by the writing agents and does not appear in the sent email.",
@@ -95,7 +95,7 @@
   {
     "id": "follow-up-email",
     "name": "Follow-Up Email",
-    "description": "A 3-touch follow-up sequence for a cold email that got no response. A sequence planner maps each touch (scratch), then subject and body agents write the final emails.",
+    "description": "A 3-touch follow-up sequence for a cold email that got no response. A sequence planner maps each touch (not included), then subject and body agents write the final emails.",
     "category": "cold-emails",
     "categoryLabel": "Cold Emails",
     "tags": ["follow-up", "sales", "email", "sequence"],
@@ -141,7 +141,7 @@
       {
         "uid": "sequence_planner",
         "name": "Sequence Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan 3-email cold follow-up sequences before any copy is written. Email 1 (Day 3): reframe angle. Email 2 (Day 7): add genuine value. Email 3 (Day 14): graceful close. For each email note: subject angle, core message, and CTA. This plan is used by the writing agents and does not appear in the sent emails.",
@@ -170,7 +170,7 @@
   {
     "id": "linkedin-outreach",
     "name": "LinkedIn Connection Message",
-    "description": "A LinkedIn connection request message and initial DM. A planner maps the approach (scratch), then body agents write both messages.",
+    "description": "A LinkedIn connection request message and initial DM. A planner maps the approach (not included), then body agents write both messages.",
     "category": "cold-emails",
     "categoryLabel": "Cold Emails",
     "tags": ["linkedin", "outreach", "social", "networking"],
@@ -207,7 +207,7 @@
       {
         "uid": "outreach_planner",
         "name": "Outreach Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan LinkedIn outreach before any messages are written. Your plan covers: connection note angle (specific, under 300 chars), DM angle after acceptance (value or low-stakes ask), and what to avoid (pitching, generic openers). This plan is used by the writing agents and does not appear in the sent messages.",

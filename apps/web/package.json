@@ -5,7 +5,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:static": "tsc --noEmit",
+    "lint": "pnpm run test:static"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.0.0",

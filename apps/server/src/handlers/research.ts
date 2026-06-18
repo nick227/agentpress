@@ -8,7 +8,7 @@ export async function listResearchSources(request: FastifyRequest<{ Params: { ac
 }
 
 export async function createResearchSource(
-  request: FastifyRequest<{ Params: { accountId: string }; Body: { name: string; category?: string; youtubeUrl: string } }>,
+  request: FastifyRequest<{ Params: { accountId: string }; Body: { name: string; category?: string; sourceType?: string; sourceUrl: string } }>,
   reply: FastifyReply,
 ) {
   return reply.status(201).send({ data: await svc.create(request.params.accountId, request.body) })
@@ -19,7 +19,7 @@ export async function getResearchSource(request: FastifyRequest<{ Params: { sour
 }
 
 export async function updateResearchSource(
-  request: FastifyRequest<{ Params: { sourceId: string }; Body: { name?: string; category?: string; youtubeUrl?: string; status?: string } }>,
+  request: FastifyRequest<{ Params: { sourceId: string }; Body: { name?: string; category?: string; sourceUrl?: string; status?: string } }>,
   reply: FastifyReply,
 ) {
   return reply.send({ data: await svc.update(request.params.sourceId, request.body) })

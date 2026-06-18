@@ -2,7 +2,7 @@
   {
     "id": "comedy-sketch",
     "name": "Comedy Sketch",
-    "description": "A two-character comedic scene. A game planner maps the sketch structure (scratch), then title and script agents write the final piece.",
+    "description": "A two-character comedic scene. A game planner maps the sketch structure (not included), then title and script agents write the final piece.",
     "category": "sketches",
     "categoryLabel": "Sketches",
     "tags": ["comedy", "sketch", "dialogue", "two-person", "script"],
@@ -48,7 +48,7 @@
       {
         "uid": "game_planner",
         "name": "Game Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan two-person comedy sketches before dialogue is written. Every great sketch has a game — an absurd rule established and escalated three times. Your plan identifies: the game (one sentence), normal world beat, weird thing introduction, three escalation beats, and button ending. This plan is used by the sketch writer and does not appear in the final script.",
@@ -77,7 +77,7 @@
   {
     "id": "satirical-article",
     "name": "Satirical Article",
-    "description": "A satirical piece in the style of The Onion or McSweeney's. An angle planner maps the bit (scratch), then lede and body agents write the published article.",
+    "description": "A satirical piece in the style of The Onion or McSweeney's. An angle planner maps the bit (not included), then lede and body agents write the published article.",
     "category": "sketches",
     "categoryLabel": "Sketches",
     "tags": ["satire", "parody", "comedy", "opinion", "onion-style"],
@@ -114,7 +114,7 @@
       {
         "uid": "angle_planner",
         "name": "Angle Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan satirical articles before any prose is written. Your plan identifies: the absurd premise stated earnestly, the lede angle, 3–4 escalating absurd details to include, and fake expert quote angles. This plan is used by the writing agents and does not appear in the published article.",

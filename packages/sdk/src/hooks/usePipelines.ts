@@ -64,6 +64,7 @@ export function useUpdatePipeline() {
       destinationId?: string | null
       researchSourceId?: string | null
       researchSummaryPromptId?: string | null
+      bodyComposer?: Array<Record<string, unknown>>
       dryRun?: boolean
       scheduleMode?: 'manual' | 'recurring'
       frequency?: 'daily' | 'weekly' | 'monthly'

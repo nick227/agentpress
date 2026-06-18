@@ -17,11 +17,12 @@ interface Props {
 }
 
 const OUTPUT_TARGETS = [
+  { value: 'none', label: 'Not included in final post' },
   { value: 'body', label: 'Body (section)' },
+  { value: 'image', label: 'Inline image' },
   { value: 'title', label: 'Title' },
   { value: 'excerpt', label: 'Excerpt' },
   { value: 'thumbnail_prompt', label: 'Thumbnail prompt' },
-  { value: 'scratch', label: 'Scratch (planning only)' },
 ] as const
 const OUTPUT_FORMATS = ['text', 'markdown', 'json'] as const
 

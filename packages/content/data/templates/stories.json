@@ -2,7 +2,7 @@
   {
     "id": "short-story",
     "name": "Short Story",
-    "description": "A complete short story with a defined arc. A planner maps the outline (scratch), then three body agents write the opening, rising action, and climax/resolution — each picking up where the last left off.",
+    "description": "A complete short story with a defined arc. A planner maps the outline (not included), then three body agents write the opening, rising action, and climax/resolution — each picking up where the last left off.",
     "category": "stories",
     "categoryLabel": "Stories",
     "tags": ["fiction", "creative", "short-story", "narrative"],
@@ -48,7 +48,7 @@
       {
         "uid": "outline_writer",
         "name": "Story Outline",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You create tight short story outlines. For a short story, every scene must do double duty — advance plot and reveal character. Your outlines identify: opening image/scene, inciting incident, rising tension beat, turning point, climax, and final image. Each beat is one sentence. You also note the story's emotional throughline — what the protagonist wants vs. what they need. This outline is used by the writing agents and does not appear in the published story.",
@@ -95,7 +95,7 @@
   {
     "id": "personal-essay",
     "name": "Personal Essay",
-    "description": "A personal narrative essay — memoir-style — that moves from a specific moment to a universal insight. A planner maps structure (scratch), then body agents write the scene and reflection.",
+    "description": "A personal narrative essay — memoir-style — that moves from a specific moment to a universal insight. A planner maps structure (not included), then body agents write the scene and reflection.",
     "category": "stories",
     "categoryLabel": "Stories",
     "tags": ["personal", "essay", "memoir", "newsletter", "substack"],
@@ -141,7 +141,7 @@
       {
         "uid": "planner",
         "name": "Essay Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan personal narrative essays before any prose is written. Your plan gives the writing agents: the opening scene beat, the context/backstory beat, the crisis or turning point, the reflection arc, and how the insight should emerge (not be stated). This plan is used by the writing agents and does not appear in the published essay.",

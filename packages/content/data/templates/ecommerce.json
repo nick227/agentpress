@@ -2,7 +2,7 @@
   {
     "id": "product-description",
     "name": "Product Description",
-    "description": "Compelling product copy. A product-angle planner maps benefits and structure (scratch), then headline, short description, and full description agents produce the final output.",
+    "description": "Compelling product copy. A product-angle planner maps benefits and structure (not included), then headline, short description, and full description agents produce the final output.",
     "category": "ecommerce",
     "categoryLabel": "E-commerce",
     "tags": ["product", "ecommerce", "copywriting", "conversion"],
@@ -66,7 +66,7 @@
       {
         "uid": "angle_planner",
         "name": "Product Angle Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan e-commerce product copy before any prose is written. Your plan identifies: the primary customer benefit (not feature), 3–4 supporting benefit angles, feature-to-benefit mapping notes, and ideal customer profile beat. This plan is used by the writing agents and does not appear in the published product page separately.",
@@ -104,7 +104,7 @@
   {
     "id": "category-page",
     "name": "Category Page",
-    "description": "SEO-friendly category or collection page copy. An SEO planner maps structure (scratch), then title, meta description, and content agents produce the final page.",
+    "description": "SEO-friendly category or collection page copy. An SEO planner maps structure (not included), then title, meta description, and content agents produce the final page.",
     "category": "ecommerce",
     "categoryLabel": "E-commerce",
     "tags": ["seo", "category", "ecommerce", "collection"],
@@ -159,7 +159,7 @@
       {
         "uid": "seo_planner",
         "name": "SEO Planner",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You plan e-commerce category page content before any copy is written. Your plan identifies: keyword placement strategy, intro angle, 3–4 buying criteria to cover, product type sections, and 3–4 FAQ questions. This plan is used by the content writer and does not appear in the published page separately.",

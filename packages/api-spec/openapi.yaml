@@ -243,7 +243,7 @@ components:
           type: string
         outputTarget:
           type: string
-          enum: [title, excerpt, thumbnail_prompt, body, scratch]
+          enum: [title, excerpt, thumbnail_prompt, body, image, none]
         outputFormat:
           type: string
           enum: [text, markdown, json]
@@ -268,7 +268,7 @@ components:
           type: string
         outputTarget:
           type: string
-          enum: [title, excerpt, thumbnail_prompt, body, scratch]
+          enum: [title, excerpt, thumbnail_prompt, body, image, none]
         outputFormat:
           type: string
           enum: [text, markdown, json]
@@ -305,6 +305,11 @@ components:
         researchSummaryPromptId:
           type: string
           nullable: true
+        bodyComposer:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
         dryRun:
           type: boolean
         scheduleMode:
@@ -402,6 +407,13 @@ components:
         renderedSystemPrompt:
           type: string
         renderedUserPrompt:
+          type: string
+        inputHash:
+          type: string
+        cacheStatus:
+          type: string
+          enum: [generated, reused, failed]
+        reusedFromAgentRunId:
           type: string
         outputText:
           type: string
@@ -1193,8 +1205,19 @@ paths:
                 researchSummaryPromptId:
                   type: string
                   nullable: true
+                bodyComposer:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
                 dryRun:
                   type: boolean
+                forceRegenerate:
+                  type: boolean
+                forceRegenerateAgentUids:
+                  type: array
+                  items:
+                    type: string
                 scheduleMode:
                   type: string
                   enum: [manual, recurring]

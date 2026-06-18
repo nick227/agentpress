@@ -2,7 +2,7 @@
   {
     "id": "twitter-thread",
     "name": "Twitter / X Thread",
-    "description": "A high-engagement Twitter/X thread. A planner maps the outline (scratch), then a thread writer produces the complete thread — hook through close — in the body.",
+    "description": "A high-engagement Twitter/X thread. A planner maps the outline (not included), then a thread writer produces the complete thread — hook through close — in the body.",
     "category": "tweets",
     "categoryLabel": "Tweets",
     "tags": ["twitter", "x", "thread", "social-media", "viral"],
@@ -48,7 +48,7 @@
       {
         "uid": "outline_writer",
         "name": "Thread Outline",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You create Twitter thread outlines. A great thread outline: states the hook promise, lists 6–12 specific points (each one tweet of value), and ends with a recap + CTA. Each point is one sentence describing exactly what that tweet will say — not 'talk about X' but 'The specific thing most people get wrong about X is Y.' Return the outline as a numbered list. This outline is used by the thread writer and does not appear in the published thread.",
@@ -68,7 +68,7 @@
   {
     "id": "single-viral-tweet",
     "name": "Single Viral Tweet",
-    "description": "A single high-engagement tweet. A scratch agent drafts variations, then a final agent picks and polishes the winning tweet into the body.",
+    "description": "A single high-engagement tweet. A planning agent drafts variations, then a final agent picks and polishes the winning tweet into the body.",
     "category": "tweets",
     "categoryLabel": "Tweets",
     "tags": ["twitter", "x", "viral", "engagement", "single-tweet"],
@@ -105,7 +105,7 @@
       {
         "uid": "variation_writer",
         "name": "Variation Writer",
-        "outputTarget": "scratch",
+        "outputTarget": "none",
         "outputFormat": "text",
         "sortOrder": 0,
         "systemPrompt": "You draft single high-engagement tweet variations for evaluation. Formats that perform: hot take, unpopular opinion, contrarian reframe, specific observation, story setup with a twist. Each under 240 characters. No hashtags. Label A, B, C with distinct angles. These drafts are used internally — only the final tweet is published.",
