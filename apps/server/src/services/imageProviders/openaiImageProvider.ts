@@ -20,7 +20,7 @@ function getClient(): OpenAI {
   return _client
 }
 
-function resolveModel(): string {
+export function resolveImageModel(): string {
   const raw = process.env.OPENAI_IMAGE_MODEL?.trim()
   return raw || 'gpt-image-1'
 }
@@ -64,25 +64,20 @@ export class OpenAIImageProvider implements ImageProvider {
   readonly id = 'openai'
 
   async generate(options: ImageGenerateOptions): Promise<ImageGenerateResult | null> {
-    const model = resolveModel()
-
-    if (isDalleModel(model)) {
-      const response = await getClient().images.generate({
-        model: normalizeModel(model),
-        prompt: options.prompt,
-        n: 1,
-        size: resolveDalleSize(model),
-        response_format: 'url',
-      })
-      return resultFromResponse(response.data)
+    const model = normalizeModel(resolveImageModel())
+    const params: OpenAI.Images.ImageGenerateParams = {
+      model,
+      prompt: options.prompt,
     }
 
-    // gpt-image-1 and newer OpenAI image models reject response_format.
-    const response = await getClient().images.generate({
-      model: normalizeModel(model),
-      prompt: options.prompt,
-      size: resolveGptImageSize(),
-    })
+    if (isDalleModel(model)) {
+      params.n = 1
+      params.size = resolveDalleSize(model)
+    } else {
+      params.size = resolveGptImageSize()
+    }
+
+    const response = await getClient().images.generate(params)
     return resultFromResponse(response.data)
   }
 }

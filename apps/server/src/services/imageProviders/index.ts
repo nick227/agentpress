@@ -16,7 +16,8 @@ export function getImageProvider(): ImageProvider {
 }
 
 export function getImageModelLabel(): string {
-  return process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1'
+  return resolveImageModel()
 }
 
+export { resolveImageModel } from './openaiImageProvider'
 export type { ImageProvider, ImageGenerateOptions, ImageGenerateResult } from './types'

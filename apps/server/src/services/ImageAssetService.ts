@@ -1,8 +1,26 @@
 import { db } from '@project/db'
-import { getImageModelLabel, getImageProvider } from './imageProviders'
+import { getImageModelLabel, getImageProvider, resolveImageModel } from './imageProviders'
 import { OutputAssetService } from './OutputAssetService'
 
 const assets = new OutputAssetService()
+
+function imageApiErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const apiErr = err as { error?: { message?: string }; message?: string }
+    const nested = apiErr.error?.message?.trim()
+    if (nested) return nested
+    const message = apiErr.message?.trim()
+    if (message) return message.replace(/^\d+\s+/, '')
+  }
+  return 'Image generation failed'
+}
+
+function withModelHint(message: string): string {
+  if (/does not exist/i.test(message) && /dall-e/i.test(resolveImageModel())) {
+    return `${message} Set OPENAI_IMAGE_MODEL=gpt-image-1 in .env and restart the server.`
+  }
+  return message
+}
 
 export class ImageAssetService {
   private async resolvePipeline(idOrSlug: string) {
@@ -55,9 +73,7 @@ export class ImageAssetService {
     try {
       generated = await provider.generate({ prompt })
     } catch (err: unknown) {
-      const apiErr = err as { error?: { message?: string }; message?: string }
-      const message = apiErr.error?.message ?? apiErr.message ?? 'Image generation failed'
-      throw Object.assign(new Error(message), { statusCode: 502 })
+      throw Object.assign(new Error(withModelHint(imageApiErrorMessage(err))), { statusCode: 502 })
     }
     if (!generated?.url) throw Object.assign(new Error('Image generation returned no image'), { statusCode: 502 })
 
