@@ -1,10 +1,16 @@
-import { usePipelineRun } from '@project/sdk'
+import { usePipelineRun, usePublishRun } from '@project/sdk'
+import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { CheckCircle2, XCircle, Loader2, Clock, FileText, FileJson, Image } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { CheckCircle2, XCircle, Loader2, Clock, FileText, FileJson, Image, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+
+type Pipeline = components['schemas']['Pipeline']
 
 interface Props {
   runId: string
+  pipeline: Pipeline
 }
 
 const STATUS_MAP: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
@@ -21,8 +27,9 @@ const ASSET_ICON: Record<string, React.ReactNode> = {
   image: <Image size={13} />,
 }
 
-export function BuilderRun({ runId }: Props) {
+export function BuilderRun({ runId, pipeline }: Props) {
   const { data, isLoading } = usePipelineRun(runId)
+  const publish = usePublishRun()
 
   if (isLoading) {
     return (
@@ -43,22 +50,50 @@ export function BuilderRun({ runId }: Props) {
 
   const statusInfo = STATUS_MAP[run.status] ?? STATUS_MAP.queued!
   const post = run.generatedPost as any
-
   const isActive = run.status === 'queued' || run.status === 'running'
+
+  const canPublish =
+    run.status === 'completed' &&
+    run.dryRun &&
+    Boolean(pipeline.destinationId) &&
+    Boolean(post)
+
+  async function handlePublish() {
+    try {
+      const result = await publish.mutateAsync(runId)
+      toast.success(result.remoteUrl ? `Published to ${result.remoteUrl}` : 'Published successfully')
+    } catch (err: any) {
+      toast.error(err.message ?? 'Publish failed')
+    }
+  }
 
   return (
     <div className="p-6 max-w-2xl space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <span className={cn('flex items-center gap-1.5 text-sm font-medium', statusInfo.color)}>
-          {statusInfo.icon}
-          {statusInfo.label}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {run.dryRun ? 'Dry run' : 'Live run'} · {new Date(run.startedAt).toLocaleString()}
-        </span>
-        {isActive && (
-          <span className="text-xs text-muted-foreground animate-pulse">Refreshing…</span>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className={cn('flex items-center gap-1.5 text-sm font-medium', statusInfo.color)}>
+            {statusInfo.icon}
+            {statusInfo.label}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {run.dryRun ? 'Dry run' : 'Live run'} · {new Date(run.startedAt).toLocaleString()}
+          </span>
+          {isActive && (
+            <span className="text-xs text-muted-foreground animate-pulse">Refreshing…</span>
+          )}
+        </div>
+
+        {canPublish && (
+          <Button
+            size="sm"
+            className="gap-1.5 shrink-0"
+            loading={publish.isPending}
+            onClick={handlePublish}
+          >
+            <Send size={13} />
+            Publish to WordPress
+          </Button>
         )}
       </div>
 
@@ -125,7 +160,7 @@ export function BuilderRun({ runId }: Props) {
         </div>
       )}
 
-      {/* Publish */}
+      {/* Publish attempts */}
       {publishAttempts.length > 0 && (
         <div>
           <h2 className="text-sm font-semibold mb-2">Publishing</h2>
@@ -169,7 +204,10 @@ export function BuilderRun({ runId }: Props) {
               return (
                 <div key={ar.id} className="border rounded p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold">{ar.agentName} <span className="text-muted-foreground font-normal">→ {ar.outputTarget}</span></p>
+                    <p className="text-xs font-semibold">
+                      {ar.agentName}{' '}
+                      <span className="text-muted-foreground font-normal">→ {ar.outputTarget}</span>
+                    </p>
                     <span className={cn('flex items-center gap-1 text-xs', info.color)}>
                       {info.icon}
                       {info.label}

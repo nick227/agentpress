@@ -1,0 +1,263 @@
+[
+  {
+    "id": "seo-blog-post",
+    "name": "SEO Blog Post",
+    "description": "A complete SEO-optimized blog post with title, meta excerpt, full body, and a thumbnail image prompt. Four agents run in sequence — each one builds on the previous output.",
+    "category": "blog",
+    "categoryLabel": "Blog Content",
+    "tags": ["seo", "long-form", "content-marketing"],
+    "variables": [
+      {
+        "key": "topic",
+        "label": "Topic",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "How AI is transforming healthcare in 2025",
+        "hint": "The main subject of the blog post"
+      },
+      {
+        "key": "target_keyword",
+        "label": "Target Keyword",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "AI in healthcare 2025",
+        "hint": "The primary SEO keyword to rank for"
+      },
+      {
+        "key": "audience",
+        "label": "Target Audience",
+        "type": "text",
+        "required": false,
+        "defaultValue": "general readers interested in technology",
+        "exampleValue": "healthcare professionals and tech enthusiasts",
+        "hint": "Who this post is written for — shapes vocabulary and depth"
+      },
+      {
+        "key": "tone",
+        "label": "Writing Tone",
+        "type": "text",
+        "required": false,
+        "defaultValue": "informative and engaging",
+        "exampleValue": "conversational yet authoritative",
+        "hint": "The voice and style of the writing"
+      },
+      {
+        "key": "word_count",
+        "label": "Word Count",
+        "type": "text",
+        "required": false,
+        "defaultValue": "1500",
+        "exampleValue": "2000",
+        "hint": "Target length of the blog body in words"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "title_writer",
+        "name": "Title Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You are an expert SEO copywriter specializing in crafting compelling blog post titles. Your titles are click-worthy, include the target keyword naturally, and stay under 65 characters. Return only the title — no quotes, no explanation, no punctuation at the end.",
+        "userPrompt": "Write an SEO-optimized blog post title.\n\nTopic: {topic}\nTarget keyword: {target_keyword}\nTone: {tone}\n\nTitle:"
+      },
+      {
+        "uid": "excerpt_writer",
+        "name": "Excerpt Writer",
+        "outputTarget": "excerpt",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You are an SEO meta description specialist. Write compelling, accurate meta excerpts that summarize a blog post in 150–160 characters. Include the target keyword naturally. Return only the excerpt — no quotes, no label, no explanation.",
+        "userPrompt": "Write a meta excerpt for the following blog post.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nTarget keyword: {target_keyword}\nAudience: {audience}\n\nExcerpt:"
+      },
+      {
+        "uid": "body_writer",
+        "name": "Body Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You are an experienced blog content writer who creates engaging, well-structured long-form content. Your posts are informative, easy to read, and optimized for both readers and search engines. Use Markdown: ## for H2 sections, ### for H3 subsections, **bold** for key terms, and bullet points for lists. Do not include a title or meta description — only the body.",
+        "userPrompt": "Write a comprehensive blog post body.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nTarget keyword: {target_keyword}\nTarget audience: {audience}\nTone: {tone}\nTarget word count: {word_count} words\n\nStructure:\n- Engaging introduction (hook, state the problem or opportunity)\n- 4–6 well-developed H2 sections with practical examples or data\n- Conclusion with a clear call to action\n\nWeave the target keyword and related terms naturally throughout. Write in a {tone} voice appropriate for {audience}."
+      },
+      {
+        "uid": "image_prompter",
+        "name": "Thumbnail Prompt",
+        "outputTarget": "thumbnail_prompt",
+        "outputFormat": "text",
+        "sortOrder": 3,
+        "systemPrompt": "You are a creative director who writes precise DALL-E image generation prompts for blog thumbnails. Your prompts produce professional, visually striking hero images. Return only the image generation prompt — no explanation.",
+        "userPrompt": "Write a DALL-E image prompt for a blog post thumbnail.\n\nBlog title: {agents.title_writer.output}\nTopic: {topic}\n\nRequirements: professional quality, visually striking, suitable as a blog hero image, no text or typography in the image. Use modern digital illustration or editorial photography style."
+      }
+    ]
+  },
+  {
+    "id": "listicle",
+    "name": "Listicle",
+    "description": "A numbered list article (Top 10, 7 Reasons, 5 Best, etc.) optimized for shareability and skim-reading. Ideal for high-traffic topics where readers want quick, scannable value.",
+    "category": "blog",
+    "categoryLabel": "Blog Content",
+    "tags": ["list", "seo", "shareable"],
+    "variables": [
+      {
+        "key": "topic",
+        "label": "Topic",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "project management tools for remote teams",
+        "hint": "The subject of the list (e.g. 'productivity apps for developers')"
+      },
+      {
+        "key": "list_count",
+        "label": "Number of Items",
+        "type": "text",
+        "required": false,
+        "defaultValue": "10",
+        "exampleValue": "7",
+        "hint": "How many items in the list"
+      },
+      {
+        "key": "target_keyword",
+        "label": "Target Keyword",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "best project management tools 2025",
+        "hint": "Primary SEO keyword for the article"
+      },
+      {
+        "key": "audience",
+        "label": "Target Audience",
+        "type": "text",
+        "required": false,
+        "defaultValue": "professionals looking to improve productivity",
+        "exampleValue": "startup founders and team leads",
+        "hint": "Who is reading this list"
+      },
+      {
+        "key": "tone",
+        "label": "Tone",
+        "type": "text",
+        "required": false,
+        "defaultValue": "helpful and direct",
+        "exampleValue": "energetic and opinionated",
+        "hint": "Voice for the article"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "title_writer",
+        "name": "Title Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You write punchy, high-CTR listicle titles. Include the number, the benefit, and the audience if relevant. Under 65 characters. Return only the title.",
+        "userPrompt": "Write a listicle title for the following.\n\nTopic: {topic}\nNumber of items: {list_count}\nTarget keyword: {target_keyword}\nAudience: {audience}\n\nTitle:"
+      },
+      {
+        "uid": "excerpt_writer",
+        "name": "Excerpt Writer",
+        "outputTarget": "excerpt",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write compelling meta descriptions for listicle articles. 150–160 characters, includes the target keyword, teases the list without giving it away. Return only the excerpt.",
+        "userPrompt": "Write a meta excerpt for this listicle.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nTarget keyword: {target_keyword}\n\nExcerpt:"
+      },
+      {
+        "uid": "body_writer",
+        "name": "List Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write high-quality listicle articles in Markdown. Each list item gets an H2 heading (## 1. Item Name), a 2–3 sentence description explaining why it matters to the audience, and a short practical tip or example. Write a brief intro paragraph before the list and a short conclusion after. Do not include a title.",
+        "userPrompt": "Write a listicle article body.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nNumber of items: {list_count}\nTarget keyword: {target_keyword}\nAudience: {audience}\nTone: {tone}\n\nEach item must: name the item clearly in the H2, explain why it matters to the audience, and give one practical tip or example."
+      }
+    ]
+  },
+  {
+    "id": "product-review",
+    "name": "Product Review",
+    "description": "An in-depth, balanced product review with pros, cons, verdict, and affiliate-friendly structure. Good for comparison blogs, tech reviews, and software roundups.",
+    "category": "blog",
+    "categoryLabel": "Blog Content",
+    "tags": ["review", "product", "affiliate", "comparison"],
+    "variables": [
+      {
+        "key": "product_name",
+        "label": "Product Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Notion",
+        "hint": "The product or service being reviewed"
+      },
+      {
+        "key": "product_category",
+        "label": "Product Category",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "project management and note-taking app",
+        "hint": "What type of product this is"
+      },
+      {
+        "key": "target_audience",
+        "label": "Target Audience",
+        "type": "text",
+        "required": false,
+        "defaultValue": "professionals evaluating software tools",
+        "exampleValue": "freelancers and small business owners",
+        "hint": "Who is reading this review and considering the purchase"
+      },
+      {
+        "key": "key_features",
+        "label": "Key Features to Cover",
+        "type": "text",
+        "required": false,
+        "defaultValue": "ease of use, pricing, core features, customer support",
+        "exampleValue": "database views, AI writing assist, mobile app, team collaboration",
+        "hint": "Comma-separated list of features or angles to evaluate"
+      },
+      {
+        "key": "verdict_tone",
+        "label": "Verdict Tone",
+        "type": "text",
+        "required": false,
+        "defaultValue": "balanced and honest",
+        "exampleValue": "enthusiastic with clear caveats",
+        "hint": "How the final verdict should feel"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "title_writer",
+        "name": "Review Title Writer",
+        "outputTarget": "title",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You write product review titles that signal authority and include the product name. Patterns like '[Product] Review: Is It Worth It in 2025?' or '[Product] Review — Pros, Cons & Verdict' work well. Under 65 characters. Return only the title.",
+        "userPrompt": "Write a product review title.\n\nProduct: {product_name}\nCategory: {product_category}\nAudience: {target_audience}\n\nTitle:"
+      },
+      {
+        "uid": "excerpt_writer",
+        "name": "Review Excerpt",
+        "outputTarget": "excerpt",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You write meta excerpts for product reviews. 150–160 characters. Tease the verdict without revealing it. Include the product name. Return only the excerpt.",
+        "userPrompt": "Write a meta excerpt for this product review.\n\nTitle: {agents.title_writer.output}\nProduct: {product_name}\nAudience: {target_audience}\n\nExcerpt:"
+      },
+      {
+        "uid": "review_writer",
+        "name": "Review Body Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You write thorough, trustworthy product reviews in Markdown. Structure: overview paragraph, ## What Is [Product]?, ## Key Features (one ### per feature), ## Pros (bullet list), ## Cons (bullet list), ## Pricing, ## Who Is It For?, ## Verdict. Be specific and honest. Use bold for important points. Do not include the title.",
+        "userPrompt": "Write a detailed product review.\n\nTitle: {agents.title_writer.output}\nProduct: {product_name}\nCategory: {product_category}\nFeatures to cover: {key_features}\nTarget audience: {target_audience}\nVerdict tone: {verdict_tone}\n\nBe specific, balanced, and genuinely helpful to someone deciding whether to buy."
+      }
+    ]
+  }
+]

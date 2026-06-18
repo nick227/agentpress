@@ -73,3 +73,21 @@ export function useDeleteAccount() {
     },
   })
 }
+
+export function useSyncAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (accountId: string) => {
+      const { data, error, response } = await getApiClient().POST('/api/accounts/{accountId}/sync', {
+        params: { path: { accountId } },
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    onSuccess: (_data, accountId) => {
+      queryClient.invalidateQueries({ queryKey: ['research-sources', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['pipelines', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['pipeline-runs'] })
+    },
+  })
+}

@@ -72,6 +72,60 @@ components:
           type: string
           format: date-time
 
+    SyncResult:
+      type: object
+      required: [research, pipelines]
+      properties:
+        research:
+          type: object
+          required: [checked, newVideos, results]
+          properties:
+            checked:
+              type: integer
+            newVideos:
+              type: integer
+            results:
+              type: array
+              items:
+                type: object
+                required: [sourceName, sourceId, newItem]
+                properties:
+                  sourceName:
+                    type: string
+                  sourceId:
+                    type: string
+                  newItem:
+                    type: boolean
+                  videoTitle:
+                    type: string
+                  error:
+                    type: string
+        pipelines:
+          type: object
+          required: [started, skipped, results]
+          properties:
+            started:
+              type: integer
+            skipped:
+              type: integer
+            results:
+              type: array
+              items:
+                type: object
+                required: [pipelineName, pipelineId, status]
+                properties:
+                  pipelineName:
+                    type: string
+                  pipelineId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [started, skipped]
+                  runId:
+                    type: string
+                  reason:
+                    type: string
+
     Account:
       type: object
       required: [id, name, slug, createdAt, updatedAt]
@@ -465,6 +519,262 @@ components:
         path:
           type: string
 
+    LibraryAgent:
+      type: object
+      required: [id, uid, name, category, tags, systemPrompt, userPrompt, outputTarget, outputFormat, promptHash, usageCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        uid:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        outputTarget:
+          type: string
+        outputFormat:
+          type: string
+        promptHash:
+          type: string
+        usageCount:
+          type: integer
+        sourceRunId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TemplateVariable:
+      type: object
+      required: [key, label, type, required]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, number, boolean]
+        required:
+          type: boolean
+        defaultValue:
+          type: string
+        exampleValue:
+          type: string
+        hint:
+          type: string
+
+    TemplateAgent:
+      type: object
+      required: [uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, sortOrder]
+      properties:
+        uid:
+          type: string
+        name:
+          type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        outputTarget:
+          type: string
+        outputFormat:
+          type: string
+        sortOrder:
+          type: integer
+
+    ContentTemplate:
+      type: object
+      required: [id, name, description, category, categoryLabel, tags, variables, agents]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        categoryLabel:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateVariable'
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateAgent'
+
+    PackVariable:
+      type: object
+      required: [key, label, type, required]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [text, number, boolean]
+        required:
+          type: boolean
+        defaultValue:
+          type: string
+        exampleValue:
+          type: string
+        hint:
+          type: string
+
+    VariablePack:
+      type: object
+      required: [id, name, description, category, categoryLabel, variables]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        categoryLabel:
+          type: string
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/PackVariable'
+
+    ResearchSource:
+      type: object
+      required: [id, accountId, name, slug, youtubeUrl, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        category:
+          type: string
+        youtubeUrl:
+          type: string
+        channelId:
+          type: string
+        status:
+          type: string
+          enum: [active, paused]
+        lastChecked:
+          type: string
+          format: date-time
+        itemCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ResearchItem:
+      type: object
+      required: [id, sourceId, videoId, videoTitle, videoUrl, publishedAt, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        sourceId:
+          type: string
+        videoId:
+          type: string
+        videoTitle:
+          type: string
+        videoUrl:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        transcript:
+          type: string
+        summaryCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SummaryPrompt:
+      type: object
+      required: [id, name, systemPrompt, userPrompt, isDefault, sortOrder, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        isDefault:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ResearchSummary:
+      type: object
+      required: [id, itemId, promptId, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        itemId:
+          type: string
+        promptId:
+          type: string
+        promptName:
+          type: string
+        promptDescription:
+          type: string
+        text:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, done, failed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
 paths:
   /auth/register:
     post:
@@ -711,6 +1021,32 @@ paths:
                 properties:
                   ok:
                     type: boolean
+
+  /api/accounts/{accountId}/sync:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: syncAccount
+      tags: [accounts]
+      summary: Check all active research feeds and run all ready pipelines for an account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SyncResult'
 
   /api/accounts/{accountId}/pipelines:
     parameters:
@@ -993,6 +1329,36 @@ paths:
         '404':
           description: Not found
 
+  /api/pipeline-runs/{runId}/publish:
+    parameters:
+      - name: runId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: publishRun
+      tags: [runs]
+      summary: Publish a completed dry run to its pipeline destination
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Publish result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                  remoteUrl:
+                    type: string
+        '404':
+          description: Not found
+
   /api/accounts/{accountId}/destinations:
     parameters:
       - name: accountId
@@ -1138,3 +1504,685 @@ paths:
                         type: array
                         items:
                           type: string
+
+  /api/content/templates:
+    get:
+      operationId: listContentTemplates
+      tags: [content]
+      summary: List all pipeline content templates
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContentTemplate'
+
+  /api/content/templates/{templateId}/apply:
+    parameters:
+      - name: templateId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: applyContentTemplate
+      tags: [content]
+      summary: Create a pipeline from a content template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accountId]
+              properties:
+                accountId:
+                  type: string
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Pipeline created from template
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipeline'
+        '404':
+          description: Template not found
+
+  /api/content/variable-packs:
+    get:
+      operationId: listVariablePacks
+      tags: [content]
+      summary: List all variable packs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Variable packs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VariablePack'
+
+  /api/library/agents:
+    get:
+      operationId: listLibraryAgents
+      tags: [library]
+      summary: List shared library agents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Library agents
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LibraryAgent'
+
+    post:
+      operationId: createLibraryAgent
+      tags: [library]
+      summary: Create a library agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [uid, name, category, systemPrompt, userPrompt, outputTarget]
+              properties:
+                uid:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                systemPrompt:
+                  type: string
+                userPrompt:
+                  type: string
+                outputTarget:
+                  type: string
+                outputFormat:
+                  type: string
+      responses:
+        '201':
+          description: Agent created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LibraryAgent'
+
+  /api/library/agents/{agentId}:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getLibraryAgent
+      tags: [library]
+      summary: Get a library agent
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Library agent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LibraryAgent'
+        '404':
+          description: Not found
+
+    patch:
+      operationId: updateLibraryAgent
+      tags: [library]
+      summary: Update a library agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uid:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                systemPrompt:
+                  type: string
+                userPrompt:
+                  type: string
+                outputTarget:
+                  type: string
+                outputFormat:
+                  type: string
+      responses:
+        '200':
+          description: Updated agent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LibraryAgent'
+
+    delete:
+      operationId: deleteLibraryAgent
+      tags: [library]
+      summary: Delete a library agent
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /api/accounts/{accountId}/research:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: listResearchSources
+      tags: [research]
+      summary: List research sources for an account
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Research sources
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResearchSource'
+
+    post:
+      operationId: createResearchSource
+      tags: [research]
+      summary: Create a research source
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, youtubeUrl]
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                youtubeUrl:
+                  type: string
+      responses:
+        '201':
+          description: Research source created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ResearchSource'
+
+  /api/research/{sourceId}:
+    parameters:
+      - name: sourceId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getResearchSource
+      tags: [research]
+      summary: Get a research source
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Research source
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ResearchSource'
+        '404':
+          description: Not found
+
+    patch:
+      operationId: updateResearchSource
+      tags: [research]
+      summary: Update a research source
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                category:
+                  type: string
+                youtubeUrl:
+                  type: string
+                status:
+                  type: string
+                  enum: [active, paused]
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ResearchSource'
+
+    delete:
+      operationId: deleteResearchSource
+      tags: [research]
+      summary: Delete a research source
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /api/research/{sourceId}/check:
+    parameters:
+      - name: sourceId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: checkResearchSource
+      tags: [research]
+      summary: Check for new YouTube video and fetch transcript
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Check result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [checked, newItem]
+                    properties:
+                      checked:
+                        type: boolean
+                      newItem:
+                        type: boolean
+                      item:
+                        $ref: '#/components/schemas/ResearchItem'
+
+  /api/research/{sourceId}/items:
+    parameters:
+      - name: sourceId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: listResearchItems
+      tags: [research]
+      summary: List research items for a source (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Research items (paginated)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, total, page, pages]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResearchItem'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pages:
+                    type: integer
+
+  /api/research/items/{itemId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getResearchItem
+      tags: [research]
+      summary: Get a research item (with transcript)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Research item
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ResearchItem'
+
+  /api/research/items/{itemId}/summaries:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: listResearchSummaries
+      tags: [research]
+      summary: List all summaries for a research item
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Research summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResearchSummary'
+
+  /api/research/items/{itemId}/summarize:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: summarizeResearchItem
+      tags: [research]
+      summary: Generate a summary for an item using a specific prompt
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [promptId]
+              properties:
+                promptId:
+                  type: string
+      responses:
+        '200':
+          description: Generated summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ResearchSummary'
+
+  /api/summary-prompts:
+    get:
+      operationId: listSummaryPrompts
+      tags: [research]
+      summary: List all summary prompts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Summary prompts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SummaryPrompt'
+
+    post:
+      operationId: createSummaryPrompt
+      tags: [research]
+      summary: Create a summary prompt
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, systemPrompt, userPrompt]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                systemPrompt:
+                  type: string
+                userPrompt:
+                  type: string
+                isDefault:
+                  type: boolean
+                sortOrder:
+                  type: integer
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SummaryPrompt'
+
+  /api/summary-prompts/{promptId}:
+    parameters:
+      - name: promptId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    patch:
+      operationId: updateSummaryPrompt
+      tags: [research]
+      summary: Update a summary prompt
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                systemPrompt:
+                  type: string
+                userPrompt:
+                  type: string
+                isDefault:
+                  type: boolean
+                sortOrder:
+                  type: integer
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SummaryPrompt'
+
+    delete:
+      operationId: deleteSummaryPrompt
+      tags: [research]
+      summary: Delete a summary prompt
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean

@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Play, Zap, Plus, Trash2, Globe } from 'lucide-react'
+import { Play, Zap, Plus, Trash2, Globe, ChevronDown } from 'lucide-react'
 import type { components } from '@project/sdk'
-import { useUpdatePipeline, useStartPipelineRun, useDestinations, useCreateDestination, useDeleteDestination } from '@project/sdk'
+import {
+  useUpdatePipeline,
+  useStartPipelineRun,
+  useDestinations,
+  useCreateDestination,
+  useDeleteDestination,
+} from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { PipelineStatusBadge } from '../../PipelineStatusBadge'
 
 type Pipeline = components['schemas']['Pipeline']
 
@@ -34,8 +39,6 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
     return defaults
   })
   const [dryRun, setDryRun] = useState(pipeline.dryRun)
-
-  // Destination form state
   const [destForm, setDestForm] = useState({
     name: '',
     siteUrl: '',
@@ -91,66 +94,73 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
     refetchDestinations()
   }
 
+  const activeDestination = destinations.find((d) => d.id === pipeline.destinationId)
+
   return (
-    <div className="p-6 max-w-xl">
+    <div className="p-6 max-w-lg space-y-6">
 
-      {/* Pipeline name */}
-      <Section title="Pipeline name">
-        <div className="flex items-center gap-2">
-          <Input
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            onBlur={handleNameBlur}
-            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-            className="flex-1"
-          />
-          <PipelineStatusBadge status={pipeline.status} />
-        </div>
-      </Section>
+      {/* Name + Run */}
+      <div className="flex items-center gap-2">
+        <Input
+          value={nameInput}
+          onChange={(e) => setNameInput(e.target.value)}
+          onBlur={handleNameBlur}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          className="flex-1 font-medium"
+        />
+        <Button onClick={() => setShowRunDialog(true)} size="sm" className="gap-1.5 shrink-0">
+          <Play size={13} />
+          Run
+        </Button>
+      </div>
 
-      {/* Destinations */}
-      <Section title="Destinations">
-        {destinations.length > 0 && (
-          <div className="space-y-1.5 mb-3">
-            {destinations.map((d) => (
-              <div
-                key={d.id}
-                className={`flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors ${
-                  pipeline.destinationId === d.id
-                    ? 'border-accent bg-accent/5'
-                    : 'border-input-border bg-surface hover:bg-muted/40'
-                }`}
-              >
-                <button
-                  type="button"
-                  className="flex-1 flex items-center gap-2 text-left min-w-0"
-                  onClick={() => handleSave({ destinationId: pipeline.destinationId === d.id ? undefined : d.id })}
+      {/* Destination */}
+      <div className="space-y-2">
+        <Label>Destination</Label>
+        {destinations.length > 0 ? (
+          <div className="space-y-1.5">
+            {destinations.map((d) => {
+              const isActive = pipeline.destinationId === d.id
+              return (
+                <div
+                  key={d.id}
+                  className={`flex items-center gap-2 px-3 py-2 rounded border text-sm transition-colors ${
+                    isActive ? 'border-accent bg-accent/5' : 'border-input-border bg-surface hover:bg-muted/40'
+                  }`}
                 >
-                  <Globe size={13} className="text-muted-foreground shrink-0" />
-                  <span className="min-w-0">
-                    <span className="block font-medium truncate">{d.name}</span>
-                    <span className="block text-xs text-muted-foreground truncate">{d.siteUrl}</span>
-                  </span>
-                  {pipeline.destinationId === d.id && (
-                    <span className="ml-auto text-xs text-accent font-medium shrink-0">Active</span>
-                  )}
-                </button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => handleDeleteDestination(d.id)}
-                  loading={deleteDestination.isPending}
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 size={13} />
-                </Button>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    className="flex-1 flex items-center gap-2 text-left min-w-0"
+                    onClick={() => handleSave({ destinationId: isActive ? undefined : d.id })}
+                  >
+                    <Globe size={13} className="text-muted-foreground shrink-0" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium truncate">{d.name}</span>
+                      <span className="block text-xs text-muted-foreground truncate">{d.siteUrl}</span>
+                    </span>
+                    {isActive && (
+                      <span className="text-xs text-accent font-medium shrink-0">Active</span>
+                    )}
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleDeleteDestination(d.id)}
+                    loading={deleteDestination.isPending}
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 size={13} />
+                  </Button>
+                </div>
+              )
+            })}
           </div>
-        )}
-
-        {destinations.length === 0 && !showAddDestination && (
-          <p className="text-xs text-muted-foreground mb-3">No destinations yet. Add one to publish runs.</p>
+        ) : (
+          !showAddDestination && (
+            <p className="text-xs text-muted-foreground">
+              No destinations yet. Add one to publish live runs.
+            </p>
+          )
         )}
 
         {showAddDestination ? (
@@ -195,7 +205,7 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
                 ))}
               </div>
             </div>
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2">
               <Button size="sm" loading={createDestination.isPending} onClick={handleAddDestination}>
                 Add destination
               </Button>
@@ -205,104 +215,81 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
             </div>
           </div>
         ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
+          <button
+            type="button"
             onClick={() => setShowAddDestination(true)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Plus size={13} />
+            <Plus size={12} />
             Add WordPress destination
-          </Button>
+          </button>
         )}
-      </Section>
+      </div>
 
-      {/* Run mode */}
-      <Section title="Run mode">
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input
-            type="checkbox"
-            checked={pipeline.dryRun}
-            onChange={(e) => handleSave({ dryRun: e.target.checked })}
-            className="rounded"
-          />
-          Dry run only (never publish remotely)
-        </label>
-      </Section>
+      {/* Run mode + Schedule — collapsed into a compact row group */}
+      <div className="space-y-3">
+        <Label>Settings</Label>
 
-      {/* Schedule */}
-      <Section title="Schedule">
-        <div className="space-y-2">
-          <div className="flex gap-2">
+        <Row label="Run mode">
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={pipeline.dryRun}
+              onChange={(e) => handleSave({ dryRun: e.target.checked })}
+              className="rounded"
+            />
+            Dry run only
+          </label>
+        </Row>
+
+        <Row label="Schedule">
+          <div className="flex gap-1.5 flex-wrap items-center">
             {(['manual', 'recurring'] as const).map((mode) => (
-              <button
+              <Chip
                 key={mode}
-                type="button"
+                active={pipeline.scheduleMode === mode}
                 onClick={() => handleSave({ scheduleMode: mode })}
-                className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                  pipeline.scheduleMode === mode
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'border-input-border hover:bg-muted'
-                }`}
               >
                 {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
+              </Chip>
+            ))}
+            {pipeline.scheduleMode === 'recurring' && (
+              <>
+                <ChevronDown size={11} className="text-muted-foreground" />
+                {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                  <Chip
+                    key={freq}
+                    active={pipeline.frequency === freq}
+                    accent
+                    onClick={() => handleSave({ frequency: freq })}
+                  >
+                    {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                  </Chip>
+                ))}
+                <Input
+                  type="time"
+                  value={pipeline.timeOfDay ?? ''}
+                  onChange={(e) => handleSave({ timeOfDay: e.target.value })}
+                  className="w-28 h-7 text-xs"
+                />
+              </>
+            )}
+          </div>
+        </Row>
+
+        <Row label="Status">
+          <div className="flex gap-1.5 flex-wrap">
+            {(['draft', 'active', 'paused', 'archived'] as const).map((s) => (
+              <Chip
+                key={s}
+                active={pipeline.status === s}
+                onClick={() => handleSave({ status: s })}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </Chip>
             ))}
           </div>
-
-          {pipeline.scheduleMode === 'recurring' && (
-            <div className="flex gap-2 flex-wrap">
-              {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
-                <button
-                  key={freq}
-                  type="button"
-                  onClick={() => handleSave({ frequency: freq })}
-                  className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                    pipeline.frequency === freq
-                      ? 'bg-accent text-accent-foreground border-accent'
-                      : 'border-input-border hover:bg-muted'
-                  }`}
-                >
-                  {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                </button>
-              ))}
-              <Input
-                type="time"
-                value={pipeline.timeOfDay ?? ''}
-                onChange={(e) => handleSave({ timeOfDay: e.target.value })}
-                className="w-32"
-              />
-            </div>
-          )}
-        </div>
-      </Section>
-
-      {/* Status */}
-      <Section title="Pipeline status">
-        <div className="flex gap-2">
-          {(['draft', 'active', 'paused', 'archived'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => handleSave({ status: s })}
-              className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                pipeline.status === s
-                  ? 'bg-foreground text-background border-foreground'
-                  : 'border-input-border hover:bg-muted'
-              }`}
-            >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-      </Section>
-
-      {/* Run action */}
-      <div className="mt-6 pt-5 border-t">
-        <Button onClick={() => setShowRunDialog(true)} size="sm" className="gap-2">
-          <Play size={13} />
-          Run now
-        </Button>
+        </Row>
       </div>
 
       {/* Run dialog */}
@@ -314,6 +301,13 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
               <Button variant="ghost" size="icon-sm" onClick={() => setShowRunDialog(false)}>×</Button>
             </div>
             <div className="p-5 space-y-4">
+              {activeDestination && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded px-2.5 py-2 border">
+                  <Globe size={12} />
+                  <span className="font-medium text-foreground">{activeDestination.name}</span>
+                  <span className="truncate">{activeDestination.siteUrl}</span>
+                </div>
+              )}
               {pipeline.variables.length > 0 ? (
                 <div className="space-y-3">
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Variable values</p>
@@ -335,18 +329,20 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
                 <p className="text-sm text-muted-foreground">No variables required.</p>
               )}
 
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={dryRun}
                   onChange={(e) => setDryRun(e.target.checked)}
                 />
-                Dry run (don't publish)
+                Dry run (preview only, don't publish)
               </label>
             </div>
             <div className="px-5 pb-4 flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowRunDialog(false)}>Cancel</Button>
-              <Button size="sm" loading={startRun.isPending} onClick={handleRun} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowRunDialog(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" loading={startRun.isPending} onClick={handleRun} className="gap-1.5">
                 <Zap size={13} />
                 {dryRun ? 'Run dry' : 'Run live'}
               </Button>
@@ -358,11 +354,45 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Label({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-5">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{title}</p>
-      {children}
+    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{children}</p>
+  )
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="text-xs text-muted-foreground w-20 shrink-0 pt-1.5">{label}</span>
+      <div className="flex-1">{children}</div>
     </div>
+  )
+}
+
+function Chip({
+  children,
+  active,
+  accent,
+  onClick,
+}: {
+  children: React.ReactNode
+  active: boolean
+  accent?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+        active
+          ? accent
+            ? 'bg-accent text-accent-foreground border-accent'
+            : 'bg-foreground text-background border-foreground'
+          : 'border-input-border hover:bg-muted'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

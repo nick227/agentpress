@@ -1,10 +1,13 @@
-import { Plus, Settings, Variable, Bot, Clock, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen } from 'lucide-react'
 import type { components } from '@project/sdk'
 import { useUpdatePipeline } from '@project/sdk'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import type { Selection } from '@/pages/PipelineBuilderPage'
+import { VariablePackPicker } from '@/features/content/VariablePackPicker'
+import { AgentLibraryBrowser } from '@/features/library/AgentLibraryBrowser'
 
 type Pipeline = components['schemas']['Pipeline']
 type Run = components['schemas']['PipelineRun']
@@ -27,6 +30,8 @@ const RUN_STATUS_ICON: Record<string, React.ReactNode> = {
 
 export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId }: Props) {
   const update = useUpdatePipeline()
+  const [showPackPicker, setShowPackPicker] = useState(false)
+  const [showLibrary, setShowLibrary] = useState(false)
 
   async function addVariable() {
     const newVar = {
@@ -102,9 +107,14 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
       {/* Variables */}
       <div className="px-3 pt-4 pb-1 flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Variables</span>
-        <Button variant="ghost" size="icon-sm" onClick={addVariable} title="Add variable">
-          <Plus size={13} />
-        </Button>
+        <div className="flex">
+          <Button variant="ghost" size="icon-sm" onClick={() => setShowPackPicker(true)} title="Import variable pack">
+            <Package size={13} />
+          </Button>
+          <Button variant="ghost" size="icon-sm" onClick={addVariable} title="Add variable">
+            <Plus size={13} />
+          </Button>
+        </div>
       </div>
       {pipeline.variables.map((v) => (
         <SidebarItem
@@ -123,9 +133,14 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
       {/* Agents */}
       <div className="px-3 pt-4 pb-1 flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Agents</span>
-        <Button variant="ghost" size="icon-sm" onClick={addAgent} title="Add agent">
-          <Plus size={13} />
-        </Button>
+        <div className="flex">
+          <Button variant="ghost" size="icon-sm" onClick={() => setShowLibrary(true)} title="Browse agent library">
+            <BookOpen size={13} />
+          </Button>
+          <Button variant="ghost" size="icon-sm" onClick={addAgent} title="Add blank agent">
+            <Plus size={13} />
+          </Button>
+        </div>
       </div>
       {pipeline.agents.map((a, i) => (
         <SidebarItem
@@ -140,6 +155,23 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
       ))}
       {pipeline.agents.length === 0 && (
         <p className="px-4 py-1.5 text-xs text-muted-foreground">No agents</p>
+      )}
+
+      {showPackPicker && (
+        <VariablePackPicker
+          pipeline={pipeline}
+          pipelineId={pipelineId}
+          onClose={() => setShowPackPicker(false)}
+        />
+      )}
+
+      {showLibrary && (
+        <AgentLibraryBrowser
+          pipeline={pipeline}
+          pipelineId={pipelineId}
+          onClose={() => setShowLibrary(false)}
+          onAgentAdded={(id) => onSelect({ type: 'agent', id })}
+        />
       )}
 
       {/* Runs */}

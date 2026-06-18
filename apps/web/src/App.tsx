@@ -4,6 +4,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { AccountsPage } from '@/pages/AccountsPage'
 import { AccountDetailPage } from '@/pages/AccountDetailPage'
 import { PipelineBuilderPage } from '@/pages/PipelineBuilderPage'
+import { ResearchSourcePage } from '@/pages/ResearchSourcePage'
 import { AuthGuard } from '@/lib/AuthGuard'
 import { Shell } from '@/components/layout/Shell'
 
@@ -21,10 +22,14 @@ export function App() {
             <Route path="/accounts/:accountSlug" element={<AccountDetailPage />} />
           </Route>
 
-          {/* Pipeline builder — full screen, no shell sidebar */}
+          {/* Full-screen builder pages — no shell sidebar */}
           <Route
             path="/accounts/:accountSlug/pipelines/:pipelineSlug"
             element={<PipelineBuilderPage />}
+          />
+          <Route
+            path="/accounts/:accountSlug/research/:sourceSlug"
+            element={<ResearchSourcePage />}
           />
         </Route>
 

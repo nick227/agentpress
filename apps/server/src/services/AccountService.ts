@@ -1,4 +1,6 @@
 import { db } from '@project/db'
+import { ResearchService } from './ResearchService'
+import { PipelineRunService } from './PipelineRunService'
 
 function toSlug(name: string): string {
   return name
@@ -92,5 +94,77 @@ export class AccountService {
 
   async delete(accountId: string) {
     await db.account.delete({ where: { id: accountId } })
+  }
+
+  async sync(accountId: string) {
+    const research = new ResearchService()
+    const runs = new PipelineRunService()
+
+    // --- Research: check all active sources ---
+    const sources = await db.researchSource.findMany({
+      where: { accountId, status: 'active' },
+    })
+
+    const researchResults: Array<{ sourceName: string; sourceId: string; newItem: boolean; videoTitle?: string; error?: string }> = []
+
+    for (const source of sources) {
+      try {
+        const result = await research.checkLatest(source.id)
+        researchResults.push({
+          sourceName: source.name,
+          sourceId: source.id,
+          newItem: result.newItem,
+          videoTitle: result.newItem && result.item ? (result.item as any).videoTitle : undefined,
+        })
+      } catch (err: any) {
+        researchResults.push({ sourceName: source.name, sourceId: source.id, newItem: false, error: err.message ?? 'Unknown error' })
+      }
+    }
+
+    // --- Pipelines: start all ready pipelines ---
+    const pipelines = await db.pipeline.findMany({
+      where: { accountId, status: { not: 'paused' } },
+      include: {
+        variables: { orderBy: { sortOrder: 'asc' } },
+        agents: { where: { enabled: true } },
+        runs: { where: { status: 'running' }, take: 1 },
+      },
+    })
+
+    const pipelineResults: Array<{ pipelineName: string; pipelineId: string; status: 'started' | 'skipped'; runId?: string; reason?: string }> = []
+
+    for (const pipeline of pipelines) {
+      if (pipeline.agents.length === 0) {
+        pipelineResults.push({ pipelineName: pipeline.name, pipelineId: pipeline.id, status: 'skipped', reason: 'No enabled agents' })
+        continue
+      }
+      if (pipeline.runs.length > 0) {
+        pipelineResults.push({ pipelineName: pipeline.name, pipelineId: pipeline.id, status: 'skipped', reason: 'Run already in progress' })
+        continue
+      }
+      try {
+        const defaultVars: Record<string, string> = {}
+        for (const v of pipeline.variables) {
+          defaultVars[v.key] = v.defaultValue ?? ''
+        }
+        const run = await runs.startRun(pipeline.id, defaultVars)
+        pipelineResults.push({ pipelineName: pipeline.name, pipelineId: pipeline.id, status: 'started', runId: run.id })
+      } catch (err: any) {
+        pipelineResults.push({ pipelineName: pipeline.name, pipelineId: pipeline.id, status: 'skipped', reason: err.message ?? 'Failed to start' })
+      }
+    }
+
+    return {
+      research: {
+        checked: researchResults.length,
+        newVideos: researchResults.filter((r) => r.newItem).length,
+        results: researchResults,
+      },
+      pipelines: {
+        started: pipelineResults.filter((r) => r.status === 'started').length,
+        skipped: pipelineResults.filter((r) => r.status === 'skipped').length,
+        results: pipelineResults,
+      },
+    }
   }
 }

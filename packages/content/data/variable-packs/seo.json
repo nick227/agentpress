@@ -1,0 +1,110 @@
+[
+  {
+    "id": "seo-basics",
+    "name": "SEO Basics",
+    "description": "The core set of SEO variables for any content pipeline — keyword, audience, word count, and tone. Add these to any pipeline that produces search-targeted content.",
+    "category": "seo",
+    "categoryLabel": "SEO",
+    "variables": [
+      {
+        "key": "target_keyword",
+        "label": "Target Keyword",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "best project management software 2025",
+        "hint": "The primary search term you want to rank for"
+      },
+      {
+        "key": "secondary_keywords",
+        "label": "Secondary Keywords",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "team collaboration tools, task management apps",
+        "hint": "Comma-separated related keywords to weave in naturally"
+      },
+      {
+        "key": "search_intent",
+        "label": "Search Intent",
+        "type": "text",
+        "required": false,
+        "defaultValue": "informational",
+        "exampleValue": "commercial (comparing options before buying)",
+        "hint": "Why people search this term — informational, commercial, navigational, or transactional"
+      },
+      {
+        "key": "word_count",
+        "label": "Target Word Count",
+        "type": "text",
+        "required": false,
+        "defaultValue": "1500",
+        "exampleValue": "2500",
+        "hint": "Target length in words — higher for competitive keywords"
+      },
+      {
+        "key": "language",
+        "label": "Language",
+        "type": "text",
+        "required": false,
+        "defaultValue": "English",
+        "exampleValue": "US English",
+        "hint": "Language and locale for the output"
+      }
+    ]
+  },
+  {
+    "id": "local-seo",
+    "name": "Local SEO",
+    "description": "Variables for location-targeted content — service area pages, local guides, and city-specific blog posts. Use these when you're targeting specific geographic markets.",
+    "category": "seo",
+    "categoryLabel": "SEO",
+    "variables": [
+      {
+        "key": "business_name",
+        "label": "Business Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Greenfield Plumbing Services",
+        "hint": "Your business name as it should appear in the content"
+      },
+      {
+        "key": "city",
+        "label": "City / Location",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Austin, TX",
+        "hint": "The primary geographic area you're targeting"
+      },
+      {
+        "key": "service_area",
+        "label": "Service Area",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "Austin, Round Rock, Cedar Park, and Pflugerville",
+        "hint": "Broader service area for secondary mentions"
+      },
+      {
+        "key": "niche",
+        "label": "Business Niche",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "emergency plumbing and water heater installation",
+        "hint": "The specific service or product category"
+      },
+      {
+        "key": "geo_keyword",
+        "label": "Geo-Target Keyword",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "plumber in Austin TX",
+        "hint": "The location-specific search term to optimize for"
+      }
+    ]
+  }
+]

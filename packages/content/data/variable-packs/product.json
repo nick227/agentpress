@@ -1,0 +1,65 @@
+[
+  {
+    "id": "product-details",
+    "name": "Product Details",
+    "description": "Everything an agent needs to know about a product — name, category, price, features, and audience. Import this into any pipeline that generates product-centric content.",
+    "category": "product",
+    "categoryLabel": "Product",
+    "variables": [
+      {
+        "key": "product_name",
+        "label": "Product Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "ErgoPro 2000 Standing Desk Converter",
+        "hint": "Full product name as it should appear in content"
+      },
+      {
+        "key": "product_category",
+        "label": "Product Category",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "height-adjustable desk riser",
+        "hint": "What type of product this is"
+      },
+      {
+        "key": "price",
+        "label": "Price",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "$249",
+        "hint": "Current price — leave blank if not relevant to the content"
+      },
+      {
+        "key": "key_features",
+        "label": "Key Features",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "gas spring lift, dual monitor support, cable management tray, memory foam wrist rest, 28-inch width",
+        "hint": "Comma-separated list of the product's main specs and selling points"
+      },
+      {
+        "key": "target_customer",
+        "label": "Target Customer",
+        "type": "text",
+        "required": false,
+        "defaultValue": "professionals and remote workers",
+        "exampleValue": "remote workers who experience back pain after long desk sessions",
+        "hint": "The specific person this product was made for — be specific about their pain point"
+      },
+      {
+        "key": "unique_selling_point",
+        "label": "Unique Selling Point",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "installs in 30 seconds with no tools and converts any desk to a sit-stand workstation",
+        "hint": "The one thing that makes this product better than alternatives"
+      }
+    ]
+  }
+]

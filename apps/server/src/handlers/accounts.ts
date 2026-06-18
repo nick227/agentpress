@@ -27,3 +27,8 @@ export async function deleteAccount(request: any, reply: any) {
   await svc.delete(request.params.accountId)
   return reply.send({ ok: true })
 }
+
+export async function syncAccount(request: any, reply: any) {
+  const data = await svc.sync(request.params.accountId)
+  return reply.send({ data })
+}

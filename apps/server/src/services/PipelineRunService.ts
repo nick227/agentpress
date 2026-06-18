@@ -3,6 +3,7 @@ import { OpenAIService } from './OpenAIService'
 import { PromptRenderService } from './PromptRenderService'
 import { OutputAssetService } from './OutputAssetService'
 import { WordPressService } from './WordPressService'
+import { LibraryAgentService } from './LibraryAgentService'
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
 
 const ai = new OpenAIService()
@@ -31,9 +32,9 @@ function decrypt(encrypted: string): string {
 export { encrypt, decrypt }
 
 export class PipelineRunService {
-  async startRun(pipelineId: string, variables: Record<string, unknown>, dryRunOverride?: boolean) {
-    const pipeline = await db.pipeline.findUniqueOrThrow({
-      where: { id: pipelineId },
+  async startRun(idOrSlug: string, variables: Record<string, unknown>, dryRunOverride?: boolean) {
+    const pipeline = await db.pipeline.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       include: {
         account: true,
         variables: { orderBy: { sortOrder: 'asc' } },
@@ -41,13 +42,15 @@ export class PipelineRunService {
       },
     })
 
+    if (!pipeline) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
+
     const dryRun = dryRunOverride !== undefined ? dryRunOverride : pipeline.dryRun
 
     // Create the run record first
     const run = await db.pipelineRun.create({
       data: {
         accountId: pipeline.accountId,
-        pipelineId,
+        pipelineId: pipeline.id,
         status: 'running',
         dryRun,
         variables: variables as any,
@@ -202,5 +205,61 @@ export class PipelineRunService {
         completedAt: new Date(),
       },
     })
+
+    // Silently promote agent prompts to the shared library for reuse
+    new LibraryAgentService().promoteFromRun(pipeline).catch(() => {})
+  }
+
+  async publishRun(runId: string) {
+    const run = await db.pipelineRun.findUnique({
+      where: { id: runId },
+      include: { pipeline: true },
+    })
+    if (!run) throw Object.assign(new Error('Run not found'), { statusCode: 404 })
+    if (!run.generatedPost) throw Object.assign(new Error('Run has no generated content'), { statusCode: 400 })
+
+    const destinationId = run.pipeline.destinationId
+    if (!destinationId) throw Object.assign(new Error('No destination configured on pipeline'), { statusCode: 400 })
+
+    const destination = await db.destination.findUnique({ where: { id: destinationId } })
+    if (!destination) throw Object.assign(new Error('Destination not found'), { statusCode: 404 })
+
+    const attempt = await db.publishAttempt.create({
+      data: { pipelineRunId: runId, destinationId: destination.id, status: 'pending' },
+    })
+
+    try {
+      const secret = decrypt(destination.encryptedSecret)
+      const post = run.generatedPost as any
+      const result = await wp.publish(
+        destination.siteUrl,
+        destination.username ?? '',
+        secret,
+        {
+          title: post.title,
+          excerpt: post.excerpt,
+          content: post.body,
+          status: destination.defaultStatus as 'draft' | 'publish',
+        },
+      )
+
+      await db.publishAttempt.update({
+        where: { id: attempt.id },
+        data: { status: 'success', remotePostId: result.postId, remoteUrl: result.postUrl },
+      })
+
+      await db.pipelineRun.update({
+        where: { id: runId },
+        data: { status: 'posted' },
+      })
+
+      return { ok: true, remoteUrl: result.postUrl }
+    } catch (err: any) {
+      await db.publishAttempt.update({
+        where: { id: attempt.id },
+        data: { status: 'failed', error: err.message },
+      })
+      throw err
+    }
   }
 }

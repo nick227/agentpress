@@ -50,7 +50,7 @@ export function DetailPanel({ pipeline, runs, selection, onSelect, pipelineId }:
   }
 
   if (selection.type === 'run') {
-    return <BuilderRun runId={selection.id} />
+    return <BuilderRun runId={selection.id} pipeline={pipeline} />
   }
 
   return null

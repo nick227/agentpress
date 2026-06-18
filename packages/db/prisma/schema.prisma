@@ -27,17 +27,18 @@ model Session {
 }
 
 model Account {
-  id           String        @id @default(cuid())
-  name         String
-  slug         String        @unique
-  category     String?
-  phone        String?
-  email        String?
-  description  String?       @db.Text
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  pipelines    Pipeline[]
-  destinations Destination[]
+  id              String           @id @default(cuid())
+  name            String
+  slug            String           @unique
+  category        String?
+  phone           String?
+  email           String?
+  description     String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  pipelines       Pipeline[]
+  destinations    Destination[]
+  researchSources ResearchSource[]
 }
 
 model Pipeline {
@@ -173,4 +174,84 @@ model PublishAttempt {
   remoteUrl     String?
   error         String?
   createdAt     DateTime    @default(now())
+}
+
+model ResearchSource {
+  id          String         @id @default(cuid())
+  accountId   String
+  account     Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  category    String?
+  sourceType  String         @default("youtube")
+  sourceUrl   String         @map("youtubeUrl")
+  externalId  String?        @map("channelId")
+  status      String         @default("active")
+  lastChecked DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  items       ResearchItem[]
+
+  @@unique([accountId, slug])
+}
+
+model ResearchItem {
+  id          String            @id @default(cuid())
+  sourceId    String
+  source      ResearchSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  externalId  String            @map("videoId")
+  title       String            @map("videoTitle")
+  itemUrl     String            @map("videoUrl")
+  publishedAt DateTime
+  content     String?           @db.LongText @map("transcript")
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  summaries   ResearchSummary[]
+
+  @@unique([sourceId, externalId], map: "ResearchItem_sourceId_videoId_key")
+}
+
+model SummaryPrompt {
+  id           String            @id @default(cuid())
+  name         String
+  description  String?
+  systemPrompt String            @db.Text
+  userPrompt   String            @db.Text
+  isDefault    Boolean           @default(false)
+  sortOrder    Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  summaries    ResearchSummary[]
+}
+
+model ResearchSummary {
+  id        String        @id @default(cuid())
+  itemId    String
+  item      ResearchItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  promptId  String
+  prompt    SummaryPrompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  text      String?       @db.Text
+  status    String        @default("pending")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([itemId, promptId])
+}
+
+model LibraryAgent {
+  id           String   @id @default(cuid())
+  uid          String
+  name         String
+  description  String?  @db.Text
+  category     String   @default("general")
+  tags         Json     @default("[]")
+  systemPrompt String   @db.Text
+  userPrompt   String   @db.Text
+  outputTarget String   @default("body")
+  outputFormat String   @default("text")
+  promptHash   String   @unique
+  usageCount   Int      @default(0)
+  sourceRunId  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

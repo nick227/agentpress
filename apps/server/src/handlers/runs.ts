@@ -9,6 +9,11 @@ export async function startPipelineRun(request: any, reply: any) {
   return reply.status(201).send({ data: run })
 }
 
+export async function publishRun(request: any, reply: any) {
+  const result = await svc.publishRun(request.params.runId)
+  return reply.send(result)
+}
+
 export async function getPipelineRun(request: any, reply: any) {
   const run = await db.pipelineRun.findUniqueOrThrow({
     where: { id: request.params.runId },

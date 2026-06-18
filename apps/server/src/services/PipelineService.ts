@@ -62,6 +62,15 @@ function formatPipeline(p: any) {
 }
 
 export class PipelineService {
+  private async resolveId(idOrSlug: string): Promise<string> {
+    const p = await db.pipeline.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      select: { id: true },
+    })
+    if (!p) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
+    return p.id
+  }
+
   async list(accountId: string) {
     const pipelines = await db.pipeline.findMany({
       where: { accountId },
@@ -133,7 +142,8 @@ export class PipelineService {
     return formatPipeline(p)
   }
 
-  async update(pipelineId: string, data: any) {
+  async update(idOrSlug: string, data: any) {
+    const pipelineId = await this.resolveId(idOrSlug)
     const { variables, agents, ...fields } = data
 
     await db.$transaction(async (tx) => {
@@ -187,11 +197,13 @@ export class PipelineService {
     return formatPipeline(updated)
   }
 
-  async delete(pipelineId: string) {
+  async delete(idOrSlug: string) {
+    const pipelineId = await this.resolveId(idOrSlug)
     await db.pipeline.delete({ where: { id: pipelineId } })
   }
 
-  async validate(pipelineId: string) {
+  async validate(idOrSlug: string) {
+    const pipelineId = await this.resolveId(idOrSlug)
     const p = await db.pipeline.findUniqueOrThrow({
       where: { id: pipelineId },
       include: {

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "content-style",
+    "name": "Content Style",
+    "description": "Controls the writing voice, format, and reading level across all agents in a pipeline. Import this to make your content consistently match your preferred style — without rewiring every prompt.",
+    "category": "style",
+    "categoryLabel": "Style & Voice",
+    "variables": [
+      {
+        "key": "tone",
+        "label": "Tone",
+        "type": "text",
+        "required": false,
+        "defaultValue": "informative and engaging",
+        "exampleValue": "conversational but authoritative",
+        "hint": "The overall emotional register — formal, casual, playful, serious, etc."
+      },
+      {
+        "key": "voice",
+        "label": "Voice",
+        "type": "text",
+        "required": false,
+        "defaultValue": "second person (you/your)",
+        "exampleValue": "first person plural (we/our) — as if writing for a company",
+        "hint": "Grammatical person — first, second, or third person"
+      },
+      {
+        "key": "reading_level",
+        "label": "Reading Level",
+        "type": "text",
+        "required": false,
+        "defaultValue": "8th grade (accessible to general audiences)",
+        "exampleValue": "graduate level — technical and precise",
+        "hint": "How complex the vocabulary and sentence structure should be"
+      },
+      {
+        "key": "format",
+        "label": "Format Preference",
+        "type": "text",
+        "required": false,
+        "defaultValue": "Markdown with headers and bullet points",
+        "exampleValue": "plain prose paragraphs — no lists or headers",
+        "hint": "How the output should be formatted structurally"
+      },
+      {
+        "key": "max_length",
+        "label": "Max Output Length",
+        "type": "text",
+        "required": false,
+        "defaultValue": "no strict limit",
+        "exampleValue": "500 words",
+        "hint": "Optional hard cap on output length per agent"
+      }
+    ]
+  },
+  {
+    "id": "brand-voice",
+    "name": "Brand Voice",
+    "description": "Your brand's personality, values, and language injected into every agent prompt. Import this when you want all pipeline output to feel distinctly on-brand rather than generic.",
+    "category": "style",
+    "categoryLabel": "Style & Voice",
+    "variables": [
+      {
+        "key": "brand_name",
+        "label": "Brand Name",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Northfield Studio",
+        "hint": "Your brand name — used for sign-offs, bylines, and mentions"
+      },
+      {
+        "key": "brand_tagline",
+        "label": "Brand Tagline",
+        "type": "text",
+        "required": false,
+        "defaultValue": "",
+        "exampleValue": "Design that works as hard as you do",
+        "hint": "Your brand's tagline or positioning statement"
+      },
+      {
+        "key": "brand_values",
+        "label": "Brand Values",
+        "type": "text",
+        "required": false,
+        "defaultValue": "quality, clarity, helpfulness",
+        "exampleValue": "bold innovation, radical transparency, customer obsession",
+        "hint": "The core values your brand content should reflect"
+      },
+      {
+        "key": "brand_persona",
+        "label": "Brand Persona",
+        "type": "text",
+        "required": false,
+        "defaultValue": "a knowledgeable, friendly expert",
+        "exampleValue": "a witty creative friend who happens to know everything about design",
+        "hint": "If your brand were a person, describe them in one sentence"
+      },
+      {
+        "key": "avoid",
+        "label": "Words / Phrases to Avoid",
+        "type": "text",
+        "required": false,
+        "defaultValue": "synergy, leverage, game-changer, disruptive",
+        "exampleValue": "jargon, passive voice, filler words like 'very' and 'really'",
+        "hint": "Tell the AI what NOT to say — extremely useful for on-brand output"
+      }
+    ]
+  }
+]
