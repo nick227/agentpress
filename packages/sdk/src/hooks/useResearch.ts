@@ -156,3 +156,20 @@ export function useSummarizeResearchItem() {
     },
   })
 }
+
+export function useRefreshResearchItemContent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      const { data, error, response } = await getApiClient().POST('/api/research/items/{itemId}/refresh-content', {
+        params: { path: { itemId } },
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['research-item', data.data.id] })
+      queryClient.invalidateQueries({ queryKey: ['research-items'] })
+    },
+  })
+}

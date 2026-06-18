@@ -766,6 +766,14 @@ components:
           format: date-time
         content:
           type: string
+        contentStatus:
+          type: string
+          enum: [ok, disabled, unavailable, rate_limited, error]
+        contentErrorReason:
+          type: string
+        contentCheckedAt:
+          type: string
+          format: date-time
         summaryCount:
           type: integer
         createdAt:
@@ -2239,6 +2247,34 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/ResearchSummary'
+
+  /api/research/items/{itemId}/refresh-content:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: refreshResearchItemContent
+      tags: [research]
+      summary: Re-fetch transcript/content for a research item
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Refreshed research item
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ResearchItem'
+        '400':
+          description: Refresh not supported for this item type
 
   /api/summary-prompts:
     get:

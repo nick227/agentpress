@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { ExternalLink, ChevronDown, ChevronUp, Sparkles, RefreshCw, Loader2 } from 'lucide-react'
-import { useResearchItem, useResearchSummaries, useSummarizeResearchItem, useSummaryPrompts } from '@project/sdk'
+import {
+  useResearchItem,
+  useResearchSummaries,
+  useSummarizeResearchItem,
+  useSummaryPrompts,
+  useRefreshResearchItemContent,
+} from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { canRetryTranscript, contentStatusMessage, resolveContentStatus } from './contentStatus'
 
 type ResearchSummary = components['schemas']['ResearchSummary']
 type SummaryPrompt = components['schemas']['SummaryPrompt']
@@ -19,6 +26,7 @@ export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }
   const { data: itemData, isLoading: itemLoading } = useResearchItem(itemId)
   const { data: summariesData } = useResearchSummaries(itemId)
   const { data: promptsData } = useSummaryPrompts()
+  const refreshContent = useRefreshResearchItemContent()
   const [showTranscript, setShowTranscript] = useState(false)
 
   const item = itemData?.data
@@ -39,12 +47,29 @@ export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }
   }
 
   if (!item) return <div className="p-6 text-sm text-muted-foreground">Item not found.</div>
+
   const itemDate = new Date(item.publishedAt).toISOString().slice(0, 10)
   const exactSummaryRef = `{${sourceSlug}.${itemDate}.summary}`
+  const contentStatus = resolveContentStatus(item)
+  const statusMessage = contentStatusMessage(contentStatus, sourceType)
+  const showRetry = canRetryTranscript(contentStatus, sourceType)
+
+  async function handleRefreshTranscript() {
+    try {
+      const result = await refreshContent.mutateAsync(itemId)
+      const status = resolveContentStatus(result.data)
+      if (status === 'ok') {
+        toast.success('Transcript fetched')
+      } else {
+        toast.error(contentStatusMessage(status, sourceType) ?? 'Transcript still unavailable')
+      }
+    } catch (err: any) {
+      toast.error(err.message ?? 'Transcript refresh failed')
+    }
+  }
 
   return (
     <div className="p-6 max-w-3xl">
-      {/* Header */}
       <div className="mb-5">
         <h1 className="text-base font-semibold leading-snug mb-1">{item.title}</h1>
         <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -56,7 +81,6 @@ export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }
         </div>
       </div>
 
-      {/* Summaries */}
       {prompts.length === 0 ? (
         <div className="border rounded-lg p-4 bg-muted/20 text-sm text-muted-foreground mb-5">
           No summary prompts configured — go to "Summary Prompts" to add some.
@@ -70,29 +94,50 @@ export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }
               prompt={prompt}
               summary={summaryByPromptId[prompt.id]}
               itemId={itemId}
-              hasTranscript={Boolean(item.content)}
+              hasTranscript={Boolean(item.content?.trim())}
             />
           ))}
         </div>
       )}
 
-      {/* Transcript */}
       <div>
-        <button
-          type="button"
-          onClick={() => setShowTranscript((v) => !v)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors mb-2"
-        >
-          {showTranscript ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          {sourceType === 'youtube' ? 'Transcript' : 'Content'}
-          {item.content ? ` · ~${Math.round(item.content.length / 5).toLocaleString()} words` : ' — not available'}
-        </button>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <button
+            type="button"
+            onClick={() => setShowTranscript((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+          >
+            {showTranscript ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            {sourceType === 'youtube' ? 'Transcript' : 'Content'}
+            {item.content?.trim() ? ` · ~${Math.round(item.content.length / 5).toLocaleString()} words` : ' — not available'}
+          </button>
+          {showRetry && (
+            <Button size="sm" variant="outline" loading={refreshContent.isPending} onClick={handleRefreshTranscript}>
+              <RefreshCw size={12} />
+              Retry transcript
+            </Button>
+          )}
+        </div>
+
+        {statusMessage && (
+          <div className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+            <p>{statusMessage}</p>
+            {item.contentCheckedAt && (
+              <p className="mt-1 text-xs opacity-80">
+                Last checked {new Date(item.contentCheckedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+          </div>
+        )}
+
         {showTranscript && (
           <div className="border rounded-lg p-4 bg-muted/20 max-h-80 overflow-y-auto">
-            {item.content ? (
+            {item.content?.trim() ? (
               <pre className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap font-mono">{item.content}</pre>
             ) : (
-              <p className="text-sm text-muted-foreground">Content not available for this item.</p>
+              <p className="text-sm text-muted-foreground">
+                {statusMessage ?? 'Content not available for this item.'}
+              </p>
             )}
           </div>
         )}
@@ -113,7 +158,7 @@ function SummaryCard({
   hasTranscript: boolean
 }) {
   const summarize = useSummarizeResearchItem()
-  const isGenerating = summarize.isPending && (summarize.variables as any)?.promptId === prompt.id
+  const isGenerating = summarize.isPending && (summarize.variables as { promptId?: string } | undefined)?.promptId === prompt.id
 
   async function handleGenerate() {
     try {

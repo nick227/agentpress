@@ -1,12 +1,21 @@
 import type { FeedAdapter, FeedItem } from './FeedAdapter'
 import { YoutubeService } from '../YoutubeService'
+import { contentFieldsFromTranscript } from '../researchContentStatus'
 import { fetchYoutubeTranscript } from '../youtube/youtubeTranscript'
 
 const yt = new YoutubeService()
 
-async function fetchTranscriptText(videoId: string): Promise<string> {
-  const result = await fetchYoutubeTranscript(videoId)
-  return result.ok ? result.text : ''
+async function buildFeedItem(videoId: string, title: string, publishedAt: Date): Promise<FeedItem> {
+  const fields = contentFieldsFromTranscript(await fetchYoutubeTranscript(videoId))
+  return {
+    externalId: videoId,
+    title,
+    itemUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    publishedAt,
+    content: fields.content ?? '',
+    contentStatus: fields.contentStatus,
+    contentErrorReason: fields.contentErrorReason,
+  }
 }
 
 export class YoutubeAdapter implements FeedAdapter {
@@ -20,36 +29,18 @@ export class YoutubeAdapter implements FeedAdapter {
   async fetchLatest(channelId: string, _sourceUrl: string): Promise<FeedItem[]> {
     if (channelId.startsWith('VIDEO:')) {
       const videoId = channelId.slice(6)
-      const [meta, content] = await Promise.all([
+      const [meta, item] = await Promise.all([
         yt.getVideoMetadata(videoId),
-        fetchTranscriptText(videoId),
+        buildFeedItem(videoId, '', new Date()),
       ])
       if (!meta) return []
 
-      return [
-        {
-          externalId: videoId,
-          title: meta.title,
-          itemUrl: `https://www.youtube.com/watch?v=${videoId}`,
-          publishedAt: meta.publishedAt,
-          content,
-        },
-      ]
+      return [{ ...item, title: meta.title, publishedAt: meta.publishedAt }]
     }
 
     const latest = await yt.getLatestVideo(channelId)
     if (!latest) return []
 
-    const content = await fetchTranscriptText(latest.videoId)
-
-    return [
-      {
-        externalId: latest.videoId,
-        title: latest.title,
-        itemUrl: `https://www.youtube.com/watch?v=${latest.videoId}`,
-        publishedAt: latest.publishedAt,
-        content,
-      },
-    ]
+    return [await buildFeedItem(latest.videoId, latest.title, latest.publishedAt)]
   }
 }

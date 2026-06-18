@@ -3,6 +3,7 @@ import { getAdapter } from './adapters/FeedAdapter'
 import type { FeedItem } from './adapters/FeedAdapter'
 import { OpenAIService } from './OpenAIService'
 import { fetchYoutubeTranscript } from './youtube/youtubeTranscript'
+import { contentFieldsFromFeedItem, contentFieldsFromTranscript } from './researchContentStatus'
 import { createHash } from 'crypto'
 
 const REMOTE_CACHE_TTL_MS = 60 * 60 * 1000
@@ -62,9 +63,30 @@ export class ResearchService {
     return REMOTE_CACHE_TTL_MS
   }
 
-  private async backfillYoutubeTranscript(externalId: string): Promise<string | null> {
-    const result = await fetchYoutubeTranscript(externalId)
-    return result.ok ? result.text : null
+  private async backfillYoutubeContent(externalId: string) {
+    return contentFieldsFromTranscript(await fetchYoutubeTranscript(externalId))
+  }
+
+  private formatItem(item: {
+    id: string
+    sourceId: string
+    externalId: string
+    title: string
+    itemUrl: string
+    publishedAt: Date
+    content: string | null
+    contentStatus: string | null
+    contentErrorReason: string | null
+    contentCheckedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    _count: { summaries: number }
+  }) {
+    return {
+      ...item,
+      summaryCount: item._count.summaries,
+      _count: undefined,
+    }
   }
 
   private async resolveSourceCached(sourceType: string, sourceUrl: string): Promise<string | null> {
@@ -208,22 +230,35 @@ export class ResearchService {
       })
 
       if (existing) {
-        if (!existing.content?.trim()) {
-          const content = feedItem.content.trim()
-            ? feedItem.content
-            : source.sourceType === 'youtube'
-              ? await this.backfillYoutubeTranscript(feedItem.externalId)
-              : null
-          if (content) {
+        const shouldRetryContent =
+          !existing.content?.trim() ||
+          existing.contentStatus === 'rate_limited' ||
+          existing.contentStatus === 'error'
+
+        if (shouldRetryContent) {
+          const fields =
+            feedItem.contentStatus || feedItem.content.trim()
+              ? contentFieldsFromFeedItem(feedItem)
+              : source.sourceType === 'youtube'
+                ? await this.backfillYoutubeContent(feedItem.externalId)
+                : contentFieldsFromFeedItem(feedItem)
+
+          if (fields.content || fields.contentStatus !== existing.contentStatus) {
             await db.researchItem.update({
               where: { id: existing.id },
-              data: { content },
+              data: {
+                content: fields.content,
+                contentStatus: fields.contentStatus,
+                contentErrorReason: fields.contentErrorReason,
+                contentCheckedAt: fields.contentCheckedAt,
+              },
             })
           }
         }
         continue
       }
 
+      const contentFields = contentFieldsFromFeedItem(feedItem)
       const created = await db.researchItem.create({
         data: {
           sourceId,
@@ -231,7 +266,10 @@ export class ResearchService {
           title: feedItem.title,
           itemUrl: feedItem.itemUrl,
           publishedAt: feedItem.publishedAt,
-          content: feedItem.content,
+          content: contentFields.content,
+          contentStatus: contentFields.contentStatus,
+          contentErrorReason: contentFields.contentErrorReason,
+          contentCheckedAt: contentFields.contentCheckedAt,
         },
       })
       if (!firstNew) firstNew = created
@@ -256,6 +294,8 @@ export class ResearchService {
           title: true,
           itemUrl: true,
           publishedAt: true,
+          contentStatus: true,
+          contentCheckedAt: true,
           createdAt: true,
           updatedAt: true,
           _count: { select: { summaries: true } },
@@ -272,7 +312,31 @@ export class ResearchService {
       where: { id: itemId },
       include: { _count: { select: { summaries: true } } },
     })
-    return { ...item, summaryCount: item._count.summaries, _count: undefined }
+    return this.formatItem(item)
+  }
+
+  async refreshItemContent(itemId: string) {
+    const item = await db.researchItem.findUniqueOrThrow({
+      where: { id: itemId },
+      include: { source: { select: { sourceType: true } } },
+    })
+
+    if (item.source.sourceType !== 'youtube') {
+      throw Object.assign(new Error('Content refresh is only supported for YouTube items'), { statusCode: 400 })
+    }
+
+    const fields = contentFieldsFromTranscript(await fetchYoutubeTranscript(item.externalId))
+    const updated = await db.researchItem.update({
+      where: { id: itemId },
+      data: {
+        content: fields.content,
+        contentStatus: fields.contentStatus,
+        contentErrorReason: fields.contentErrorReason,
+        contentCheckedAt: fields.contentCheckedAt,
+      },
+      include: { _count: { select: { summaries: true } } },
+    })
+    return this.formatItem(updated)
   }
 
   async listSummaries(itemId: string) {

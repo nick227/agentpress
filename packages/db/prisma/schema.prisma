@@ -221,9 +221,12 @@ model ResearchItem {
   externalId  String            @map("videoId")
   title       String            @map("videoTitle")
   itemUrl     String            @map("videoUrl")
-  publishedAt DateTime
-  content     String?           @db.LongText @map("transcript")
-  createdAt   DateTime          @default(now())
+  publishedAt         DateTime
+  content             String?           @db.LongText @map("transcript")
+  contentStatus       String?
+  contentErrorReason  String?           @db.Text
+  contentCheckedAt    DateTime?
+  createdAt           DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   summaries   ResearchSummary[]
 

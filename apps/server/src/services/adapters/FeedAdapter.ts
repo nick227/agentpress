@@ -1,9 +1,13 @@
+import type { ContentStatus } from '../researchContentStatus'
+
 export interface FeedItem {
   externalId: string
   title: string
   itemUrl: string
   publishedAt: Date
   content: string
+  contentStatus?: ContentStatus
+  contentErrorReason?: string | null
 }
 
 export interface FeedAdapter {

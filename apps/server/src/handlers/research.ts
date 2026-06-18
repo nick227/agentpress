@@ -57,3 +57,12 @@ export async function summarizeResearchItem(
 ) {
   return reply.send({ data: await svc.summarize(request.params.itemId, request.body.promptId) })
 }
+
+export async function refreshResearchItemContent(request: FastifyRequest<{ Params: { itemId: string } }>, reply: FastifyReply) {
+  try {
+    return reply.send({ data: await svc.refreshItemContent(request.params.itemId) })
+  } catch (err: any) {
+    if (err.statusCode === 400) return reply.status(400).send({ error: err.message })
+    throw err
+  }
+}
