@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Image, FileText } from 'lucide-react'
 import {
   BUILTIN_AGENT_DEFINITIONS,
@@ -12,8 +12,11 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { usePipelineSelection } from '@/features/pipelines/builder/pipelineSelectionContext'
 import { VariablePackPicker } from '@/features/content/VariablePackPicker'
-import { AgentLibraryBrowser } from '@/features/library/AgentLibraryBrowser'
 import { agentSublabel } from './agents/agentTypes'
+
+const AgentLibraryBrowser = lazy(() =>
+  import('@/features/library/AgentLibraryBrowser').then((m) => ({ default: m.AgentLibraryBrowser })),
+)
 
 type Pipeline = components['schemas']['Pipeline']
 type Run = components['schemas']['PipelineRun']
@@ -166,12 +169,14 @@ export function BuilderSidebar({ pipeline, runs, pipelineId }: Props) {
       )}
 
       {showLibrary && (
-        <AgentLibraryBrowser
-          pipeline={pipeline}
-          pipelineId={pipelineId}
-          onClose={() => setShowLibrary(false)}
-          onAgentAdded={(id) => onSelect({ type: 'agent', id })}
-        />
+        <Suspense fallback={null}>
+          <AgentLibraryBrowser
+            pipeline={pipeline}
+            pipelineId={pipelineId}
+            onClose={() => setShowLibrary(false)}
+            onAgentAdded={(id) => onSelect({ type: 'agent', id })}
+          />
+        </Suspense>
       )}
 
       {/* Runs */}
