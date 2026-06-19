@@ -280,10 +280,14 @@ export function BuilderRun({ runId, pipeline }: Props) {
                   {ar.cacheStatus === 'reused' && ar.reusedFromAgentRunId && (
                     <p className="text-xs text-muted-foreground">Reused from agent run {ar.reusedFromAgentRunId}</p>
                   )}
+                  {ar.renderedSystemPrompt?.trim() && (
+                    <PromptBlock label="System prompt" text={ar.renderedSystemPrompt} />
+                  )}
+                  {ar.renderedUserPrompt?.trim() && (
+                    <PromptBlock label="User prompt" text={ar.renderedUserPrompt} />
+                  )}
                   {ar.outputText && (
-                    <pre className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/30 rounded p-2 max-h-40 overflow-y-auto">
-                      {ar.outputText}
-                    </pre>
+                    <PromptBlock label="Output" text={ar.outputText} />
                   )}
                   {ar.error && <p className="text-xs text-destructive">{ar.error}</p>}
                 </div>
@@ -301,6 +305,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="space-y-1">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
       {children}
+    </div>
+  )
+}
+
+function PromptBlock({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <pre className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/30 rounded p-2 max-h-40 overflow-y-auto font-mono">
+        {text}
+      </pre>
     </div>
   )
 }
