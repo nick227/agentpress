@@ -1,4 +1,10 @@
-import { getTemplates, getTemplate, getVariablePacks } from '@project/content'
+import {
+  agentDefinitionToPipelineInput,
+  getTemplates,
+  getTemplate,
+  getVariablePacks,
+  templateAgentToDefinition,
+} from '@project/content'
 import { PipelineService } from './PipelineService'
 
 const pipelines = new PipelineService()
@@ -33,16 +39,14 @@ export class ContentService {
         exampleValue: v.exampleValue,
         sortOrder: i,
       })),
-      agents: template.agents.map((a) => ({
-        uid: a.uid,
-        name: a.name,
-        systemPrompt: a.systemPrompt,
-        userPrompt: a.userPrompt,
-        outputTarget: a.outputTarget,
-        outputFormat: a.outputFormat,
-        enabled: true,
-        sortOrder: a.sortOrder,
-      })),
+      agents: template.agents.map((agent) => agentDefinitionToPipelineInput(
+        templateAgentToDefinition(agent),
+        {
+          uid: agent.uid,
+          enabled: true,
+          sortOrder: agent.sortOrder,
+        },
+      )),
     })
 
     return withContent

@@ -1,5 +1,12 @@
 import { useState } from 'react'
 import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Image, FileText } from 'lucide-react'
+import {
+  BUILTIN_AGENT_DEFINITIONS,
+  agentDefinitionToPipelineInput,
+  pipelineAgentToDefinition,
+  resolveAgentUid,
+  type AgentDefinition,
+} from '@project/content'
 import type { components } from '@project/sdk'
 import { useUpdatePipeline } from '@project/sdk'
 import { toast } from 'sonner'
@@ -63,112 +70,44 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
     if (addedVar) onSelect({ type: 'variable', id: addedVar.id })
   }
 
-  async function addImageAgent() {
-    const uid = `image_${pipeline.agents.length + 1}`
+  function existingAgentInputs() {
+    return pipeline.agents.map((agent) => agentDefinitionToPipelineInput(
+      pipelineAgentToDefinition(agent),
+      {
+        uid: agent.uid,
+        sortOrder: agent.sortOrder,
+        enabled: agent.enabled,
+        selectedImageAssetId: agent.selectedImageAssetId ?? null,
+      },
+    ))
+  }
+
+  async function addAgentDefinition(definition: AgentDefinition) {
+    const uid = resolveAgentUid(definition.uid, pipeline.agents.map((agent) => agent.uid))
     const result = await update.mutateAsync({
       pipelineId,
       agents: [
-        ...pipeline.agents.map((a) => ({
-          id: a.id,
-          uid: a.uid,
-          name: a.name,
-          systemPrompt: a.systemPrompt,
-          userPrompt: a.userPrompt,
-          outputTarget: a.outputTarget as any,
-          outputFormat: a.outputFormat as any,
-          imageMode: a.imageMode ?? 'generate',
-          selectedImageAssetId: a.selectedImageAssetId ?? null,
-          enabled: a.enabled,
-          sortOrder: a.sortOrder,
-        })),
-        {
+        ...existingAgentInputs(),
+        agentDefinitionToPipelineInput(definition, {
           uid,
-          name: `Image ${pipeline.agents.length + 1}`,
-          systemPrompt: '',
-          userPrompt: '',
-          outputTarget: 'image' as const,
-          outputFormat: 'image' as const,
-          imageMode: 'generate' as const,
-          selectedImageAssetId: null,
-          enabled: true,
           sortOrder: pipeline.agents.length,
-        },
+        }),
       ],
     })
     const addedAgent = result.data.agents[result.data.agents.length - 1]
     if (addedAgent) onSelect({ type: 'agent', id: addedAgent.id })
+  }
+
+  async function addImageAgent() {
+    await addAgentDefinition(BUILTIN_AGENT_DEFINITIONS.blankImage)
   }
 
   async function addStaticAgent() {
-    const uid = `static_${pipeline.agents.length + 1}`
-    const result = await update.mutateAsync({
-      pipelineId,
-      agents: [
-        ...pipeline.agents.map((a) => ({
-          id: a.id,
-          uid: a.uid,
-          name: a.name,
-          systemPrompt: a.systemPrompt,
-          userPrompt: a.userPrompt,
-          outputTarget: a.outputTarget as any,
-          outputFormat: a.outputFormat as any,
-          imageMode: a.imageMode ?? (a.outputFormat === 'static' ? 'selected' : 'generate'),
-          selectedImageAssetId: a.selectedImageAssetId ?? null,
-          enabled: a.enabled,
-          sortOrder: a.sortOrder,
-        })),
-        {
-          uid,
-          name: `Static ${pipeline.agents.length + 1}`,
-          systemPrompt: '',
-          userPrompt: '',
-          outputTarget: 'body' as const,
-          outputFormat: 'static' as const,
-          imageMode: 'selected' as const,
-          selectedImageAssetId: null,
-          enabled: true,
-          sortOrder: pipeline.agents.length,
-        },
-      ],
-    })
-    const addedAgent = result.data.agents[result.data.agents.length - 1]
-    if (addedAgent) onSelect({ type: 'agent', id: addedAgent.id })
+    await addAgentDefinition(BUILTIN_AGENT_DEFINITIONS.staticImage)
   }
 
   async function addAgent() {
-    const uid = `agent_${pipeline.agents.length + 1}`
-    const result = await update.mutateAsync({
-      pipelineId,
-      agents: [
-        ...pipeline.agents.map((a) => ({
-          id: a.id,
-          uid: a.uid,
-          name: a.name,
-          systemPrompt: a.systemPrompt,
-          userPrompt: a.userPrompt,
-          outputTarget: a.outputTarget as any,
-          outputFormat: a.outputFormat as any,
-          imageMode: a.imageMode ?? 'generate',
-          selectedImageAssetId: a.selectedImageAssetId ?? null,
-          enabled: a.enabled,
-          sortOrder: a.sortOrder,
-        })),
-        {
-          uid,
-          name: `Agent ${pipeline.agents.length + 1}`,
-          systemPrompt: '',
-          userPrompt: '',
-          outputTarget: 'body' as const,
-          outputFormat: 'markdown' as const,
-          imageMode: 'generate' as const,
-          selectedImageAssetId: null,
-          enabled: true,
-          sortOrder: pipeline.agents.length,
-        },
-      ],
-    })
-    const addedAgent = result.data.agents[result.data.agents.length - 1]
-    if (addedAgent) onSelect({ type: 'agent', id: addedAgent.id })
+    await addAgentDefinition(BUILTIN_AGENT_DEFINITIONS.blankText)
   }
 
   return (

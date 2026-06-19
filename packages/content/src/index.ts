@@ -67,3 +67,18 @@ export function getVariablePack(id: string): VariablePack | undefined {
 }
 
 export type { ContentTemplate, VariablePack, TemplateVariable, TemplateAgent, PackVariable } from './types'
+export type {
+  AgentDefinition,
+  AgentImageMode,
+  AgentOutputFormat,
+  AgentOutputTarget,
+  PipelineAgentInputLike,
+} from './agents/types'
+export {
+  agentDefinitionToPipelineInput,
+  libraryAgentToDefinition,
+  pipelineAgentToDefinition,
+  resolveAgentUid,
+  templateAgentToDefinition,
+} from './agents/mappers'
+export { BUILTIN_AGENT_DEFINITIONS } from './agents/builtins'

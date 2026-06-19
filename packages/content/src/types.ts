@@ -1,3 +1,5 @@
+import type { AgentDefinition, AgentOutputFormat, AgentOutputTarget } from './agents/types'
+
 export interface TemplateVariable {
   key: string
   label: string
@@ -8,13 +10,10 @@ export interface TemplateVariable {
   hint?: string
 }
 
-export interface TemplateAgent {
+export interface TemplateAgent extends Omit<AgentDefinition, 'uid' | 'outputTarget' | 'outputFormat'> {
   uid: string
-  name: string
-  systemPrompt: string
-  userPrompt: string
-  outputTarget: 'title' | 'excerpt' | 'body' | 'thumbnail_prompt' | 'thumbnail' | 'image' | 'none'
-  outputFormat: 'text' | 'json' | 'image' | 'static'
+  outputTarget: AgentOutputTarget
+  outputFormat: AgentOutputFormat
   sortOrder: number
 }
 

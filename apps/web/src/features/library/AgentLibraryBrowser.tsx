@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { X, Search, FlaskConical, PenLine, BarChart2, Pencil, ArrowUpRight, BookOpen } from 'lucide-react'
+import {
+  agentDefinitionToPipelineInput,
+  libraryAgentToDefinition,
+  pipelineAgentToDefinition,
+  resolveAgentUid,
+} from '@project/content'
 import { useLibraryAgents, useUpdatePipeline } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
@@ -49,42 +55,31 @@ export function AgentLibraryBrowser({ pipeline, pipelineId, onClose, onAgentAdde
 
   const agents = data?.data ?? []
 
-  function resolveUid(base: string): string {
-    const taken = new Set(pipeline.agents.map((a) => a.uid))
-    if (!taken.has(base)) return base
-    let n = 2
-    while (taken.has(`${base}_${n}`)) n++
-    return `${base}_${n}`
+  function existingAgentInputs() {
+    return pipeline.agents.map((pipelineAgent) => agentDefinitionToPipelineInput(
+      pipelineAgentToDefinition(pipelineAgent),
+      {
+        uid: pipelineAgent.uid,
+        sortOrder: pipelineAgent.sortOrder,
+        enabled: pipelineAgent.enabled,
+        selectedImageAssetId: pipelineAgent.selectedImageAssetId ?? null,
+      },
+    ))
   }
 
   async function handleAdd(agent: LibraryAgent) {
     setAdding(agent.id)
     try {
-      const uid = resolveUid(agent.uid)
+      const definition = libraryAgentToDefinition(agent)
+      const uid = resolveAgentUid(definition.uid, pipeline.agents.map((pipelineAgent) => pipelineAgent.uid))
       const result = await update.mutateAsync({
         pipelineId,
         agents: [
-          ...pipeline.agents.map((a) => ({
-            id: a.id,
-            uid: a.uid,
-            name: a.name,
-            systemPrompt: a.systemPrompt,
-            userPrompt: a.userPrompt,
-            outputTarget: a.outputTarget as any,
-            outputFormat: a.outputFormat as any,
-            enabled: a.enabled,
-            sortOrder: a.sortOrder,
-          })),
-          {
+          ...existingAgentInputs(),
+          agentDefinitionToPipelineInput(definition, {
             uid,
-            name: agent.name,
-            systemPrompt: agent.systemPrompt,
-            userPrompt: agent.userPrompt,
-            outputTarget: agent.outputTarget as any,
-            outputFormat: agent.outputFormat as any,
-            enabled: true,
             sortOrder: pipeline.agents.length,
-          },
+          }),
         ],
       })
       const added = result.data.agents[result.data.agents.length - 1]
