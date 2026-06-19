@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ChevronLeft, Plus, Pencil, Trash2, Zap, LayoutTemplate, FlaskConical, Video, RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react'
-import { useAccount, usePipelines, useDeleteAccount, useResearchSources, useSyncAccount, useCheckResearchSource } from '@project/sdk'
+import { useAccount, usePipelines, useDeleteAccount, useDeletePipeline, useResearchSources, useSyncAccount, useCheckResearchSource } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -33,11 +33,13 @@ export function AccountDetailPage() {
   const { data: pipelinesData, isLoading: pipelinesLoading } = usePipelines(account?.id ?? '')
   const { data: researchData, isLoading: researchLoading } = useResearchSources(account?.id ?? '')
   const deleteAccount = useDeleteAccount()
+  const deletePipeline = useDeletePipeline()
   const [showEditAccount, setShowEditAccount] = useState(false)
   const [showCreatePipeline, setShowCreatePipeline] = useState(false)
   const [showTemplateBrowser, setShowTemplateBrowser] = useState(false)
   const [showCreateResearch, setShowCreateResearch] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [pipelinePendingDelete, setPipelinePendingDelete] = useState<string | null>(null)
 
   const sync = useSyncAccount()
   const checkResearchSource = useCheckResearchSource()
@@ -131,6 +133,17 @@ export function AccountDetailPage() {
     await deleteAccount.mutateAsync(account.id)
     toast.success('Account deleted')
     navigate('/', { replace: true })
+  }
+
+  async function handleDeletePipeline(pipelineId: string) {
+    if (!account) return
+    try {
+      await deletePipeline.mutateAsync({ pipelineId, accountId: account.id })
+      setPipelinePendingDelete(null)
+      toast.success('Pipeline deleted')
+    } catch (err: any) {
+      toast.error(err.message ?? 'Failed to delete pipeline')
+    }
   }
 
   if (accountLoading) {
@@ -243,31 +256,73 @@ export function AccountDetailPage() {
           />
         ) : (
           <div className="space-y-1.5">
-            {pipelines.map((pipeline) => (
-              <Link
-                key={pipeline.id}
-                to={`/accounts/${account.slug}/pipelines/${pipeline.slug}`}
-                className="flex items-center justify-between px-4 py-3 rounded border bg-surface hover:bg-muted/40 transition-colors group"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{pipeline.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {pipeline.agentCount} {pipeline.agentCount === 1 ? 'agent' : 'agents'}
-                    {pipeline.lastRunAt
-                      ? ` · Last run ${new Date(pipeline.lastRunAt).toLocaleDateString()}`
-                      : ' · No runs yet'}
-                  </p>
+            {pipelines.map((pipeline) => {
+              const isConfirmingDelete = pipelinePendingDelete === pipeline.id
+              const isDeleting = isConfirmingDelete && deletePipeline.isPending
+
+              return (
+                <div
+                  key={pipeline.id}
+                  className="flex items-center rounded border bg-surface hover:bg-muted/40 transition-colors group"
+                >
+                  <Link
+                    to={`/accounts/${account.slug}/pipelines/${pipeline.slug}`}
+                    className="flex min-w-0 flex-1 items-center justify-between px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{pipeline.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {pipeline.agentCount} {pipeline.agentCount === 1 ? 'agent' : 'agents'}
+                        {pipeline.lastRunAt
+                          ? ` · Last run ${new Date(pipeline.lastRunAt).toLocaleDateString()}`
+                          : ' · No runs yet'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {pipeline.category && (
+                        <span className="text-xs px-2 py-0.5 rounded font-medium bg-muted text-muted-foreground capitalize">
+                          {pipeline.category}
+                        </span>
+                      )}
+                      <PipelineStatusBadge status={pipeline.status} />
+                    </div>
+                  </Link>
+                  <div className="flex shrink-0 items-center gap-1 pr-2">
+                    {isConfirmingDelete ? (
+                      <>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          loading={isDeleting}
+                          onClick={() => handleDeletePipeline(pipeline.id)}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isDeleting}
+                          onClick={() => setPipelinePendingDelete(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Delete ${pipeline.name}`}
+                        title={`Delete ${pipeline.name}`}
+                        disabled={deletePipeline.isPending}
+                        onClick={() => setPipelinePendingDelete(pipeline.id)}
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {pipeline.category && (
-                    <span className="text-xs px-2 py-0.5 rounded font-medium bg-muted text-muted-foreground capitalize">
-                      {pipeline.category}
-                    </span>
-                  )}
-                  <PipelineStatusBadge status={pipeline.status} />
-                </div>
-              </Link>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

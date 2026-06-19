@@ -6,7 +6,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@project/content": ["../../packages/content/src/index.ts"]
+      "@project/content": ["../../packages/content/src/index.ts"],
+      "@project/sdk": ["../../packages/sdk/src/index.ts"]
     },
     "noEmit": true
   },

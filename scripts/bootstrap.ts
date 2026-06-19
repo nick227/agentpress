@@ -12,12 +12,25 @@ function run(cmd: string, label: string) {
 
 const envPath = resolve(root, '.env')
 const envExample = resolve(root, '.env.example')
+function syncEnvCopies() {
+  for (const rel of ['packages/db/.env']) {
+    const target = resolve(root, rel)
+    if (!existsSync(target)) {
+      copyFileSync(envPath, target)
+      console.log(`   Copied .env → ${rel}`)
+    }
+  }
+}
+
 if (!existsSync(envPath)) {
   copyFileSync(envExample, envPath)
+  syncEnvCopies()
   console.log('\n⚠  .env created from .env.example')
   console.log('   Edit DATABASE_URL and OPENAI_API_KEY before continuing, then re-run bootstrap.\n')
   process.exit(0)
 }
+
+syncEnvCopies()
 
 console.log('🚀 Bootstrapping AgentPress...\n')
 

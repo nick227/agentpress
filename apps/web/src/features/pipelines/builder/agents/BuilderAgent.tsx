@@ -168,6 +168,17 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
       ? IMAGE_OUTPUT_TARGETS
       : AI_TEXT_OUTPUT_TARGETS
 
+  const isDirty =
+    form.uid !== agent.uid
+    || form.name !== agent.name
+    || form.outputTarget !== agent.outputTarget
+    || form.outputFormat !== agent.outputFormat
+    || form.imageMode !== (agent.imageMode ?? (staticAgent ? 'selected' : 'generate'))
+    || form.selectedImageAssetId !== (agent.selectedImageAssetId ?? '')
+    || form.enabled !== agent.enabled
+    || form.systemPrompt !== agent.systemPrompt
+    || form.userPrompt !== agent.userPrompt
+
   const panelTitle = staticAgent ? 'Static Agent' : imageAgent ? 'Image Agent' : 'Agent'
   const formatLabel = staticAgent ? 'static' : imageAgent ? 'image' : null
 
@@ -324,7 +335,7 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={handleDelete}>Delete</Button>
-        <Button size="sm" loading={update.isPending} onClick={handleSave}>Save</Button>
+        <Button size="sm" loading={update.isPending} disabled={!isDirty || update.isPending} onClick={handleSave}>Save</Button>
       </div>
     </div>
   )

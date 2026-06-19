@@ -133,7 +133,7 @@ model PipelineRun {
   id              String           @id @default(cuid())
   accountId       String
   pipelineId      String
-  pipeline        Pipeline         @relation(fields: [pipelineId], references: [id])
+  pipeline        Pipeline         @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   title           String?
   status          String           @default("queued")
   dryRun          Boolean          @default(true)

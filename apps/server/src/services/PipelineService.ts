@@ -220,7 +220,13 @@ export class PipelineService {
 
   async delete(idOrSlug: string) {
     const pipelineId = await this.resolveId(idOrSlug)
-    await db.pipeline.delete({ where: { id: pipelineId } })
+    await db.$transaction(async (tx) => {
+      // PipelineRun's database constraint may predate the cascade relation in the
+      // Prisma schema, so remove run history explicitly before the pipeline.
+      // Agent runs, run assets, and publish attempts cascade from PipelineRun.
+      await tx.pipelineRun.deleteMany({ where: { pipelineId } })
+      await tx.pipeline.delete({ where: { id: pipelineId } })
+    })
   }
 
   async validate(idOrSlug: string) {

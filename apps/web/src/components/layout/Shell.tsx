@@ -62,9 +62,16 @@ export function Shell() {
           </Link>
         </div>
 
-        {customSidebar ? (
-          <div ref={sidebarSlotRef} className="flex flex-col flex-1 min-h-0 overflow-hidden" />
-        ) : (
+        {/* Keep the portal host mounted so route changes cannot race the chrome update. */}
+        <div
+          ref={sidebarSlotRef}
+          className={cn(
+            'flex flex-col flex-1 min-h-0 overflow-hidden',
+            !customSidebar && 'hidden',
+          )}
+        />
+
+        {!customSidebar && (
           <div className="flex flex-col gap-1 p-3">
             <NavLink
               to="/"

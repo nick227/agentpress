@@ -97,6 +97,14 @@ export function BuilderVariable({ variable, pipeline, pipelineId, onSaved, onDel
     onDeleted()
   }
 
+  const isDirty =
+    form.key !== variable.key
+    || form.label !== (variable.label ?? '')
+    || form.type !== variable.type
+    || form.required !== variable.required
+    || form.defaultValue !== String(variable.defaultValue ?? '')
+    || form.exampleValue !== String(variable.exampleValue ?? '')
+
   return (
     <div className="p-6 max-w-lg">
       <h2 className="text-sm font-semibold mb-5">Variables</h2>
@@ -162,7 +170,7 @@ export function BuilderVariable({ variable, pipeline, pipelineId, onSaved, onDel
 
       <div className="mt-6 flex gap-2">
         <Button variant="outline" size="sm" onClick={handleDelete}>Delete</Button>
-        <Button size="sm" loading={update.isPending} onClick={handleSave}>Save</Button>
+        <Button size="sm" loading={update.isPending} disabled={!isDirty || update.isPending} onClick={handleSave}>Save</Button>
       </div>
     </div>
   )
