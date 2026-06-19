@@ -22,6 +22,9 @@ interface DefinitionSource {
 interface PipelineAgentSource extends DefinitionSource {
   uid: string
   outputFormat: AgentOutputFormat | string
+  enabled?: boolean
+  sortOrder?: number
+  selectedImageAssetId?: string | null
 }
 
 interface PipelineInputOptions {
@@ -73,6 +76,33 @@ export function agentDefinitionToPipelineInput(
     enabled: options.enabled ?? true,
     sortOrder: options.sortOrder,
   }
+}
+
+export function pipelineAgentToPipelineInput(agent: PipelineAgentSource): PipelineAgentInputLike {
+  return agentDefinitionToPipelineInput(
+    pipelineAgentToDefinition(agent),
+    {
+      uid: agent.uid,
+      sortOrder: agent.sortOrder ?? 0,
+      enabled: agent.enabled ?? true,
+      selectedImageAssetId: agent.selectedImageAssetId ?? null,
+    },
+  )
+}
+
+export function appendAgentDefinitionToPipelineInputs(
+  agents: PipelineAgentSource[],
+  definition: AgentDefinition,
+): PipelineAgentInputLike[] {
+  const uid = resolveAgentUid(definition.uid, agents.map((agent) => agent.uid))
+
+  return [
+    ...agents.map(pipelineAgentToPipelineInput),
+    agentDefinitionToPipelineInput(definition, {
+      uid,
+      sortOrder: agents.length,
+    }),
+  ]
 }
 
 export function pipelineAgentToDefinition(agent: PipelineAgentSource): AgentDefinition {

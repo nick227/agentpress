@@ -75,8 +75,10 @@ export type {
   PipelineAgentInputLike,
 } from './agents/types'
 export {
+  appendAgentDefinitionToPipelineInputs,
   agentDefinitionToPipelineInput,
   libraryAgentToDefinition,
+  pipelineAgentToPipelineInput,
   pipelineAgentToDefinition,
   resolveAgentUid,
   templateAgentToDefinition,

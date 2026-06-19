@@ -2,9 +2,7 @@ import { useState } from 'react'
 import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Image, FileText } from 'lucide-react'
 import {
   BUILTIN_AGENT_DEFINITIONS,
-  agentDefinitionToPipelineInput,
-  pipelineAgentToDefinition,
-  resolveAgentUid,
+  appendAgentDefinitionToPipelineInputs,
   type AgentDefinition,
 } from '@project/content'
 import type { components } from '@project/sdk'
@@ -70,29 +68,10 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
     if (addedVar) onSelect({ type: 'variable', id: addedVar.id })
   }
 
-  function existingAgentInputs() {
-    return pipeline.agents.map((agent) => agentDefinitionToPipelineInput(
-      pipelineAgentToDefinition(agent),
-      {
-        uid: agent.uid,
-        sortOrder: agent.sortOrder,
-        enabled: agent.enabled,
-        selectedImageAssetId: agent.selectedImageAssetId ?? null,
-      },
-    ))
-  }
-
   async function addAgentDefinition(definition: AgentDefinition) {
-    const uid = resolveAgentUid(definition.uid, pipeline.agents.map((agent) => agent.uid))
     const result = await update.mutateAsync({
       pipelineId,
-      agents: [
-        ...existingAgentInputs(),
-        agentDefinitionToPipelineInput(definition, {
-          uid,
-          sortOrder: pipeline.agents.length,
-        }),
-      ],
+      agents: appendAgentDefinitionToPipelineInputs(pipeline.agents, definition),
     })
     const addedAgent = result.data.agents[result.data.agents.length - 1]
     if (addedAgent) onSelect({ type: 'agent', id: addedAgent.id })

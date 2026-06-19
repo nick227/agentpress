@@ -2,10 +2,8 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { X, Search, FlaskConical, PenLine, BarChart2, Pencil, ArrowUpRight, BookOpen } from 'lucide-react'
 import {
-  agentDefinitionToPipelineInput,
+  appendAgentDefinitionToPipelineInputs,
   libraryAgentToDefinition,
-  pipelineAgentToDefinition,
-  resolveAgentUid,
 } from '@project/content'
 import { useLibraryAgents, useUpdatePipeline } from '@project/sdk'
 import type { components } from '@project/sdk'
@@ -55,32 +53,13 @@ export function AgentLibraryBrowser({ pipeline, pipelineId, onClose, onAgentAdde
 
   const agents = data?.data ?? []
 
-  function existingAgentInputs() {
-    return pipeline.agents.map((pipelineAgent) => agentDefinitionToPipelineInput(
-      pipelineAgentToDefinition(pipelineAgent),
-      {
-        uid: pipelineAgent.uid,
-        sortOrder: pipelineAgent.sortOrder,
-        enabled: pipelineAgent.enabled,
-        selectedImageAssetId: pipelineAgent.selectedImageAssetId ?? null,
-      },
-    ))
-  }
-
   async function handleAdd(agent: LibraryAgent) {
     setAdding(agent.id)
     try {
       const definition = libraryAgentToDefinition(agent)
-      const uid = resolveAgentUid(definition.uid, pipeline.agents.map((pipelineAgent) => pipelineAgent.uid))
       const result = await update.mutateAsync({
         pipelineId,
-        agents: [
-          ...existingAgentInputs(),
-          agentDefinitionToPipelineInput(definition, {
-            uid,
-            sortOrder: pipeline.agents.length,
-          }),
-        ],
+        agents: appendAgentDefinitionToPipelineInputs(pipeline.agents, definition),
       })
       const added = result.data.agents[result.data.agents.length - 1]
       toast.success(`"${agent.name}" added to pipeline`)
