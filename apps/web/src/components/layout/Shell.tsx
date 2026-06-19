@@ -46,7 +46,7 @@ export function Shell() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex mx-auto max-w-7xl">
       {/* Sidebar */}
       <aside
         className={cn(
