@@ -1,34 +1,34 @@
 import type { ContentTemplate, VariablePack } from './types'
+import blogTemplatesData from '../data/templates/blog.json'
+import socialTemplatesData from '../data/templates/social.json'
+import ecommerceTemplatesData from '../data/templates/ecommerce.json'
+import scriptTemplatesData from '../data/templates/scripts.json'
+import storyTemplatesData from '../data/templates/stories.json'
+import sketchTemplatesData from '../data/templates/sketches.json'
+import coldEmailTemplatesData from '../data/templates/cold-emails.json'
+import nicheTemplatesData from '../data/templates/niche.json'
+import resumeTemplatesData from '../data/templates/resumes.json'
+import commercialTemplatesData from '../data/templates/commercials.json'
+import tweetTemplatesData from '../data/templates/tweets.json'
+import seoVariablePacksData from '../data/variable-packs/seo.json'
+import styleVariablePacksData from '../data/variable-packs/style.json'
+import productVariablePacksData from '../data/variable-packs/product.json'
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const blogTemplates: ContentTemplate[] = require('../data/templates/blog.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const socialTemplates: ContentTemplate[] = require('../data/templates/social.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const ecommerceTemplates: ContentTemplate[] = require('../data/templates/ecommerce.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const scriptTemplates: ContentTemplate[] = require('../data/templates/scripts.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const storyTemplates: ContentTemplate[] = require('../data/templates/stories.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const sketchTemplates: ContentTemplate[] = require('../data/templates/sketches.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const coldEmailTemplates: ContentTemplate[] = require('../data/templates/cold-emails.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const nicheTemplates: ContentTemplate[] = require('../data/templates/niche.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const resumeTemplates: ContentTemplate[] = require('../data/templates/resumes.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const commercialTemplates: ContentTemplate[] = require('../data/templates/commercials.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const tweetTemplates: ContentTemplate[] = require('../data/templates/tweets.json')
+const blogTemplates = blogTemplatesData as ContentTemplate[]
+const socialTemplates = socialTemplatesData as ContentTemplate[]
+const ecommerceTemplates = ecommerceTemplatesData as ContentTemplate[]
+const scriptTemplates = scriptTemplatesData as ContentTemplate[]
+const storyTemplates = storyTemplatesData as ContentTemplate[]
+const sketchTemplates = sketchTemplatesData as ContentTemplate[]
+const coldEmailTemplates = coldEmailTemplatesData as ContentTemplate[]
+const nicheTemplates = nicheTemplatesData as ContentTemplate[]
+const resumeTemplates = resumeTemplatesData as ContentTemplate[]
+const commercialTemplates = commercialTemplatesData as ContentTemplate[]
+const tweetTemplates = tweetTemplatesData as ContentTemplate[]
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const seoVariablePacks: VariablePack[] = require('../data/variable-packs/seo.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const styleVariablePacks: VariablePack[] = require('../data/variable-packs/style.json')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const productVariablePacks: VariablePack[] = require('../data/variable-packs/product.json')
+const seoVariablePacks = seoVariablePacksData as VariablePack[]
+const styleVariablePacks = styleVariablePacksData as VariablePack[]
+const productVariablePacks = productVariablePacksData as VariablePack[]
 
 const ALL_TEMPLATES: ContentTemplate[] = [
   ...blogTemplates,
