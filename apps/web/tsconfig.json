@@ -5,7 +5,8 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@project/content": ["../../packages/content/src/index.ts"]
     },
     "noEmit": true
   },

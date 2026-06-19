@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@project/content': path.resolve(__dirname, '../../packages/content/src'),
     },
   },
   server: {
