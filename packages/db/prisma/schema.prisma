@@ -202,16 +202,17 @@ model Destination {
 }
 
 model PublishAttempt {
-  id            String      @id @default(cuid())
-  pipelineRunId String
-  pipelineRun   PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
-  destinationId String
-  destination   Destination @relation(fields: [destinationId], references: [id])
-  status        String      @default("pending")
-  remotePostId  String?
-  remoteUrl     String?
-  error         String?
-  createdAt     DateTime    @default(now())
+  id               String      @id @default(cuid())
+  pipelineRunId    String
+  pipelineRun      PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  destinationId    String
+  destination      Destination @relation(fields: [destinationId], references: [id])
+  status           String      @default("pending")
+  progressMessage  String?     @db.Text
+  remotePostId     String?
+  remoteUrl        String?
+  error            String?
+  createdAt        DateTime    @default(now())
 }
 
 model ResearchSource {

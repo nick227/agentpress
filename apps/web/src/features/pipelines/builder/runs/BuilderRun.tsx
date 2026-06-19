@@ -1,14 +1,17 @@
-import { useState } from 'react'
-import { usePipelineRun, usePublishRun } from '@project/sdk'
+import { useEffect, useState } from 'react'
+import { useDestinations, usePipelineRun, usePublishRun } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
-import { CheckCircle2, XCircle, Loader2, Clock, FileCode, Image, Send, Download, FolderOpen } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Clock, FileCode, Image, Send, Download, FolderOpen, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { downloadRunAsset } from '@/lib/downloadRunAsset'
+import { PublishProgressPanel } from './PublishProgressPanel'
 import { toast } from 'sonner'
 
 type Pipeline = components['schemas']['Pipeline']
+type RunAsset = components['schemas']['RunAsset']
+type ImageRunAsset = RunAsset & { id: string; filename: string; type: 'image' }
 
 interface Props {
   runId: string
@@ -40,10 +43,87 @@ const CACHE_STATUS: Record<string, { label: string; className: string }> = {
   failed: { label: 'failed', className: 'bg-red-100 text-red-700' },
 }
 
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+
+function isPreviewableImageAsset(asset: RunAsset): asset is ImageRunAsset {
+  return asset.type === 'image' && typeof asset.id === 'string' && typeof asset.filename === 'string'
+}
+
+const PUBLISH_TOAST_ID = 'wordpress-publish'
+
 export function BuilderRun({ runId, pipeline }: Props) {
-  const { data, isLoading } = usePipelineRun(runId)
+  const [publishing, setPublishing] = useState(false)
   const publish = usePublishRun()
+  const { data, isLoading } = usePipelineRun(runId, { pollForPublish: publishing || publish.isPending })
+  const { data: destinationsData } = useDestinations(pipeline.accountId)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({})
+  const [failedPreviewIds, setFailedPreviewIds] = useState<Set<string>>(() => new Set())
+
+  const assets = data?.assets ?? []
+  const downloadAssets = [...assets]
+    .filter((a) => a.type === 'image' || a.type === 'html')
+    .sort((a, b) => assetSortOrder(a.filename, a.type) - assetSortOrder(b.filename, b.type))
+  const imageAssets = downloadAssets.filter(isPreviewableImageAsset)
+  const imageAssetIds = imageAssets.map((asset) => asset.id).join('|')
+  const publishAttempts = data?.publishAttempts ?? []
+  const destination = destinationsData?.data.find((item) => item.id === pipeline.destinationId)
+  const isPublishing = publishing || publish.isPending || publishAttempts.some((attempt) => attempt.status === 'pending')
+
+  useEffect(() => {
+    if (!isPublishing) return
+    const latest = publishAttempts[publishAttempts.length - 1]
+    if (latest?.progressMessage) {
+      toast.loading(latest.progressMessage, { id: PUBLISH_TOAST_ID })
+    }
+  }, [isPublishing, publishAttempts])
+
+  useEffect(() => {
+    let cancelled = false
+    const objectUrls: string[] = []
+
+    setFailedPreviewIds(new Set())
+
+    if (imageAssets.length === 0) {
+      setImagePreviewUrls({})
+      return undefined
+    }
+
+    setImagePreviewUrls((current) => {
+      const next: Record<string, string> = {}
+      for (const asset of imageAssets) {
+        const existingUrl = current[asset.id]
+        if (existingUrl) next[asset.id] = existingUrl
+      }
+      return next
+    })
+
+    for (const asset of imageAssets) {
+      fetch(runAssetUrl(runId, asset.id), { credentials: 'include' })
+        .then((res) => {
+          if (!res.ok) throw new Error('Image preview failed')
+          return res.blob()
+        })
+        .then((blob) => {
+          const url = URL.createObjectURL(blob)
+          if (cancelled) {
+            URL.revokeObjectURL(url)
+            return
+          }
+          objectUrls.push(url)
+          setImagePreviewUrls((current) => ({ ...current, [asset.id]: url }))
+        })
+        .catch(() => {
+          if (cancelled) return
+          setFailedPreviewIds((current) => new Set(current).add(asset.id))
+        })
+    }
+
+    return () => {
+      cancelled = true
+      for (const url of objectUrls) URL.revokeObjectURL(url)
+    }
+  }, [runId, imageAssetIds])
 
   if (isLoading) {
     return (
@@ -57,10 +137,6 @@ export function BuilderRun({ runId, pipeline }: Props) {
 
   const run = data?.data
   const agentRuns = data?.agentRuns ?? []
-  const downloadAssets = [...(data?.assets ?? [])]
-    .filter((a) => a.type === 'image' || a.type === 'html')
-    .sort((a, b) => assetSortOrder(a.filename, a.type) - assetSortOrder(b.filename, b.type))
-  const publishAttempts = data?.publishAttempts ?? []
 
   if (!run) return null
 
@@ -76,11 +152,28 @@ export function BuilderRun({ runId, pipeline }: Props) {
     Boolean(post)
 
   async function handlePublish() {
+    setPublishing(true)
+    toast.loading('Starting WordPress publish…', { id: PUBLISH_TOAST_ID })
     try {
       const result = await publish.mutateAsync(runId)
-      toast.success(result.remoteUrl ? `Published to ${result.remoteUrl}` : 'Published successfully')
-    } catch (err: any) {
-      toast.error(err.message ?? 'Publish failed')
+      const details = [
+        result.inlineImagesUploaded ? `${result.inlineImagesUploaded} inline image${result.inlineImagesUploaded === 1 ? '' : 's'}` : null,
+        result.featuredImageUploaded ? 'featured image' : null,
+      ].filter(Boolean)
+      toast.success(
+        result.remoteUrl
+          ? `Published${details.length ? ` · ${details.join(', ')}` : ''}`
+          : 'Published successfully',
+        {
+          id: PUBLISH_TOAST_ID,
+          description: result.remoteUrl,
+          duration: 10000,
+        },
+      )
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Publish failed', { id: PUBLISH_TOAST_ID, duration: 10000 })
+    } finally {
+      setPublishing(false)
     }
   }
 
@@ -96,7 +189,7 @@ export function BuilderRun({ runId, pipeline }: Props) {
   }
 
   return (
-    <div className="p-6 max-w-2xl space-y-6">
+    <div className="p-6 max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
@@ -119,14 +212,23 @@ export function BuilderRun({ runId, pipeline }: Props) {
           <Button
             size="sm"
             className="gap-1.5 shrink-0"
-            loading={publish.isPending}
+            loading={isPublishing}
+            disabled={isPublishing}
             onClick={handlePublish}
           >
             <Send size={13} />
-            Publish to WordPress
+            {isPublishing ? 'Publishing…' : 'Publish to WordPress'}
           </Button>
         )}
       </div>
+
+      {(publishAttempts.length > 0 || isPublishing) && (
+        <PublishProgressPanel
+          attempts={publishAttempts}
+          isPublishing={isPublishing}
+          destinationSiteUrl={destination?.siteUrl}
+        />
+      )}
 
       {run.error && (
         <div className="rounded border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
@@ -180,6 +282,24 @@ export function BuilderRun({ runId, pipeline }: Props) {
         </div>
       )}
 
+      {/* Image thumbs */}
+      {imageAssets.length > 0 && (
+        <Section title="Images">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {imageAssets.map((asset) => (
+              <ImagePreviewCard
+                key={asset.id}
+                asset={asset}
+                previewUrl={imagePreviewUrls[asset.id]}
+                previewFailed={failedPreviewIds.has(asset.id)}
+                downloading={downloadingId === asset.id}
+                onDownload={() => handleDownloadAsset(asset.id, asset.filename)}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
       {/* Assets */}
       {downloadAssets.length > 0 && (
         <div>
@@ -214,38 +334,6 @@ export function BuilderRun({ runId, pipeline }: Props) {
               )
             })}
           </div>
-        </div>
-      )}
-
-      {/* Publish attempts */}
-      {publishAttempts.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold mb-2">Publishing</h2>
-          {publishAttempts.map((attempt) => (
-            <div key={attempt.id} className="text-sm space-y-1">
-              <div className="flex items-center gap-2">
-                {attempt.status === 'success' ? (
-                  <CheckCircle2 size={14} className="text-green-600" />
-                ) : attempt.status === 'failed' ? (
-                  <XCircle size={14} className="text-destructive" />
-                ) : (
-                  <Clock size={14} className="text-muted-foreground" />
-                )}
-                <span className="capitalize">{attempt.status}</span>
-              </div>
-              {attempt.remoteUrl && (
-                <a
-                  href={attempt.remoteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-accent hover:underline"
-                >
-                  {attempt.remoteUrl}
-                </a>
-              )}
-              {attempt.error && <p className="text-xs text-destructive">{attempt.error}</p>}
-            </div>
-          ))}
         </div>
       )}
 
@@ -309,6 +397,70 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
+function ImagePreviewCard({
+  asset,
+  previewUrl,
+  previewFailed,
+  downloading,
+  onDownload,
+}: {
+  asset: ImageRunAsset
+  previewUrl?: string
+  previewFailed: boolean
+  downloading: boolean
+  onDownload: () => void
+}) {
+  const displayName = asset.filename.includes('/') ? asset.filename.split('/').pop()! : asset.filename
+
+  return (
+    <div className="rounded border bg-surface overflow-hidden">
+      <div className="relative aspect-square bg-muted/30">
+        {previewUrl ? (
+          <a href={previewUrl} target="_blank" rel="noopener noreferrer" title={`Open ${displayName}`}>
+            <img
+              src={previewUrl}
+              alt={asset.label || displayName}
+              className="h-full w-full object-cover"
+            />
+            <span className="absolute right-2 top-2 rounded bg-background/85 p-1 text-muted-foreground shadow-sm">
+              <ExternalLink size={13} />
+            </span>
+          </a>
+        ) : previewFailed ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground">
+            <Image size={22} />
+            <span>Preview unavailable</span>
+          </div>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Loader2 size={18} className="animate-spin" />
+            <span>Loading preview</span>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-2 p-2">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium" title={asset.label || displayName}>
+            {asset.label || displayName}
+          </p>
+          <p className="truncate text-[11px] text-muted-foreground" title={asset.filename}>
+            {displayName}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onDownload}
+          disabled={downloading}
+          className="shrink-0 rounded border p-1.5 text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40 disabled:opacity-60"
+          title={`Download ${asset.filename}`}
+        >
+          {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function PromptBlock({ label, text }: { label: string; text: string }) {
   return (
     <div className="space-y-1">
@@ -318,4 +470,8 @@ function PromptBlock({ label, text }: { label: string; text: string }) {
       </pre>
     </div>
   )
+}
+
+function runAssetUrl(runId: string, assetId: string) {
+  return `${API_BASE}/api/pipeline-runs/${runId}/assets/${assetId}`
 }

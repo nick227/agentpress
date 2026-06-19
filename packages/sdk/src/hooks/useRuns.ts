@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient, ApiError } from '../client'
 
-export function usePipelineRun(runId: string) {
+export function usePipelineRun(runId: string, options?: { pollForPublish?: boolean }) {
   return useQuery({
     queryKey: ['run', runId],
     queryFn: async () => {
@@ -13,6 +13,7 @@ export function usePipelineRun(runId: string) {
     },
     enabled: Boolean(runId),
     refetchInterval: (query) => {
+      if (options?.pollForPublish) return 800
       const status = query.state.data?.data?.status
       return status === 'queued' || status === 'running' ? 2000 : false
     },

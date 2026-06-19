@@ -145,11 +145,20 @@ export class WordPressService {
     credentials: WordPressCredentials,
     body: string,
     images: InlineImageUploadInput[],
+    onProgress?: (message: string) => void | Promise<void>,
   ): Promise<UploadInlineImagesResult> {
-    const uploads = await Promise.all(images.map(async (image) => {
+    let nextBody = body
+    const uploaded: InlineImageUploadResult[] = []
+    const failed: string[] = []
+
+    for (let index = 0; index < images.length; index++) {
+      const image = images[index]!
       if (!image.buffer?.length || !image.relativePath) {
-        return { image, error: image.relativePath || 'unknown image' }
+        failed.push(image.relativePath || 'unknown image')
+        continue
       }
+
+      await onProgress?.(`Uploading inline image ${index + 1}/${images.length} (${image.filename})…`)
 
       try {
         const result = await this.uploadMedia(
@@ -158,32 +167,16 @@ export class WordPressService {
           image.filename,
           { alt: image.alt, caption: image.caption, title: image.alt },
         )
-        return { image, result }
+        nextBody = this.rewriteInlineImageSrc(nextBody, image.relativePath, result.url)
+        uploaded.push({
+          relativePath: image.relativePath,
+          mediaId: result.id,
+          url: result.url,
+        })
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        return { image, error: `${image.relativePath}: ${message}` }
+        failed.push(`${image.relativePath}: ${message}`)
       }
-    }))
-
-    let nextBody = body
-    const uploaded: InlineImageUploadResult[] = []
-    const failed: string[] = []
-
-    type UploadAttempt = { image: InlineImageUploadInput; result: { id: number; url: string } } | { image: InlineImageUploadInput; error: string }
-
-    for (const upload of uploads as UploadAttempt[]) {
-      if ('error' in upload) {
-        failed.push(upload.error)
-        continue
-      }
-
-      const { image, result } = upload
-      nextBody = this.rewriteInlineImageSrc(nextBody, image.relativePath, result.url)
-      uploaded.push({
-        relativePath: image.relativePath,
-        mediaId: result.id,
-        url: result.url,
-      })
     }
 
     return { body: nextBody, uploaded, failed }
@@ -207,18 +200,22 @@ export class WordPressService {
     credentials: WordPressCredentials,
     post: WordPressPostPayload,
     thumbnailBuffer?: Uint8Array,
-  ): Promise<{ postId: string; postUrl: string }> {
+    onProgress?: (message: string) => void | Promise<void>,
+  ): Promise<{ postId: string; postUrl: string; featuredImageUploaded: boolean }> {
     const url = `${this.apiBase(credentials.siteUrl)}/posts`
 
     let featuredMediaId: number | undefined
+    let featuredImageUploaded = false
     if (thumbnailBuffer) {
       try {
+        await onProgress?.('Uploading featured image…')
         featuredMediaId = await this.uploadMedia(
           credentials,
           thumbnailBuffer,
           'thumbnail.png',
           { title: post.title, alt: post.title },
         ).then((media) => media.id)
+        featuredImageUploaded = true
       } catch {
         // Thumbnail upload failure is non-fatal — post still publishes without featured image.
       }
@@ -233,6 +230,8 @@ export class WordPressService {
 
     if (featuredMediaId !== undefined) payload.featured_media = featuredMediaId
     if (post.categoryIds && post.categoryIds.length > 0) payload.categories = post.categoryIds
+
+    await onProgress?.(`Creating WordPress ${post.status}…`)
 
     const response = await fetch(url, {
       method: 'POST',
@@ -249,6 +248,6 @@ export class WordPressService {
     }
 
     const data = (await response.json()) as { id: number; link: string }
-    return { postId: String(data.id), postUrl: data.link }
+    return { postId: String(data.id), postUrl: data.link, featuredImageUploaded }
   }
 }

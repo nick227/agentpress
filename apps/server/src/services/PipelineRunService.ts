@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import { basename, join } from 'path'
 import { LibraryAgentService } from './LibraryAgentService'
+import type { PublishProgressReporter } from './publishProgress'
 import { db, Prisma } from '@project/db'
 import { OpenAIService } from './OpenAIService'
 import { getImageProvider, getImageModelLabel } from './imageProviders'
@@ -77,6 +78,16 @@ interface PublishToWordPressResult {
   postId: string
   postUrl: string
   inlineUploads: InlineImageUploadResult[]
+  featuredImageUploaded: boolean
+}
+
+function publishProgressReporter(attemptId: string): PublishProgressReporter {
+  return async (message: string) => {
+    await db.publishAttempt.update({
+      where: { id: attemptId },
+      data: { progressMessage: message },
+    })
+  }
 }
 
 function stableStringify(value: unknown): string {
@@ -477,6 +488,7 @@ export class PipelineRunService {
             pipelineRunId: runId,
             destinationId: destination.id,
             status: 'pending',
+            progressMessage: 'Starting WordPress publish…',
           },
         })
 
@@ -486,6 +498,7 @@ export class PipelineRunService {
             { outputFolder: folder, assets: runImageAssets },
             pipeline,
             destination,
+            publishProgressReporter(attempt.id),
           )
           generatedPost.publishedUrl = result.postUrl
           generatedPost.wordpressMedia = result.inlineUploads
@@ -497,12 +510,17 @@ export class PipelineRunService {
               status: 'success',
               remotePostId: result.postId,
               remoteUrl: result.postUrl,
+              progressMessage: `Published to ${result.postUrl}`,
             },
           })
         } catch (err: any) {
           await db.publishAttempt.update({
             where: { id: attempt.id },
-            data: { status: 'failed', error: err.message },
+            data: {
+              status: 'failed',
+              error: err.message,
+              progressMessage: err.message,
+            },
           })
         }
       }
@@ -672,13 +690,25 @@ export class PipelineRunService {
       defaultStatus: string
       defaultCategoryIds?: unknown
     },
+    reportProgress: PublishProgressReporter,
   ): Promise<PublishToWordPressResult> {
     const credentials = wordpressCredentials(destination)
+    const siteHost = destination.siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+
+    await reportProgress(`Connecting to ${siteHost}…`)
+    await reportProgress('Preparing images for upload…')
+
     const inlineInputs = await resolveInlineUploadInputs(run, generatedPost.inlineImages ?? [])
+
+    if (inlineInputs.length > 0) {
+      await reportProgress(`Uploading ${inlineInputs.length} inline image${inlineInputs.length === 1 ? '' : 's'}…`)
+    }
+
     const { body, uploaded, failed } = await wp.uploadInlineImages(
       credentials,
       generatedPost.body,
       inlineInputs,
+      (message) => reportProgress(message),
     )
 
     if (failed.length > 0) {
@@ -698,9 +728,17 @@ export class PipelineRunService {
         categoryIds: resolveCategoryIds(pipeline, destination),
       },
       thumbnailBuffer,
+      (message) => reportProgress(message),
     )
 
-    return { ...result, inlineUploads: uploaded }
+    await reportProgress(`Published to ${result.postUrl}`)
+
+    return {
+      postId: result.postId,
+      postUrl: result.postUrl,
+      inlineUploads: uploaded,
+      featuredImageUploaded: result.featuredImageUploaded,
+    }
   }
 
   async publishRun(runId: string) {
@@ -721,8 +759,15 @@ export class PipelineRunService {
     if (!destination) throw Object.assign(new Error('Destination not found'), { statusCode: 404 })
 
     const attempt = await db.publishAttempt.create({
-      data: { pipelineRunId: runId, destinationId: destination.id, status: 'pending' },
+      data: {
+        pipelineRunId: runId,
+        destinationId: destination.id,
+        status: 'pending',
+        progressMessage: 'Starting WordPress publish…',
+      },
     })
+
+    const reportProgress = publishProgressReporter(attempt.id)
 
     try {
       const post = run.generatedPost as unknown as GeneratedPost
@@ -731,11 +776,17 @@ export class PipelineRunService {
         { outputFolder: run.outputFolder, assets: run.assets },
         run.pipeline,
         destination,
+        reportProgress,
       )
 
       await db.publishAttempt.update({
         where: { id: attempt.id },
-        data: { status: 'success', remotePostId: result.postId, remoteUrl: result.postUrl },
+        data: {
+          status: 'success',
+          remotePostId: result.postId,
+          remoteUrl: result.postUrl,
+          progressMessage: `Published to ${result.postUrl}`,
+        },
       })
 
       await db.pipelineRun.update({
@@ -750,11 +801,21 @@ export class PipelineRunService {
         },
       })
 
-      return { ok: true, remoteUrl: result.postUrl }
+      return {
+        ok: true,
+        remoteUrl: result.postUrl,
+        remotePostId: result.postId,
+        inlineImagesUploaded: result.inlineUploads.length,
+        featuredImageUploaded: result.featuredImageUploaded,
+      }
     } catch (err: any) {
       await db.publishAttempt.update({
         where: { id: attempt.id },
-        data: { status: 'failed', error: err.message },
+        data: {
+          status: 'failed',
+          error: err.message,
+          progressMessage: err.message,
+        },
       })
       throw err
     }

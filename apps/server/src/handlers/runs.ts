@@ -91,6 +91,7 @@ export async function getPipelineRun(request: any, reply: any) {
       pipelineRunId: p.pipelineRunId,
       destinationId: p.destinationId,
       status: p.status,
+      progressMessage: p.progressMessage ?? undefined,
       remotePostId: p.remotePostId ?? undefined,
       remoteUrl: p.remoteUrl ?? undefined,
       error: p.error ?? undefined,
