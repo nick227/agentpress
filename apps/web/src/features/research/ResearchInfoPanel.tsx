@@ -1,12 +1,22 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { RefreshCw, ExternalLink, Pencil, Trash2 } from 'lucide-react'
+import { RefreshCw, ExternalLink, Pencil, Trash2, Loader2, CheckCircle2, AlertCircle, Info } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCheckResearchSource, useUpdateResearchSource, useDeleteResearchSource } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { researchCheckFeedback } from './researchCheckFeedback'
+import { PipelineSummaryStyleSelect } from './PipelineSummaryStyleSelect'
+import { researchSummaryRefDescription, researchSummaryRefHint } from './researchSummaryRef'
+import { cn } from '@/lib/utils'
+
+const CHECK_TOAST_ID = 'research-source-check'
+
+type CheckNotice = {
+  variant: 'checking' | 'success' | 'error' | 'info'
+  message: string
+}
 
 type ResearchSource = components['schemas']['ResearchSource']
 
@@ -52,24 +62,39 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
   const [sourceUrl, setSourceUrl] = useState(source.sourceUrl)
   const [category, setCategory] = useState(source.category ?? '')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [checkNotice, setCheckNotice] = useState<CheckNotice | null>(null)
 
   const labels = TYPE_LABELS[source.sourceType] ?? TYPE_LABELS.youtube!
+  const isChecking = checkNotice?.variant === 'checking' || checkSource.isPending
 
-  async function handleCheck() {
-    const loadingId = toast.loading(
-      source.sourceType === 'youtube' ? 'Checking for latest video and fetching transcript…' : 'Checking for new content…',
-    )
-    try {
-      const result = await checkSource.mutateAsync(source.id)
-      const feedback = researchCheckFeedback(source.sourceType, result.data, labels)
-      toast.dismiss(loadingId)
-      if (feedback.variant === 'success') toast.success(feedback.message)
-      else if (feedback.variant === 'error') toast.error(feedback.message)
-      else toast.info(feedback.message)
-    } catch (err: unknown) {
-      toast.dismiss(loadingId)
-      toast.error(err instanceof Error ? err.message : 'Check failed')
-    }
+  function handleCheck() {
+    const checkingMessage =
+      source.sourceType === 'youtube'
+        ? 'Checking for latest video and fetching transcript…'
+        : 'Checking for new content…'
+
+    setCheckNotice({ variant: 'checking', message: checkingMessage })
+    toast.loading(checkingMessage, { id: CHECK_TOAST_ID })
+
+    void (async () => {
+      try {
+        const result = await checkSource.mutateAsync(source.id)
+        const feedback = researchCheckFeedback(source.sourceType, result.data, labels)
+        const message = result.data.message ?? feedback.message
+
+        toast.dismiss(CHECK_TOAST_ID)
+        setCheckNotice({ variant: feedback.variant, message })
+
+        if (feedback.variant === 'success') toast.success(message)
+        else if (feedback.variant === 'error') toast.error(message)
+        else toast.info(message)
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Check failed'
+        toast.dismiss(CHECK_TOAST_ID)
+        setCheckNotice({ variant: 'error', message })
+        toast.error(message)
+      }
+    })()
   }
 
   async function handleSave() {
@@ -105,15 +130,19 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" loading={checkSource.isPending} onClick={handleCheck}>
-            <RefreshCw size={13} />
-            {labels.checkLabel}
+          <Button variant="outline" size="sm" disabled={isChecking} onClick={handleCheck}>
+            {isChecking ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {isChecking ? 'Checking…' : labels.checkLabel}
           </Button>
           <Button variant="ghost" size="icon-sm" onClick={() => setEditing((v) => !v)}>
             <Pencil size={13} />
           </Button>
         </div>
       </div>
+
+      {checkNotice && (
+        <CheckNoticeBanner notice={checkNotice} onDismiss={() => setCheckNotice(null)} />
+      )}
 
       {editing ? (
         <div className="border rounded-lg p-4 space-y-3 mb-6">
@@ -170,9 +199,16 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
         </div>
       )}
 
+      <PipelineSummaryStyleSelect source={source} />
+
       <div className="border-t pt-4">
+        <p className="text-xs text-muted-foreground mb-1">
+          Pipeline reference: <code className="font-mono bg-muted px-1 rounded text-xs">{`{${source.slug}.summary}`}</code>
+        </p>
+        <p className="text-xs text-muted-foreground mb-1">{researchSummaryRefHint(source)}</p>
+        <p className="text-xs text-muted-foreground mb-3">{researchSummaryRefDescription()}</p>
         <p className="text-xs text-muted-foreground mb-3">
-          Reference this feed's latest summary as <code className="font-mono bg-muted px-1 rounded text-xs">{`{${source.slug}.summary}`}</code>. Open an item to use a date-pinned reference.
+          Open an item to copy a date-pinned reference such as <code className="font-mono bg-muted px-1 rounded text-xs">{`{${source.slug}.YYYY-MM-DD.summary}`}</code> (same summary style).
         </p>
         {!confirmDelete ? (
           <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
@@ -186,6 +222,34 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function CheckNoticeBanner({ notice, onDismiss }: { notice: CheckNotice; onDismiss: () => void }) {
+  const styles = {
+    checking: 'border-sky-200 bg-sky-50 text-sky-900',
+    success: 'border-green-200 bg-green-50 text-green-900',
+    error: 'border-red-200 bg-red-50 text-red-900',
+    info: 'border-border bg-muted text-foreground',
+  } as const
+
+  const Icon = {
+    checking: Loader2,
+    success: CheckCircle2,
+    error: AlertCircle,
+    info: Info,
+  }[notice.variant]
+
+  return (
+    <div className={cn('mb-4 flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm', styles[notice.variant])}>
+      <Icon size={15} className={cn('shrink-0 mt-0.5', notice.variant === 'checking' && 'animate-spin')} />
+      <p className="flex-1 min-w-0">{notice.message}</p>
+      {notice.variant !== 'checking' && (
+        <button type="button" onClick={onDismiss} className="shrink-0 text-xs opacity-60 hover:opacity-100">
+          Dismiss
+        </button>
+      )}
     </div>
   )
 }

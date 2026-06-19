@@ -791,6 +791,16 @@ components:
         lastChecked:
           type: string
           format: date-time
+        defaultSummaryPromptId:
+          type: string
+          nullable: true
+        defaultSummaryPromptName:
+          type: string
+          nullable: true
+        pipelineSummaryPromptId:
+          type: string
+        pipelineSummaryPromptName:
+          type: string
         itemCount:
           type: integer
         createdAt:
@@ -2277,6 +2287,9 @@ paths:
                 status:
                   type: string
                   enum: [active, paused]
+                defaultSummaryPromptId:
+                  type: string
+                  nullable: true
       responses:
         '200':
           description: Updated

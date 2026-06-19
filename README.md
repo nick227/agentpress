@@ -37,7 +37,7 @@ Common reference fields:
 
 | Reference | Meaning |
 |---|---|
-| `{ziptrader.summary}` | Latest stored summary for the `ziptrader` research source |
+| `{ziptrader.summary}` | Latest stored item for `ziptrader`, summarized with that feed's **pipeline summary style** (feed override or global default prompt) |
 | `{ziptrader.date}` | Latest item publish date as `YYYY-MM-DD` |
 | `{ziptrader.title}` | Latest item title |
 | `{ziptrader.url}` | Latest item URL |
@@ -50,7 +50,9 @@ For exact reuse of a prior daily pull, pin by date. This is implemented in the r
 {wallstreetbets.2026-06-18.title}
 ```
 
-The agent prompt editor includes an **Insert ref** menu that lists connected research feeds and inserts compact references such as `{ziptrader.summary}` and `{ziptrader.date}`.
+The agent prompt editor includes an **Insert ref** menu that lists connected research feeds, shows which summary style each `{slug.summary}` uses, and inserts references such as `{ziptrader.summary}` and `{ziptrader.date}`.
+
+Each research feed has an optional **Pipeline summary style** setting. When unset, pipelines use the global default summary prompt (seeded as **News Brief**). When set, that feed's pipelines always use the selected style for `{slug.summary}` and date-pinned `{slug.YYYY-MM-DD.summary}` refs. Summaries are reused from the database when already generated; otherwise the first pipeline run auto-generates them.
 
 ## Remote Provider Protection
 
@@ -200,7 +202,6 @@ Prompt interpolation supports:
 {agents.researcher.output}
 {ziptrader.summary}
 {ziptrader.2026-06-18.summary}
-{research.summary}
 ```
 
 Dry runs still call OpenAI and save generated outputs. Dry run means **no remote publishing** to WordPress.

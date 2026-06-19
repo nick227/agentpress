@@ -78,6 +78,7 @@ export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }
             {sourceType === 'youtube' ? 'Watch on YouTube' : sourceType === 'reddit' ? 'View on Reddit' : 'Read article'} <ExternalLink size={10} />
           </a>
           <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{exactSummaryRef}</span>
+          <span className="text-muted-foreground">(same pipeline summary style as latest item)</span>
         </div>
       </div>
 

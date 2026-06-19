@@ -1,5 +1,6 @@
 import { db } from '@project/db'
 import { ResearchService } from './ResearchService'
+import { resolvePipelineSummaryPrompt } from './summaryPromptResolve'
 
 export interface ResearchContext {
   sourceId: string
@@ -82,6 +83,7 @@ export class ResearchContextService {
     slug: string
     name: string
     sourceType: string
+    defaultSummaryPromptId?: string | null
   }, itemKey?: string): Promise<ResearchContext> {
     let item = itemKey
       ? await this.findItemByKey(source.id, itemKey)
@@ -96,9 +98,7 @@ export class ResearchContextService {
         : `No research items found for "${source.name}"`)
     }
 
-    const prompt = await db.summaryPrompt.findFirst({ orderBy: [{ isDefault: 'desc' }, { sortOrder: 'asc' }, { createdAt: 'asc' }] })
-
-    if (!prompt) throw new Error('No summary prompt is available for research interpolation')
+    const prompt = await resolvePipelineSummaryPrompt(source.defaultSummaryPromptId)
 
     let summary = await db.researchSummary.findUnique({
       where: { itemId_promptId: { itemId: item.id, promptId: prompt.id } },
@@ -124,7 +124,7 @@ export class ResearchContextService {
       publishedAt: item.publishedAt.toISOString(),
       summaryPromptId: prompt.id,
       summaryPromptName: prompt.name,
-      summary: summary?.text ?? '',
+      summary: summary.text,
       content: item.content ?? '',
     }
   }

@@ -4,6 +4,7 @@ import type { FeedItem } from './adapters/FeedAdapter'
 import { OpenAIService } from './OpenAIService'
 import { fetchYoutubeTranscript } from './youtube/youtubeTranscript'
 import { contentFieldsFromFeedItem, contentFieldsFromTranscript } from './researchContentStatus'
+import { resolveGlobalDefaultSummaryPrompt } from './summaryPromptResolve'
 import { createHash } from 'crypto'
 
 const REMOTE_CACHE_TTL_MS = 60 * 60 * 1000
@@ -94,13 +95,15 @@ export class ResearchService {
     const cached = await this.getCached<{ ok: true; value: string | null } | { ok: false; error: string }>(cacheKey)
     if (cached !== undefined) {
       if (!cached.ok) throw new Error(cached.error)
-      return cached.value
+      if (cached.value) return cached.value
     }
 
     const adapter = getAdapter(sourceType)
     try {
       const value = await adapter.resolveSource(sourceUrl)
-      await this.setCached(cacheKey, { ok: true, value })
+      if (value) {
+        await this.setCached(cacheKey, { ok: true, value })
+      }
       return value
     } catch (err: any) {
       await this.setCached(cacheKey, { ok: false, error: err.message ?? 'Source resolution failed' })
@@ -137,21 +140,54 @@ export class ResearchService {
     }
   }
 
+  private formatSource(
+    source: {
+      defaultSummaryPromptId: string | null
+      defaultSummaryPrompt: { id: string; name: string } | null
+      _count: { items: number }
+    } & Record<string, unknown>,
+    globalDefault: { id: string; name: string } | null,
+  ) {
+    const effective = source.defaultSummaryPrompt ?? globalDefault
+    const { _count, defaultSummaryPrompt, ...rest } = source
+    return {
+      ...rest,
+      defaultSummaryPromptId: source.defaultSummaryPromptId,
+      defaultSummaryPromptName: source.defaultSummaryPrompt?.name ?? null,
+      pipelineSummaryPromptId: effective?.id ?? null,
+      pipelineSummaryPromptName: effective?.name ?? null,
+      itemCount: _count.items,
+    }
+  }
+
+  private sourceInclude() {
+    return {
+      _count: { select: { items: true } },
+      defaultSummaryPrompt: { select: { id: true, name: true } },
+    } as const
+  }
+
   async list(accountId: string) {
-    const sources = await db.researchSource.findMany({
-      where: { accountId },
-      orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { items: true } } },
-    })
-    return sources.map((s) => ({ ...s, itemCount: s._count.items, _count: undefined }))
+    const [sources, globalDefault] = await Promise.all([
+      db.researchSource.findMany({
+        where: { accountId },
+        orderBy: { createdAt: 'desc' },
+        include: this.sourceInclude(),
+      }),
+      resolveGlobalDefaultSummaryPrompt(),
+    ])
+    return sources.map((source) => this.formatSource(source, globalDefault))
   }
 
   async get(idOrSlug: string) {
-    const source = await db.researchSource.findFirstOrThrow({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-      include: { _count: { select: { items: true } } },
-    })
-    return { ...source, itemCount: source._count.items, _count: undefined }
+    const [source, globalDefault] = await Promise.all([
+      db.researchSource.findFirstOrThrow({
+        where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+        include: this.sourceInclude(),
+      }),
+      resolveGlobalDefaultSummaryPrompt(),
+    ])
+    return this.formatSource(source, globalDefault)
   }
 
   async create(accountId: string, data: { name: string; category?: string; sourceType?: string; sourceUrl: string }) {
@@ -174,18 +210,29 @@ export class ResearchService {
         sourceUrl: data.sourceUrl,
         externalId,
       },
-      include: { _count: { select: { items: true } } },
+      include: this.sourceInclude(),
     })
-    return { ...source, itemCount: source._count.items, _count: undefined }
+    const globalDefault = await resolveGlobalDefaultSummaryPrompt()
+    return this.formatSource(source, globalDefault)
   }
 
-  async update(sourceId: string, data: { name?: string; category?: string; sourceUrl?: string; status?: string }) {
+  async update(sourceId: string, data: {
+    name?: string
+    category?: string
+    sourceUrl?: string
+    status?: string
+    defaultSummaryPromptId?: string | null
+  }) {
     let externalId: string | undefined = undefined
     if (data.sourceUrl) {
       const source = await db.researchSource.findUnique({ where: { id: sourceId }, select: { sourceType: true } })
       try {
         externalId = (await this.resolveSourceCached(source?.sourceType ?? 'youtube', data.sourceUrl)) ?? undefined
       } catch {}
+    }
+
+    if (data.defaultSummaryPromptId) {
+      await db.summaryPrompt.findUniqueOrThrow({ where: { id: data.defaultSummaryPromptId } })
     }
 
     const source = await db.researchSource.update({
@@ -195,10 +242,14 @@ export class ResearchService {
         ...(data.category !== undefined ? { category: data.category } : {}),
         ...(data.sourceUrl !== undefined ? { sourceUrl: data.sourceUrl, externalId } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.defaultSummaryPromptId !== undefined
+          ? { defaultSummaryPromptId: data.defaultSummaryPromptId }
+          : {}),
       },
-      include: { _count: { select: { items: true } } },
+      include: this.sourceInclude(),
     })
-    return { ...source, itemCount: source._count.items, _count: undefined }
+    const globalDefault = await resolveGlobalDefaultSummaryPrompt()
+    return this.formatSource(source, globalDefault)
   }
 
   async delete(sourceId: string) {
@@ -235,10 +286,11 @@ export class ResearchService {
     updatedCount: number
     item?: object
     latest?: ReturnType<ResearchService['latestFromItem']>
+    message?: string
   }> {
     const source = await db.researchSource.findFirstOrThrow({ where: { OR: [{ id: sourceId }, { slug: sourceId }] } })
 
-    let externalId = source.externalId
+    let externalId = source.externalId?.trim() || null
     if (!externalId) {
       externalId = await this.resolveSourceCached(source.sourceType, source.sourceUrl).catch(() => null)
       if (externalId) {
@@ -246,7 +298,15 @@ export class ResearchService {
       }
     }
 
-    if (!externalId) return { checked: false, newItem: false, newCount: 0, updatedCount: 0 }
+    if (!externalId) {
+      return {
+        checked: false,
+        newItem: false,
+        newCount: 0,
+        updatedCount: 0,
+        message: `Could not resolve ${source.sourceType === 'youtube' ? 'YouTube channel' : 'source'}. Check the URL.`,
+      }
+    }
 
     const feedItems = await this.fetchLatestCached(source.sourceType, externalId, source.sourceUrl)
     await db.researchSource.update({ where: { id: source.id }, data: { lastChecked: new Date() } })

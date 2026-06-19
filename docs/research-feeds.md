@@ -83,7 +83,7 @@ interface FeedAdapter {
 
 | Model | Purpose |
 |---|---|
-| `ResearchSource` | Feed config: name, slug, `sourceType`, `sourceUrl`, `externalId`, `status`, `lastChecked` |
+| `ResearchSource` | Feed config: name, slug, `sourceType`, `sourceUrl`, `externalId`, `status`, `defaultSummaryPromptId`, `lastChecked` |
 | `ResearchItem` | One collected piece of content (video, digest, article) |
 | `ResearchSummary` | AI summary of an item for a specific `SummaryPrompt` |
 | `SummaryPrompt` | Reusable summarization template; user prompt must include `{transcript}` |
@@ -218,13 +218,23 @@ Any account research source can be referenced by its **slug** in agent prompts a
 
 | Reference | Resolves to |
 |---|---|
-| `{ziptrader.summary}` | Latest summary for slug `ziptrader` |
+| `{ziptrader.summary}` | Latest item for slug `ziptrader`, using the feed's pipeline summary style |
 | `{ziptrader.date}` | `YYYY-MM-DD` publish date |
 | `{ziptrader.title}` | Latest item title |
 | `{ziptrader.url}` | Latest item URL |
 | `{ziptrader.content}` | Raw collected content / transcript |
-| `{ziptrader.2026-06-18.summary}` | Summary for item published on that UTC date |
+| `{ziptrader.2026-06-18.summary}` | Item published on that UTC date, same pipeline summary style |
 | `{wallstreetbets.2026-06-18.title}` | Title pinned to a specific date |
+
+### Pipeline summary style
+
+Each feed may set `defaultSummaryPromptId`. Resolution order:
+
+1. Feed's `defaultSummaryPromptId` when set
+2. Global default `SummaryPrompt` (`isDefault`, then `sortOrder`, then `createdAt`)
+3. Auto-generate on first pipeline run if no stored summary exists for that item + prompt
+
+The feed detail UI exposes **Pipeline summary style**. The builder **Insert ref** menu shows the effective prompt name under each `{slug.summary}` entry.
 
 Resolution logic lives in `ResearchContextService` + `PromptRenderService.render()`:
 

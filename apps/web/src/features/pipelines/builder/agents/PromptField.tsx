@@ -4,6 +4,7 @@ import type { components } from '@project/sdk'
 import { usePromptAssist, useResearchSources } from '@project/sdk'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
+import { researchSummaryRefHint } from '@/features/research/researchSummaryRef'
 
 type Pipeline = components['schemas']['Pipeline']
 type Agent = components['schemas']['PipelineAgent']
@@ -43,10 +44,6 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
 
   const agentsBefore = pipeline.agents.filter((a) => a.sortOrder < agent.sortOrder)
   const researchSources = (researchData?.data ?? []).filter((source) => (source.itemCount ?? 0) > 0)
-
-  function formatTinyDate(value: string) {
-    return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-  }
 
   async function handleAssist() {
     const result = await promptAssist.mutateAsync({
@@ -122,7 +119,7 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
                       <div className="px-2 pb-1">
                         <p className="text-[11px] font-medium truncate">{source.name}</p>
                         <p className="text-[10px] text-muted-foreground truncate">
-                          Created {formatTinyDate(source.createdAt)}
+                          {researchSummaryRefHint(source)}
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-1">
@@ -130,13 +127,18 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
                           <button
                             key={field}
                             type="button"
-                            className="text-left px-2 py-1.5 text-xs font-mono rounded truncate hover:bg-muted"
+                            className="text-left px-2 py-1.5 text-xs rounded truncate hover:bg-muted"
                             onClick={() => {
                               insertAtCursor(`{${source.slug}.${field}}`)
                               setShowResearchMenu(false)
                             }}
                           >
-                            {`{${source.slug}.${field}}`}
+                            <span className="font-mono block truncate">{`{${source.slug}.${field}}`}</span>
+                            {field === 'summary' && (
+                              <span className="block text-[10px] text-muted-foreground truncate mt-0.5">
+                                {source.pipelineSummaryPromptName ?? 'Summary'}
+                              </span>
+                            )}
                           </button>
                         ))}
                       </div>

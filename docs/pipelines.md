@@ -33,14 +33,13 @@ You can pass data into your agent prompts using `{variables}`. These are evaluat
 
 ### Research References
 If you have connected Research Sources (like YouTube transcripts, Reddit daily digests, or RSS feeds), you can inject their stored data into prompts using their source slug.
-*   `{source_slug.summary}`: The latest stored summary (e.g., `{ziptrader.summary}`).
+*   `{source_slug.summary}`: Latest stored item for that feed, summarized with the feed's pipeline summary style (see feed settings).
 *   `{source_slug.date}`: Publish date (YYYY-MM-DD).
 *   `{source_slug.title}`: The title of the source item.
 *   `{source_slug.url}`: The URL of the source item.
 *   `{source_slug.content}`: Full collected content or transcript.
-*   `{research.summary}`: A default summary for the pipeline.
 
-*Tip: For exact reuse of a prior daily pull, you can pin a specific day's research by using `{source_slug.YYYY-MM-DD.summary}` (e.g., `{wallstreetbets.2026-06-18.title}`).*
+*Tip: For exact reuse of a prior daily pull, pin a specific day's research with `{source_slug.YYYY-MM-DD.summary}` (e.g. `{wallstreetbets.2026-06-18.title}`). Date-pinned refs use the same pipeline summary style as `{source_slug.summary}`.*
 
 ## Pipeline Runs
 When you execute a pipeline, it generates a **Run**. 

@@ -215,20 +215,22 @@ model PublishAttempt {
 }
 
 model ResearchSource {
-  id          String         @id @default(cuid())
-  accountId   String
-  account     Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  name        String
-  slug        String
-  category    String?
-  sourceType  String         @default("youtube")
-  sourceUrl   String         @map("youtubeUrl")
-  externalId  String?        @map("channelId")
-  status      String         @default("active")
-  lastChecked DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  items       ResearchItem[]
+  id                     String         @id @default(cuid())
+  accountId              String
+  account                Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name                   String
+  slug                   String
+  category               String?
+  sourceType             String         @default("youtube")
+  sourceUrl              String         @map("youtubeUrl")
+  externalId             String?        @map("channelId")
+  status                 String         @default("active")
+  defaultSummaryPromptId String?
+  defaultSummaryPrompt   SummaryPrompt? @relation(fields: [defaultSummaryPromptId], references: [id], onDelete: SetNull)
+  lastChecked            DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  items                  ResearchItem[]
 
   @@unique([accountId, slug])
 }
@@ -262,16 +264,17 @@ model ResearchItem {
 }
 
 model SummaryPrompt {
-  id           String            @id @default(cuid())
-  name         String
-  description  String?
-  systemPrompt String            @db.Text
-  userPrompt   String            @db.Text
-  isDefault    Boolean           @default(false)
-  sortOrder    Int               @default(0)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  summaries    ResearchSummary[]
+  id              String            @id @default(cuid())
+  name            String
+  description     String?
+  systemPrompt    String            @db.Text
+  userPrompt      String            @db.Text
+  isDefault       Boolean           @default(false)
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  summaries       ResearchSummary[]
+  researchSources ResearchSource[]
 }
 
 model ResearchSummary {
