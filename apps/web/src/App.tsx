@@ -1,36 +1,80 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { LoginPage } from '@/pages/LoginPage'
-import { RegisterPage } from '@/pages/RegisterPage'
 import { AccountsPage } from '@/pages/AccountsPage'
-import { AccountDetailPage } from '@/pages/AccountDetailPage'
-import { PipelineBuilderPage } from '@/pages/PipelineBuilderPage'
-import { ResearchSourcePage } from '@/pages/ResearchSourcePage'
 import { AuthGuard } from '@/lib/AuthGuard'
 import { Shell } from '@/components/layout/Shell'
+import { Skeleton } from '@/components/ui/Skeleton'
+
+const RegisterPage = lazy(() =>
+  import('@/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
+)
+const AccountDetailPage = lazy(() =>
+  import('@/pages/AccountDetailPage').then((m) => ({ default: m.AccountDetailPage })),
+)
+const PipelineBuilderPage = lazy(() =>
+  import('@/pages/PipelineBuilderPage').then((m) => ({ default: m.PipelineBuilderPage })),
+)
+const ResearchSourcePage = lazy(() =>
+  import('@/pages/ResearchSourcePage').then((m) => ({ default: m.ResearchSourcePage })),
+)
+
+function PageFallback() {
+  return (
+    <div className="p-6 space-y-4">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  )
+}
+
+function LazyPage({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageFallback />}>{children}</Suspense>
+}
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+
+        <Route
+          path="/register"
+          element={
+            <LazyPage>
+              <RegisterPage />
+            </LazyPage>
+          }
+        />
 
         <Route element={<AuthGuard />}>
-          {/* Pages with app shell sidebar */}
           <Route element={<Shell />}>
             <Route index element={<AccountsPage />} />
-            <Route path="/accounts/:accountSlug" element={<AccountDetailPage />} />
+            <Route
+              path="/accounts/:accountSlug"
+              element={
+                <LazyPage>
+                  <AccountDetailPage />
+                </LazyPage>
+              }
+            />
+            <Route
+              path="/accounts/:accountSlug/pipelines/:pipelineSlug"
+              element={
+                <LazyPage>
+                  <PipelineBuilderPage />
+                </LazyPage>
+              }
+            />
+            <Route
+              path="/accounts/:accountSlug/research/:sourceSlug"
+              element={
+                <LazyPage>
+                  <ResearchSourcePage />
+                </LazyPage>
+              }
+            />
           </Route>
-
-          {/* Full-screen builder pages — no shell sidebar */}
-          <Route
-            path="/accounts/:accountSlug/pipelines/:pipelineSlug"
-            element={<PipelineBuilderPage />}
-          />
-          <Route
-            path="/accounts/:accountSlug/research/:sourceSlug"
-            element={<ResearchSourcePage />}
-          />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

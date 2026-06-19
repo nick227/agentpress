@@ -57,15 +57,12 @@ export function BuilderRun({ runId, pipeline }: Props) {
   const { data, isLoading } = usePipelineRun(runId, { pollForPublish: publishing || publish.isPending })
   const { data: destinationsData } = useDestinations(pipeline.accountId)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({})
-  const [failedPreviewIds, setFailedPreviewIds] = useState<Set<string>>(() => new Set())
 
   const assets = data?.assets ?? []
   const downloadAssets = [...assets]
     .filter((a) => a.type === 'image' || a.type === 'html')
     .sort((a, b) => assetSortOrder(a.filename, a.type) - assetSortOrder(b.filename, b.type))
   const imageAssets = downloadAssets.filter(isPreviewableImageAsset)
-  const imageAssetIds = imageAssets.map((asset) => asset.id).join('|')
   const publishAttempts = data?.publishAttempts ?? []
   const destination = destinationsData?.data.find((item) => item.id === pipeline.destinationId)
   const isPublishing = publishing || publish.isPending || publishAttempts.some((attempt) => attempt.status === 'pending')
@@ -77,53 +74,6 @@ export function BuilderRun({ runId, pipeline }: Props) {
       toast.loading(latest.progressMessage, { id: PUBLISH_TOAST_ID })
     }
   }, [isPublishing, publishAttempts])
-
-  useEffect(() => {
-    let cancelled = false
-    const objectUrls: string[] = []
-
-    setFailedPreviewIds(new Set())
-
-    if (imageAssets.length === 0) {
-      setImagePreviewUrls({})
-      return undefined
-    }
-
-    setImagePreviewUrls((current) => {
-      const next: Record<string, string> = {}
-      for (const asset of imageAssets) {
-        const existingUrl = current[asset.id]
-        if (existingUrl) next[asset.id] = existingUrl
-      }
-      return next
-    })
-
-    for (const asset of imageAssets) {
-      fetch(runAssetUrl(runId, asset.id), { credentials: 'include' })
-        .then((res) => {
-          if (!res.ok) throw new Error('Image preview failed')
-          return res.blob()
-        })
-        .then((blob) => {
-          const url = URL.createObjectURL(blob)
-          if (cancelled) {
-            URL.revokeObjectURL(url)
-            return
-          }
-          objectUrls.push(url)
-          setImagePreviewUrls((current) => ({ ...current, [asset.id]: url }))
-        })
-        .catch(() => {
-          if (cancelled) return
-          setFailedPreviewIds((current) => new Set(current).add(asset.id))
-        })
-    }
-
-    return () => {
-      cancelled = true
-      for (const url of objectUrls) URL.revokeObjectURL(url)
-    }
-  }, [runId, imageAssetIds])
 
   if (isLoading) {
     return (
@@ -255,7 +205,13 @@ export function BuilderRun({ runId, pipeline }: Props) {
                   Generating image…
                 </div>
               ) : post.thumbnailUrl ? (
-                <img src={post.thumbnailUrl} alt="Generated thumbnail" className="rounded max-w-sm w-full" />
+                <img
+                  src={post.thumbnailUrl}
+                  alt="Generated thumbnail"
+                  loading="lazy"
+                  decoding="async"
+                  className="rounded max-w-sm w-full"
+                />
               ) : post.thumbnailStatus === 'failed' ? (
                 <div className="text-sm text-destructive border border-destructive/20 rounded p-3 bg-destructive/5">
                   Image generation failed
@@ -289,9 +245,8 @@ export function BuilderRun({ runId, pipeline }: Props) {
             {imageAssets.map((asset) => (
               <ImagePreviewCard
                 key={asset.id}
+                runId={runId}
                 asset={asset}
-                previewUrl={imagePreviewUrls[asset.id]}
-                previewFailed={failedPreviewIds.has(asset.id)}
                 downloading={downloadingId === asset.id}
                 onDownload={() => handleDownloadAsset(asset.id, asset.filename)}
               />
@@ -398,44 +353,42 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function ImagePreviewCard({
+  runId,
   asset,
-  previewUrl,
-  previewFailed,
   downloading,
   onDownload,
 }: {
+  runId: string
   asset: ImageRunAsset
-  previewUrl?: string
-  previewFailed: boolean
   downloading: boolean
   onDownload: () => void
 }) {
+  const [previewFailed, setPreviewFailed] = useState(false)
   const displayName = asset.filename.includes('/') ? asset.filename.split('/').pop()! : asset.filename
+  const previewUrl = runAssetUrl(runId, asset.id)
 
   return (
     <div className="rounded border bg-surface overflow-hidden">
       <div className="relative aspect-square bg-muted/30">
-        {previewUrl ? (
-          <a href={previewUrl} target="_blank" rel="noopener noreferrer" title={`Open ${displayName}`}>
-            <img
-              src={previewUrl}
-              alt={asset.label || displayName}
-              className="h-full w-full object-cover"
-            />
-            <span className="absolute right-2 top-2 rounded bg-background/85 p-1 text-muted-foreground shadow-sm">
-              <ExternalLink size={13} />
-            </span>
-          </a>
-        ) : previewFailed ? (
+        {previewFailed ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground">
             <Image size={22} />
             <span>Preview unavailable</span>
           </div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Loader2 size={18} className="animate-spin" />
-            <span>Loading preview</span>
-          </div>
+          <a href={previewUrl} target="_blank" rel="noopener noreferrer" title={`Open ${displayName}`}>
+            <img
+              src={previewUrl}
+              alt={asset.label || displayName}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+              onError={() => setPreviewFailed(true)}
+            />
+            <span className="absolute right-2 top-2 rounded bg-background/85 p-1 text-muted-foreground shadow-sm">
+              <ExternalLink size={13} />
+            </span>
+          </a>
         )}
       </div>
       <div className="flex items-center justify-between gap-2 p-2">

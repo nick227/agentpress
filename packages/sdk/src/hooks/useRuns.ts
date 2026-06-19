@@ -12,10 +12,18 @@ export function usePipelineRun(runId: string, options?: { pollForPublish?: boole
       return data!
     },
     enabled: Boolean(runId),
+    refetchIntervalInBackground: false,
     refetchInterval: (query) => {
-      if (options?.pollForPublish) return 800
+      if (typeof document !== 'undefined' && document.hidden) return false
+      if (options?.pollForPublish) return 1500
+
       const status = query.state.data?.data?.status
-      return status === 'queued' || status === 'running' ? 2000 : false
+      if (status !== 'queued' && status !== 'running') return false
+
+      const startedAt = query.state.data?.data?.startedAt
+      const elapsed = startedAt ? Date.now() - new Date(startedAt).getTime() : 0
+      const steps = Math.floor(elapsed / 30_000)
+      return Math.min(2000 * 2 ** steps, 8000)
     },
   })
 }

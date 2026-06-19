@@ -81,11 +81,10 @@ export function useUpdatePipeline() {
       return data!
     },
     onSuccess: (data, { pipelineId }) => {
-      queryClient.setQueryData(['pipeline', pipelineId], (current: any) => ({
-        ...current,
-        data: data.data,
-      }))
-      queryClient.invalidateQueries({ queryKey: ['pipeline', pipelineId] })
+      queryClient.setQueryData(['pipeline', pipelineId], (current: unknown) => {
+        if (!current || typeof current !== 'object') return current
+        return { ...current, data: data.data }
+      })
     },
   })
 }
