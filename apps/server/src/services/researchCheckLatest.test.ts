@@ -21,6 +21,7 @@ vi.mock('@project/db', () => ({
     researchFetchCache: {
       findUnique: vi.fn().mockResolvedValue(null),
       upsert: vi.fn().mockResolvedValue(undefined),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   },
 }))

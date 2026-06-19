@@ -69,7 +69,7 @@ export function researchCheckFeedback(
   labels?: { newLabel: (n: number) => string; updatedLabel: (n: number) => string; noNewLabel: string },
 ): CheckFeedback {
   if (!result.checked) {
-    return { variant: 'error', message: 'Could not resolve source. Check the URL.' }
+    return { variant: 'error', message: result.message ?? 'Could not resolve source. Check the URL.' }
   }
 
   if (sourceType === 'youtube') {

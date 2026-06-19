@@ -35,7 +35,20 @@ async function main() {
       return reply.status(400).send({ error: 'Validation failed', details: error.validation })
     }
     if (error.statusCode) {
-      return reply.status(error.statusCode).send({ error: error.message })
+      const typedError = error as typeof error & {
+        code?: string
+        retryable?: boolean
+        retryAfterSeconds?: number
+      }
+      if (typedError.retryAfterSeconds) {
+        reply.header('Retry-After', String(typedError.retryAfterSeconds))
+      }
+      return reply.status(error.statusCode).send({
+        error: error.message,
+        ...(typedError.code ? { code: typedError.code } : {}),
+        ...(typedError.retryable !== undefined ? { retryable: typedError.retryable } : {}),
+        ...(typedError.retryAfterSeconds ? { retryAfterSeconds: typedError.retryAfterSeconds } : {}),
+      })
     }
     if ((error as any).code === 'P2025') {
       return reply.status(404).send({ error: 'Not found' })

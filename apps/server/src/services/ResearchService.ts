@@ -10,6 +10,21 @@ import { createHash } from 'crypto'
 const REMOTE_CACHE_TTL_MS = 60 * 60 * 1000
 const YOUTUBE_MISSING_TRANSCRIPT_CACHE_TTL_MS = 5 * 60 * 1000
 
+export class ResearchFetchError extends Error {
+  readonly code = 'RESEARCH_FETCH_FAILED'
+  readonly retryable = true
+
+  constructor(
+    message: string,
+    readonly statusCode: number,
+    readonly retryAfterSeconds?: number,
+    options?: ErrorOptions,
+  ) {
+    super(message, options)
+    this.name = 'ResearchFetchError'
+  }
+}
+
 function toSlug(name: string): string {
   return name
     .toLowerCase()
@@ -118,8 +133,13 @@ export class ResearchService {
       | { ok: false; error: string }
     >(cacheKey)
     if (cached) {
-      if (!cached.ok) throw new Error(cached.error)
-      return cached.items.map((item) => ({ ...item, publishedAt: new Date(item.publishedAt) }))
+      if (cached.ok) {
+        return cached.items.map((item) => ({ ...item, publishedAt: new Date(item.publishedAt) }))
+      }
+
+      // Older versions cached upstream failures for an hour. Discard those rows so a
+      // temporary outage or rate limit cannot poison every subsequent manual retry.
+      await db.researchFetchCache.deleteMany({ where: { id: this.cacheId(cacheKey) } })
     }
 
     const adapter = getAdapter(sourceType)
@@ -135,8 +155,17 @@ export class ResearchService {
       )
       return items
     } catch (err: any) {
-      await this.setCached(cacheKey, { ok: false, error: err.message ?? 'Research fetch failed' })
-      throw err
+      const provider = sourceType === 'reddit' ? 'Reddit' : sourceType === 'youtube' ? 'YouTube' : 'RSS feed'
+      const upstreamMessage = err instanceof Error ? err.message : 'The upstream service did not respond'
+      const rateLimited = /\b429\b|rate[ -]?limit/i.test(upstreamMessage)
+      const retryAfterSeconds = rateLimited ? 60 : undefined
+      const message = rateLimited
+        ? `${provider} is rate limiting requests for ${externalId}. Try again in about a minute.`
+        : `${provider} check failed: ${upstreamMessage}`
+
+      // Successful responses are worth caching; failures are not. In particular, a
+      // provider's brief 429 window should not become a one-hour local outage.
+      throw new ResearchFetchError(message, rateLimited ? 429 : 502, retryAfterSeconds, { cause: err })
     }
   }
 

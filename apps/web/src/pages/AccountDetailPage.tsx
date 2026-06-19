@@ -213,7 +213,7 @@ export function AccountDetailPage() {
         <p className="text-sm text-foreground/70 mb-5">{account.description}</p>
       )}
 
-      <div className="border-t pt-5">
+      <div id="pipelines" className="scroll-mt-6 border-t pt-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold">Pipelines</h2>
           <div className="flex gap-2">
@@ -273,7 +273,7 @@ export function AccountDetailPage() {
       </div>
 
       {/* Research section */}
-      <div className="border-t pt-5 mt-5">
+      <div id="research" className="scroll-mt-6 border-t pt-5 mt-5">
         <div className="flex items-start justify-between gap-4 mb-4">
           <h2 className="text-sm font-semibold">Research</h2>
           <div className="flex flex-col items-end gap-1.5">

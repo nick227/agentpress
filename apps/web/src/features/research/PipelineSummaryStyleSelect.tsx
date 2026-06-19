@@ -45,7 +45,7 @@ export function PipelineSummaryStyleSelect({ source }: Props) {
           </option>
           {prompts.map((prompt) => (
             <option key={prompt.id} value={prompt.id}>
-              {prompt.name}{prompt.isDefault ? ' · global default' : ''}
+              {prompt.name}
             </option>
           ))}
         </select>

@@ -1,5 +1,21 @@
 import { fetchYoutubeTranscript } from './youtube/youtubeTranscript'
 
+const CHANNEL_ID_PATTERNS = [
+  /"channelId"\s*:\s*"(UC[\w-]+)"/,
+  /"externalId"\s*:\s*"(UC[\w-]+)"/,
+  /"browseId"\s*:\s*"(UC[\w-]+)"/,
+  /channelId=(UC[\w-]+)/,
+  /"channelUrl"\s*:\s*"https:\\\/\\\/www\.youtube\.com\\\/channel\\\/(UC[\w-]+)"/,
+] as const
+
+export function extractChannelIdFromHtml(html: string): string | null {
+  for (const pattern of CHANNEL_ID_PATTERNS) {
+    const match = html.match(pattern)
+    if (match?.[1]) return match[1]
+  }
+  return null
+}
+
 // Parses the RSS feed XML to get the most recent video
 function parseLatestVideo(xml: string): { videoId: string; title: string; publishedAt: Date } | null {
   const entryMatch = xml.match(/<entry>([\s\S]*?)<\/entry>/)
@@ -72,11 +88,11 @@ export class YoutubeService {
     const pageUrl = url.startsWith('http') ? url : `https://www.youtube.com/${url}`
     try {
       const res = await fetch(pageUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; bot)' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
       })
+      if (!res.ok) return null
       const html = await res.text()
-      const match = html.match(/"channelId"\s*:\s*"(UC[\w-]+)"/)
-      return match ? match[1]! : null
+      return extractChannelIdFromHtml(html)
     } catch {
       return null
     }

@@ -467,11 +467,9 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
       </div>
 
       <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur px-6 py-3">
-        <div className="max-w-6xl flex items-center justify-start gap-4">
+        <div className="max-w-6xl flex items-center justify-end gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-medium text-foreground">{pipeline.dryRun ? 'Dry run mode' : 'Live run mode'}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {pipeline.name} · {activeDestination ? activeDestination.name : 'No destination selected'}
+            <p className="text-xs text-muted-foreground truncate">{pipeline.dryRun ? 'Dry run mode' : 'Live run mode'}
             </p>
           </div>
           <Button onClick={() => setShowRunDialog(true)} size="sm" className="gap-1.5 shrink-0">
