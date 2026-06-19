@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ArrowDown, ArrowUp, Image, Play, Plus, Trash2, Type, Globe, ChevronDown, Zap } from 'lucide-react'
 import type { components } from '@project/sdk'
@@ -41,6 +41,8 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   const [showRunDialog, setShowRunDialog] = useState(false)
   const [showAddDestination, setShowAddDestination] = useState(false)
   const [runTitle, setRunTitle] = useState(pipeline.name)
+  const previousPipelineId = useRef(pipeline.id)
+  const previousPipelineName = useRef(pipeline.name)
   const [forceRegenerate, setForceRegenerate] = useState(false)
   const [forceRegenerateAgentUids, setForceRegenerateAgentUids] = useState<string[]>([])
   const [dryRun, setDryRun] = useState(pipeline.dryRun)
@@ -62,6 +64,22 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
   useEffect(() => {
     setDryRun(pipeline.dryRun)
   }, [pipeline.dryRun])
+
+  useEffect(() => {
+    const switchedPipeline = previousPipelineId.current !== pipeline.id
+    const previousName = previousPipelineName.current
+
+    setNameInput(pipeline.name)
+    setRunTitle((current) => {
+      if (switchedPipeline || !current.trim() || current === previousName) {
+        return pipeline.name
+      }
+      return current
+    })
+
+    previousPipelineId.current = pipeline.id
+    previousPipelineName.current = pipeline.name
+  }, [pipeline.id, pipeline.name])
 
   async function handleSave(fields: Partial<typeof pipeline>) {
     await update.mutateAsync({ pipelineId, ...fields })
@@ -319,7 +337,7 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
               <section className="space-y-3">
                 <Label>Settings</Label>
 
-                <Row label="Run title">
+                <Row label="Current run title">
                   <Input
                     value={runTitle}
                     onChange={(e) => setRunTitle(e.target.value)}
