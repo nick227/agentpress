@@ -10,7 +10,7 @@ import { useUpdatePipeline } from '@project/sdk'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import type { Selection } from '@/pages/PipelineBuilderPage'
+import { usePipelineSelection } from '@/features/pipelines/builder/pipelineSelectionContext'
 import { VariablePackPicker } from '@/features/content/VariablePackPicker'
 import { AgentLibraryBrowser } from '@/features/library/AgentLibraryBrowser'
 import { agentSublabel } from './agents/agentTypes'
@@ -21,8 +21,6 @@ type Run = components['schemas']['PipelineRun']
 interface Props {
   pipeline: Pipeline
   runs: Run[]
-  selection: Selection
-  onSelect: (s: Selection) => void
   pipelineId: string
 }
 
@@ -34,7 +32,8 @@ const RUN_STATUS_ICON: Record<string, React.ReactNode> = {
   failed: <XCircle size={12} className="text-destructive" />,
 }
 
-export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId }: Props) {
+export function BuilderSidebar({ pipeline, runs, pipelineId }: Props) {
+  const { selection, onSelect } = usePipelineSelection()
   const update = useUpdatePipeline()
   const [showPackPicker, setShowPackPicker] = useState(false)
   const [showLibrary, setShowLibrary] = useState(false)

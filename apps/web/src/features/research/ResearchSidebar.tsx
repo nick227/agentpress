@@ -2,7 +2,7 @@ import { Info, SlidersHorizontal, Video, ChevronLeft, ChevronRight } from 'lucid
 import type { components } from '@project/sdk'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/Skeleton'
-import type { ResearchSelection } from '@/pages/ResearchSourcePage'
+import { useResearchPage } from '@/features/research/researchPageContext'
 import { contentStatusMessage } from './contentStatus'
 
 type ResearchSource = components['schemas']['ResearchSource']
@@ -19,13 +19,10 @@ interface Props {
   source: ResearchSource
   itemsPage: ItemsPage | undefined
   itemsLoading: boolean
-  page: number
-  onPageChange: (p: number) => void
-  selection: ResearchSelection
-  onSelect: (s: ResearchSelection) => void
 }
 
-export function ResearchSidebar({ source, itemsPage, itemsLoading, page, onPageChange, selection, onSelect }: Props) {
+export function ResearchSidebar({ source, itemsPage, itemsLoading }: Props) {
+  const { selection, onSelect, page, onPageChange } = useResearchPage()
   const items = itemsPage?.data ?? []
   const pages = itemsPage?.pages ?? 1
   const total = itemsPage?.total ?? (source.itemCount ?? 0)

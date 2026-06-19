@@ -1,84 +1,102 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { usePipeline } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { FocusSidebarHeader } from '@/components/layout/FocusSidebarHeader'
+import { SidebarPortal } from '@/components/layout/SidebarPortal'
+import { useShellChrome } from '@/components/layout/Shell'
 import { BuilderSidebar } from '@/features/pipelines/builder/BuilderSidebar'
 import { DetailPanel } from '@/features/pipelines/builder/DetailPanel'
+import {
+  PipelineSelectionProvider,
+  type Selection,
+} from '@/features/pipelines/builder/pipelineSelectionContext'
 
-export type Selection =
-  | { type: 'setup' }
-  | { type: 'variable'; id: string }
-  | { type: 'agent'; id: string }
-  | { type: 'run'; id: string }
+const PIPELINE_SHELL_CHROME = {
+  customSidebar: true,
+  mainClassName: 'max-w-none mx-0 overflow-hidden',
+} as const
+
+export type { Selection }
 
 export function PipelineBuilderPage() {
   const { accountSlug, pipelineSlug } = useParams<{ accountSlug: string; pipelineSlug: string }>()
-  const navigate = useNavigate()
   const { data, isLoading } = usePipeline(pipelineSlug!)
   const [selection, setSelection] = useState<Selection>({ type: 'setup' })
 
   const pipeline = data?.data
-  const recentRuns = data?.recentRuns ?? []
+  const recentRuns = useMemo(() => data?.recentRuns ?? [], [data?.recentRuns])
+  const sidebar = useMemo(() => {
+    if (isLoading) {
+      return <FocusSidebarSkeleton rows={4} />
+    }
 
-  if (isLoading) {
+    if (!pipeline) {
+      return (
+        <FocusSidebarHeader
+          accountSlug={accountSlug!}
+          title="Pipeline not found"
+          eyebrow="Pipeline"
+          allHref={`/accounts/${accountSlug}#pipelines`}
+          allLabel="All Pipelines"
+        />
+      )
+    }
+
     return (
-      <div className="flex h-screen">
-        <div className="w-60 border-r p-4 space-y-3">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-full" />
-        </div>
-        <div className="flex-1 p-6">
-          <Skeleton className="h-48 w-full" />
-        </div>
+      <>
+        <FocusSidebarHeader
+          accountSlug={accountSlug!}
+          title={pipeline.name}
+          eyebrow="Pipeline"
+          allHref={`/accounts/${accountSlug}#pipelines`}
+          allLabel="All Pipelines"
+        />
+        <BuilderSidebar pipeline={pipeline} runs={recentRuns} pipelineId={pipelineSlug!} />
+      </>
+    )
+  }, [accountSlug, isLoading, pipeline, pipelineSlug, recentRuns])
+
+  useShellChrome(PIPELINE_SHELL_CHROME)
+
+  let content: React.ReactNode
+  if (isLoading) {
+    content = (
+      <div className="h-screen p-6">
+        <Skeleton className="h-48 w-full" />
       </div>
     )
-  }
-
-  if (!pipeline) {
-    return (
+  } else if (!pipeline) {
+    content = (
       <div className="p-6">
         <p className="text-muted-foreground">Pipeline not found.</p>
+      </div>
+    )
+  } else {
+    content = (
+      <div className="h-screen overflow-hidden bg-background">
+        <div className="h-full overflow-auto">
+          <DetailPanel pipeline={pipeline} runs={recentRuns} pipelineId={pipelineSlug!} />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Builder sidebar */}
-      <div className="w-60 shrink-0 border-r bg-surface flex flex-col overflow-hidden">
-        <div className="px-4 py-3 border-b shrink-0">
-          <button
-            type="button"
-            onClick={() => navigate(`/accounts/${accountSlug}`)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-1"
-          >
-            <ChevronLeft size={12} />
-            {accountSlug}
-          </button>
-          <p className="text-sm font-semibold truncate">{pipeline.name}</p>
-        </div>
-        <BuilderSidebar
-          pipeline={pipeline}
-          runs={recentRuns}
-          selection={selection}
-          onSelect={setSelection}
-          pipelineId={pipelineSlug!}
-        />
-      </div>
+    <PipelineSelectionProvider selection={selection} onSelect={setSelection}>
+      <SidebarPortal>{sidebar}</SidebarPortal>
+      {content}
+    </PipelineSelectionProvider>
+  )
+}
 
-      {/* Detail panel */}
-      <div className="flex-1 overflow-auto">
-        <DetailPanel
-          pipeline={pipeline}
-          runs={recentRuns}
-          selection={selection}
-          onSelect={setSelection}
-          pipelineId={pipelineSlug!}
-        />
-      </div>
+function FocusSidebarSkeleton({ rows }: { rows: number }) {
+  return (
+    <div className="p-4 space-y-3">
+      <Skeleton className="h-5 w-32" />
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} className={i === 1 ? 'h-4 w-3/4' : 'h-4 w-full'} />
+      ))}
     </div>
   )
 }

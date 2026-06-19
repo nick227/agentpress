@@ -1,5 +1,5 @@
 import type { components } from '@project/sdk'
-import type { Selection } from '@/pages/PipelineBuilderPage'
+import { usePipelineSelection } from '@/features/pipelines/builder/pipelineSelectionContext'
 import { BuilderSetup } from './setup/BuilderSetup'
 import { BuilderVariable } from './variables/BuilderVariable'
 import { BuilderAgent } from './agents/BuilderAgent'
@@ -11,12 +11,11 @@ type Run = components['schemas']['PipelineRun']
 interface Props {
   pipeline: Pipeline
   runs: Run[]
-  selection: Selection
-  onSelect: (s: Selection) => void
   pipelineId: string
 }
 
-export function DetailPanel({ pipeline, runs, selection, onSelect, pipelineId }: Props) {
+export function DetailPanel({ pipeline, runs, pipelineId }: Props) {
+  const { selection, onSelect } = usePipelineSelection()
   if (selection.type === 'setup') {
     return <BuilderSetup pipeline={pipeline} pipelineId={pipelineId} onRunCreated={(id) => onSelect({ type: 'run', id })} />
   }
