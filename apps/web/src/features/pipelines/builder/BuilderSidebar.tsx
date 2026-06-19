@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Image } from 'lucide-react'
+import { Plus, Settings, Variable, Clock, CheckCircle2, XCircle, Loader2, Package, BookOpen, Image, FileText } from 'lucide-react'
 import type { components } from '@project/sdk'
 import { useUpdatePipeline } from '@project/sdk'
 import { toast } from 'sonner'
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import type { Selection } from '@/pages/PipelineBuilderPage'
 import { VariablePackPicker } from '@/features/content/VariablePackPicker'
 import { AgentLibraryBrowser } from '@/features/library/AgentLibraryBrowser'
+import { agentSublabel } from './agents/agentTypes'
 
 type Pipeline = components['schemas']['Pipeline']
 type Run = components['schemas']['PipelineRun']
@@ -88,6 +89,42 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
           outputTarget: 'image' as const,
           outputFormat: 'image' as const,
           imageMode: 'generate' as const,
+          selectedImageAssetId: null,
+          enabled: true,
+          sortOrder: pipeline.agents.length,
+        },
+      ],
+    })
+    const addedAgent = result.data.agents[result.data.agents.length - 1]
+    if (addedAgent) onSelect({ type: 'agent', id: addedAgent.id })
+  }
+
+  async function addStaticAgent() {
+    const uid = `static_${pipeline.agents.length + 1}`
+    const result = await update.mutateAsync({
+      pipelineId,
+      agents: [
+        ...pipeline.agents.map((a) => ({
+          id: a.id,
+          uid: a.uid,
+          name: a.name,
+          systemPrompt: a.systemPrompt,
+          userPrompt: a.userPrompt,
+          outputTarget: a.outputTarget as any,
+          outputFormat: a.outputFormat as any,
+          imageMode: a.imageMode ?? (a.outputFormat === 'static' ? 'selected' : 'generate'),
+          selectedImageAssetId: a.selectedImageAssetId ?? null,
+          enabled: a.enabled,
+          sortOrder: a.sortOrder,
+        })),
+        {
+          uid,
+          name: `Static ${pipeline.agents.length + 1}`,
+          systemPrompt: '',
+          userPrompt: '',
+          outputTarget: 'body' as const,
+          outputFormat: 'static' as const,
+          imageMode: 'selected' as const,
           selectedImageAssetId: null,
           enabled: true,
           sortOrder: pipeline.agents.length,
@@ -180,6 +217,9 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
           <Button variant="ghost" size="icon-sm" onClick={addImageAgent} title="Add image agent">
             <Image size={13} />
           </Button>
+          <Button variant="ghost" size="icon-sm" onClick={addStaticAgent} title="Add static agent">
+            <FileText size={13} />
+          </Button>
           <Button variant="ghost" size="icon-sm" onClick={addAgent} title="Add text agent">
             <Plus size={13} />
           </Button>
@@ -189,7 +229,7 @@ export function BuilderSidebar({ pipeline, runs, selection, onSelect, pipelineId
         <SidebarItem
           key={a.id}
           label={a.name}
-          sublabel={a.outputFormat === 'image' ? `image · ${a.outputTarget}` : a.outputTarget}
+          sublabel={agentSublabel(a)}
           icon={<span className="text-xs text-muted-foreground w-4 text-center">{i + 1}</span>}
           active={selection.type === 'agent' && selection.id === a.id}
           onClick={() => onSelect({ type: 'agent', id: a.id })}

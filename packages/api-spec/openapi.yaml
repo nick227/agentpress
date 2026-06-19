@@ -244,7 +244,7 @@ components:
           enum: [title, excerpt, thumbnail_prompt, thumbnail, body, image, none]
         outputFormat:
           type: string
-          enum: [text, markdown, json, image]
+          enum: [text, markdown, json, image, static]
         imageMode:
           type: string
           enum: [generate, selected, none]
@@ -274,7 +274,7 @@ components:
           enum: [title, excerpt, thumbnail_prompt, thumbnail, body, image, none]
         outputFormat:
           type: string
-          enum: [text, markdown, json, image]
+          enum: [text, markdown, json, image, static]
         imageMode:
           type: string
           enum: [generate, selected, none]
@@ -837,6 +837,8 @@ components:
           $ref: '#/components/schemas/ResearchItem'
         latest:
           $ref: '#/components/schemas/ResearchCheckLatest'
+        message:
+          type: string
 
     ResearchItem:
       type: object
@@ -1521,6 +1523,48 @@ paths:
       responses:
         '201':
           description: Generated image asset
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ImageAsset'
+
+  /api/pipelines/{pipelineId}/image-assets/upload:
+    parameters:
+      - name: pipelineId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: uploadImageAsset
+      tags: [image-assets]
+      summary: Upload an image asset for a static or image agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agentId, dataBase64]
+              properties:
+                agentId:
+                  type: string
+                filename:
+                  type: string
+                dataBase64:
+                  type: string
+                label:
+                  type: string
+      responses:
+        '201':
+          description: Uploaded image asset
           content:
             application/json:
               schema:

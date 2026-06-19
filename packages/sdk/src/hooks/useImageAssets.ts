@@ -32,3 +32,27 @@ export function useGenerateImageAsset() {
   })
 }
 
+export function useUploadImageAsset() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: {
+      pipelineId: string
+      agentId: string
+      dataBase64: string
+      filename?: string
+      label?: string
+    }) => {
+      const { pipelineId, ...body } = input
+      const { data, error, response } = await getApiClient().POST('/api/pipelines/{pipelineId}/image-assets/upload', {
+        params: { path: { pipelineId } },
+        body,
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    onSuccess: (_data, { pipelineId, agentId }) => {
+      queryClient.invalidateQueries({ queryKey: ['image-assets', pipelineId, agentId] })
+    },
+  })
+}
+

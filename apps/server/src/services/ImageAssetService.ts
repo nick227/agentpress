@@ -112,4 +112,54 @@ export class ImageAssetService {
       data: { path: saved.path },
     })
   }
+
+  async upload(idOrSlug: string, input: { agentId: string; dataBase64: string; filename?: string; label?: string }) {
+    const pipeline = await this.resolvePipeline(idOrSlug)
+    const agent = await db.pipelineAgent.findFirstOrThrow({
+      where: { id: input.agentId, pipelineId: pipeline.id },
+      select: { id: true, uid: true },
+    })
+
+    const match = input.dataBase64.match(/^data:([^;]+);base64,(.+)$/)
+    const raw = match?.[2] ?? input.dataBase64
+    const buffer = Buffer.from(raw, 'base64')
+    if (!buffer.length) throw Object.assign(new Error('Image data is required'), { statusCode: 400 })
+
+    const ext = input.filename?.match(/\.(png|jpe?g|webp|gif)$/i)?.[1]?.toLowerCase() ?? 'png'
+    const label = input.label?.trim() || input.filename?.trim() || 'Uploaded image'
+
+    const draft = await db.imageAsset.create({
+      data: {
+        accountId: pipeline.accountId,
+        pipelineId: pipeline.id,
+        agentId: agent.id,
+        agentUid: agent.uid,
+        prompt: label,
+        provider: 'static',
+        model: 'upload',
+        path: '',
+        status: 'ready',
+      },
+    })
+
+    const saved = assets.saveImageAssetFromBuffer({
+      accountId: pipeline.accountId,
+      assetId: draft.id,
+      buffer,
+      filename: `${draft.id}.${ext}`,
+    })
+
+    if (!saved) {
+      await db.imageAsset.update({
+        where: { id: draft.id },
+        data: { status: 'failed', error: 'Could not save uploaded image' },
+      })
+      throw Object.assign(new Error('Could not save uploaded image'), { statusCode: 500 })
+    }
+
+    return db.imageAsset.update({
+      where: { id: draft.id },
+      data: { path: saved.path },
+    })
+  }
 }

@@ -19,6 +19,16 @@ export async function generateImageAsset(
   return reply.status(201).send({ data: await svc.generate(request.params.pipelineId, request.body) })
 }
 
+export async function uploadImageAsset(
+  request: FastifyRequest<{
+    Params: { pipelineId: string }
+    Body: { agentId: string; dataBase64: string; filename?: string; label?: string }
+  }>,
+  reply: FastifyReply,
+) {
+  return reply.status(201).send({ data: await svc.upload(request.params.pipelineId, request.body) })
+}
+
 export async function downloadImageAsset(
   request: FastifyRequest<{ Params: { assetId: string } }>,
   reply: FastifyReply,

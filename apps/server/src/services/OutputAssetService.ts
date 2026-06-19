@@ -54,6 +54,22 @@ export class OutputAssetService {
     }
   }
 
+  saveImageAssetFromBuffer(input: {
+    accountId: string
+    assetId: string
+    buffer: Buffer
+    filename?: string
+  }): { path: string; filename: string } | null {
+    try {
+      const filename = input.filename ?? `${input.assetId}.png`
+      const absolutePath = join(this.getImageAssetFolder(input.accountId), filename)
+      writeFileSync(absolutePath, input.buffer)
+      return { path: absolutePath, filename }
+    } catch {
+      return null
+    }
+  }
+
   async saveImageFromUrl(input: {
     runId: string
     accountSlug: string

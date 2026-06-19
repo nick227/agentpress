@@ -94,12 +94,21 @@ function computeAgentInputHash(input: {
   outputFormat: string
   renderedSystemPrompt: string
   renderedUserPrompt: string
+  selectedImageAssetId?: string
 }): string {
   return createHash('sha256').update(stableStringify(input)).digest('hex')
 }
 
 function isImageAgent(agent: { outputFormat: string }): boolean {
   return agent.outputFormat === 'image'
+}
+
+function isStaticAgent(agent: { outputFormat: string }): boolean {
+  return agent.outputFormat === 'static'
+}
+
+function isImageOutputTarget(target: string): boolean {
+  return target === 'thumbnail' || target === 'image'
 }
 
 function slugify(value: string): string {
@@ -244,18 +253,22 @@ export class PipelineRunService {
 
     for (const agent of pipeline.agents) {
       const imageAgent = isImageAgent(agent)
-      const renderedSystemPrompt = imageAgent
+      const staticAgent = isStaticAgent(agent)
+      const renderedSystemPrompt = imageAgent || staticAgent
         ? ''
         : renderer.render(agent.systemPrompt, runVariables, agentOutputs)
       const renderedUserPrompt = renderer.render(agent.userPrompt, runVariables, agentOutputs)
       const inputHash = computeAgentInputHash({
         agentUid: agent.uid,
-        model: imageAgent ? imageProvider.id : model,
-        imageModel: imageAgent || agent.outputTarget === 'image' ? imageModel : undefined,
+        model: staticAgent ? 'static' : imageAgent ? imageProvider.id : model,
+        imageModel: imageAgent || isImageOutputTarget(agent.outputTarget) ? imageModel : undefined,
         outputTarget: agent.outputTarget,
         outputFormat: agent.outputFormat,
         renderedSystemPrompt,
         renderedUserPrompt,
+        selectedImageAssetId: isImageOutputTarget(agent.outputTarget)
+          ? (agent.selectedImageAssetId ?? '')
+          : undefined,
       })
 
       const agentRun = await db.agentRun.create({
@@ -280,7 +293,39 @@ export class PipelineRunService {
         let cacheStatus: string
         let outputJson: InlineImageMeta | null = (reusable?.outputJson as InlineImageMeta | null) ?? null
 
-        if (imageAgent) {
+        if (staticAgent) {
+          output = renderedUserPrompt
+          cacheStatus = reusable ? 'reused' : 'generated'
+          if (agent.outputTarget === 'thumbnail') {
+            outputJson = await this.resolveImageForAgent({
+              runId,
+              pipeline,
+              agent,
+              prompt: output,
+              reusableJson: reusable?.outputJson,
+              cacheStatus,
+              relativePath: 'thumbnail.png',
+              label: `Thumbnail: ${agent.name}`,
+              staticOnly: true,
+            })
+            generatedPost.thumbnailUrl = outputJson?.url
+            generatedPost.thumbnailLocalPath = outputJson?.path
+            generatedPost.thumbnailPrompt = output
+            generatedPost.thumbnailStatus = outputJson?.url || outputJson?.path ? 'done' : 'failed'
+          } else if (agent.outputTarget === 'image') {
+            outputJson = await this.resolveImageForAgent({
+              runId,
+              pipeline,
+              agent,
+              prompt: output,
+              reusableJson: reusable?.outputJson,
+              cacheStatus,
+              relativePath: `images/${slugify(agent.uid)}.png`,
+              label: `Inline Image: ${agent.name}`,
+              staticOnly: true,
+            })
+          }
+        } else if (imageAgent) {
           output = renderedUserPrompt
           cacheStatus = reusable ? 'reused' : 'generated'
           if (agent.outputTarget === 'thumbnail') {
@@ -498,8 +543,16 @@ export class PipelineRunService {
     cacheStatus: string
     relativePath: string
     label: string
+    staticOnly?: boolean
   }): Promise<InlineImageMeta> {
     const alt = input.agent.name
+
+    if (input.staticOnly && input.agent.imageMode === 'none') {
+      throw Object.assign(
+        new Error(`Static agent "${input.agent.name}" requires an uploaded image`),
+        { statusCode: 400 },
+      )
+    }
 
     if (input.agent.imageMode === 'none') {
       return {
@@ -529,6 +582,13 @@ export class PipelineRunService {
         alt,
         caption: '',
       }
+    }
+
+    if (input.staticOnly) {
+      throw Object.assign(
+        new Error(`Static agent "${input.agent.name}" requires a selected image`),
+        { statusCode: 400 },
+      )
     }
 
     if (input.cacheStatus === 'reused' && input.reusableJson?.path) {
