@@ -1,4 +1,5 @@
 import { mimeTypeForAsset } from './OutputAssetService'
+import { resolveServerFetchUrl, wordpressReachabilityHint } from './serverFetchUrl'
 
 export type WordPressCredentials = {
   siteUrl: string
@@ -60,9 +61,25 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+export function sanitizeMediaFilename(filename: string): string {
+  const base = filename.split(/[/\\]/).pop() ?? filename
+  const safe = base
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  if (!safe || safe === '.' || safe === '..') return 'agentpress-image.png'
+  if (!/\.(png|jpe?g|webp|gif)$/i.test(safe)) return `${safe}.png`
+  return safe
+}
+
+function mediaMimeType(filename: string): string {
+  const mime = mimeTypeForAsset(filename)
+  return mime === 'application/octet-stream' ? 'image/png' : mime
+}
+
 export class WordPressService {
   private apiBase(siteUrl: string): string {
-    return `${siteUrl.replace(/\/$/, '')}/wp-json/wp/v2`
+    return `${resolveServerFetchUrl(siteUrl.replace(/\/$/, ''))}/wp-json/wp/v2`
   }
 
   private authHeader(credentials: WordPressCredentials): string {
@@ -117,17 +134,31 @@ export class WordPressService {
     meta?: { alt?: string; caption?: string; title?: string },
   ): Promise<{ id: number; url: string }> {
     const url = `${this.apiBase(credentials.siteUrl)}/media`
-    const contentType = mimeTypeForAsset(filename)
+    const safeFilename = sanitizeMediaFilename(filename)
+    const contentType = mediaMimeType(safeFilename)
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: this.authHeader(credentials),
-        'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      },
-      body: imageBuffer as unknown as BodyInit,
-    })
+    const form = new FormData()
+    form.append('file', new Blob([imageBuffer], { type: contentType }), safeFilename)
+    if (meta?.alt) form.append('alt_text', meta.alt)
+    if (meta?.caption) form.append('caption', meta.caption)
+    if (meta?.title) form.append('title', meta.title)
+
+    let response: Response
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: this.authHeader(credentials),
+          'User-Agent': 'AgentPress/1.0',
+        },
+        body: form,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      throw new Error(
+        `WordPress media upload request failed for ${url}: ${message}.${wordpressReachabilityHint(credentials.siteUrl)}`,
+      )
+    }
 
     if (!response.ok) {
       const body = await response.text()
@@ -138,36 +169,7 @@ export class WordPressService {
     const mediaId = data.id
     const mediaUrl = data.source_url ?? data.guid?.rendered ?? ''
 
-    if (meta && (meta.alt || meta.caption || meta.title)) {
-      await this.updateMediaMeta(credentials, mediaId, meta)
-    }
-
     return { id: mediaId, url: mediaUrl }
-  }
-
-  private async updateMediaMeta(
-    credentials: WordPressCredentials,
-    mediaId: number,
-    meta: { alt?: string; caption?: string; title?: string },
-  ): Promise<void> {
-    const url = `${this.apiBase(credentials.siteUrl)}/media/${mediaId}`
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: this.authHeader(credentials),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...(meta.alt ? { alt_text: meta.alt } : {}),
-        ...(meta.caption ? { caption: meta.caption } : {}),
-        ...(meta.title ? { title: meta.title } : {}),
-      }),
-    })
-
-    if (!response.ok) {
-      const body = await response.text()
-      throw new Error(`WordPress media metadata update failed (${response.status}): ${body}`)
-    }
   }
 
   async uploadInlineImages(
@@ -189,10 +191,7 @@ export class WordPressService {
         )
         return { image, result }
       } catch (err) {
-        let message = err instanceof Error ? err.message : String(err)
-        if (message.includes('fetch failed')) {
-          message = `${message}. Check that WordPress is reachable from the server.`
-        }
+        const message = err instanceof Error ? err.message : String(err)
         return { image, error: `${image.relativePath}: ${message}` }
       }
     }))
@@ -201,7 +200,7 @@ export class WordPressService {
     const uploaded: InlineImageUploadResult[] = []
     const failed: string[] = []
 
-type UploadAttempt = { image: InlineImageUploadInput; result: { id: number; url: string } } | { image: InlineImageUploadInput; error: string }
+    type UploadAttempt = { image: InlineImageUploadInput; result: { id: number; url: string } } | { image: InlineImageUploadInput; error: string }
 
     for (const upload of uploads as UploadAttempt[]) {
       if ('error' in upload) {

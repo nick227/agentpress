@@ -9,6 +9,7 @@ import { OutputAssetService } from './OutputAssetService'
 import {
   WordPressService,
   resolveCategoryIds,
+  sanitizeMediaFilename,
   type InlineImageUploadInput,
   type InlineImageUploadResult,
   type WordPressCredentials,
@@ -153,7 +154,7 @@ async function resolveInlineUploadInputs(
     inputs.push({
       buffer,
       relativePath: image.relativePath,
-      filename: basename(image.relativePath),
+      filename: sanitizeMediaFilename(basename(image.relativePath)),
       alt: image.alt,
       caption: image.caption,
     })
