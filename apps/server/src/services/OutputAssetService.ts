@@ -3,6 +3,7 @@ import { basename, dirname, join, relative, resolve, sep } from 'path'
 import { db } from '@project/db'
 import { buildPostHtml, type RunAgentPrompt } from './runArtifacts'
 import { outputFolderImagePath, parseImageAssetId, resolveExistingPath, runAssetPath } from './runImagePaths'
+import { resolveServerFetchUrl } from './serverFetchUrl'
 
 export type { RunAgentPrompt }
 
@@ -231,6 +232,11 @@ export class OutputAssetService {
     if (imageAssetId) {
       const file = await this.getImageAssetFile(imageAssetId)
       if (file) return file.buffer
+    }
+
+    if (input.url?.startsWith('/api/')) {
+      const base = (process.env.APP_BASE_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3001}`).replace(/\/$/, '')
+      return this.imageBuffer(resolveServerFetchUrl(`${base}${input.url}`))
     }
 
     if (input.url?.startsWith('data:') || input.url?.startsWith('http')) {

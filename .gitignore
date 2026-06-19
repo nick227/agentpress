@@ -16,6 +16,7 @@ packages/sdk/src/generated/
 # Runtime output
 outputs/
 .fallow
+.wp-upload-tmp/
 
 # Logs
 *.log

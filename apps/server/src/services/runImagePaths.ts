@@ -1,10 +1,20 @@
 import { existsSync } from 'fs'
 import { join, resolve } from 'path'
 
+export function normalizeFilesystemPath(filePath: string): string {
+  if (process.platform === 'linux' && (process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP)) {
+    const match = filePath.match(/^([A-Za-z]):[\\/](.*)$/)
+    if (match?.[1] && match[2] !== undefined) {
+      return `/mnt/${match[1].toLowerCase()}/${match[2].replace(/\\/g, '/')}`
+    }
+  }
+  return filePath
+}
+
 export function resolveExistingPath(...candidates: Array<string | undefined | null>): string | undefined {
   for (const candidate of candidates) {
     if (!candidate) continue
-    const resolved = resolve(candidate)
+    const resolved = resolve(normalizeFilesystemPath(candidate))
     if (existsSync(resolved)) return resolved
   }
   return undefined

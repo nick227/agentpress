@@ -1,11 +1,11 @@
-import { mimeTypeForAsset } from './OutputAssetService'
-import { resolveServerFetchUrl, wordpressReachabilityHint } from './serverFetchUrl'
+import { resolveServerFetchUrl } from './serverFetchUrl'
+import { isWsl, shouldUseCurlFallback, uploadMediaViaCurl } from './wordpressMediaUpload'
+import { uploadMediaViaFetch } from './wordpressMediaFetch'
+import { prepareImageForWordPressUpload } from './wordpressImagePrepare'
+import { sanitizeMediaFilename, type WordPressCredentials } from './wordpressMediaShared'
 
-export type WordPressCredentials = {
-  siteUrl: string
-  username: string
-  appPassword: string
-}
+export type { WordPressCredentials } from './wordpressMediaShared'
+export { sanitizeMediaFilename } from './wordpressMediaShared'
 
 export type WordPressPostPayload = {
   title: string
@@ -59,22 +59,6 @@ export function resolveCategoryIds(
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-export function sanitizeMediaFilename(filename: string): string {
-  const base = filename.split(/[/\\]/).pop() ?? filename
-  const safe = base
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  if (!safe || safe === '.' || safe === '..') return 'agentpress-image.png'
-  if (!/\.(png|jpe?g|webp|gif)$/i.test(safe)) return `${safe}.png`
-  return safe
-}
-
-function mediaMimeType(filename: string): string {
-  const mime = mimeTypeForAsset(filename)
-  return mime === 'application/octet-stream' ? 'image/png' : mime
 }
 
 export class WordPressService {
@@ -134,42 +118,27 @@ export class WordPressService {
     meta?: { alt?: string; caption?: string; title?: string },
   ): Promise<{ id: number; url: string }> {
     const url = `${this.apiBase(credentials.siteUrl)}/media`
-    const safeFilename = sanitizeMediaFilename(filename)
-    const contentType = mediaMimeType(safeFilename)
+    const prepared = await prepareImageForWordPressUpload(imageBuffer, filename)
 
-    const form = new FormData()
-    form.append('file', new Blob([imageBuffer], { type: contentType }), safeFilename)
-    if (meta?.alt) form.append('alt_text', meta.alt)
-    if (meta?.caption) form.append('caption', meta.caption)
-    if (meta?.title) form.append('title', meta.title)
+    if (isWsl()) {
+      return uploadMediaViaCurl(url, credentials, prepared.buffer, prepared.filename, {
+        ...meta,
+        contentType: prepared.contentType,
+      })
+    }
 
-    let response: Response
     try {
-      response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: this.authHeader(credentials),
-          'User-Agent': 'AgentPress/1.0',
-        },
-        body: form,
+      return await uploadMediaViaFetch(url, credentials, prepared.buffer, prepared.filename, {
+        ...meta,
+        contentType: prepared.contentType,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      throw new Error(
-        `WordPress media upload request failed for ${url}: ${message}.${wordpressReachabilityHint(credentials.siteUrl)}`,
-      )
+      if (!shouldUseCurlFallback(err)) throw err
+      return uploadMediaViaCurl(url, credentials, prepared.buffer, prepared.filename, {
+        ...meta,
+        contentType: prepared.contentType,
+      })
     }
-
-    if (!response.ok) {
-      const body = await response.text()
-      throw new Error(`WordPress media upload failed (${response.status}): ${body}`)
-    }
-
-    const data = (await response.json()) as { id: number; source_url?: string; guid?: { rendered?: string } }
-    const mediaId = data.id
-    const mediaUrl = data.source_url ?? data.guid?.rendered ?? ''
-
-    return { id: mediaId, url: mediaUrl }
   }
 
   async uploadInlineImages(
