@@ -97,6 +97,15 @@
         "hint": "If your brand were a person, describe them in one sentence"
       },
       {
+        "key": "brand_voice",
+        "label": "Brand Voice Brief",
+        "type": "text",
+        "required": false,
+        "defaultValue": "Clear, useful, specific, and warmly authoritative. Explain things plainly without sounding generic. Prefer concrete examples over abstract claims.",
+        "exampleValue": "Write like a sharp operator talking to busy founders: concise, direct, practical, lightly witty, allergic to fluff. Use short paragraphs, concrete examples, and confident recommendations. Never sound like corporate marketing copy.",
+        "hint": "A reusable voice/persona brief agents can reference directly as {brand_voice}"
+      },
+      {
         "key": "avoid",
         "label": "Words / Phrases to Avoid",
         "type": "text",
