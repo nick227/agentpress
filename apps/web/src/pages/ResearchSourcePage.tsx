@@ -4,7 +4,7 @@ import { useResearchSource, useResearchItems } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FocusSidebarHeader } from '@/components/layout/FocusSidebarHeader'
 import { SidebarPortal } from '@/components/layout/SidebarPortal'
-import { useShellChrome } from '@/components/layout/Shell'
+import { useFocusSidebar } from '@/components/layout/Shell'
 import { ResearchSidebar } from '@/features/research/ResearchSidebar'
 import { ResearchItemPanel } from '@/features/research/ResearchItemPanel'
 import { ResearchInfoPanel } from '@/features/research/ResearchInfoPanel'
@@ -18,7 +18,6 @@ import {
 const ITEMS_PER_PAGE = 15
 
 const RESEARCH_SHELL_CHROME = {
-  customSidebar: true,
   mainClassName: 'max-w-none mx-0 overflow-hidden',
 } as const
 
@@ -72,7 +71,7 @@ export function ResearchSourcePage() {
     )
   }, [accountSlug, itemsData, itemsLoading, source, sourceLoading])
 
-  useShellChrome(RESEARCH_SHELL_CHROME)
+  useFocusSidebar(RESEARCH_SHELL_CHROME)
 
   let content: React.ReactNode
   if (sourceLoading) {
