@@ -9,7 +9,7 @@ import { App } from './App'
 import './index.css'
 
 createApiClient({
-  baseUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:3001',
+  baseUrl: import.meta.env.VITE_API_URL ?? '',
 })
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

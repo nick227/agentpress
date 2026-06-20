@@ -43,7 +43,7 @@ const CACHE_STATUS: Record<string, { label: string; className: string }> = {
   failed: { label: 'failed', className: 'bg-red-100 text-red-700' },
 }
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
 function isPreviewableImageAsset(asset: RunAsset): asset is ImageRunAsset {
   return asset.type === 'image' && typeof asset.id === 'string' && typeof asset.filename === 'string'

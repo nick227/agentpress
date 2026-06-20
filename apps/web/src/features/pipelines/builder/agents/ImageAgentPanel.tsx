@@ -21,7 +21,7 @@ interface Props {
   onSelectAsset: (asset: ImageAsset) => Promise<void>
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? ''
 
 const MODE_HINTS: Record<ImageMode, string> = {
   selected: 'Pipeline runs use the image you select below.',

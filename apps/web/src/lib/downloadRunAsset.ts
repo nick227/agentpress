@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
 export async function downloadRunAsset(runId: string, assetId: string, filename: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/pipeline-runs/${runId}/assets/${assetId}`, {
