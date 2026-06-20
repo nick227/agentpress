@@ -1,7 +1,7 @@
 import { existsSync } from 'fs'
 import { join, resolve } from 'path'
 
-export function normalizeFilesystemPath(filePath: string): string {
+function normalizeFilesystemPath(filePath: string): string {
   if (process.platform === 'linux' && (process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP)) {
     const match = filePath.match(/^([A-Za-z]):[\\/](.*)$/)
     if (match?.[1] && match[2] !== undefined) {

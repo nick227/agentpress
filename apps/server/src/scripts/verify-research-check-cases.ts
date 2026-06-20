@@ -20,7 +20,7 @@ const cachedFailedFeedItem = {
 function existingItem() {
   return {
     id: ITEM_ID,
-    content: null,
+    content: null as string | null,
     contentStatus: 'error',
   }
 }
@@ -57,9 +57,9 @@ function youtubeToastMessage(input: {
 }
 
 async function simulateYoutubeRetry(
-  fetchResult: Awaited<ReturnType<typeof import('../services/youtube/youtubeTranscript.ts').fetchYoutubeTranscript>>,
+  fetchResult: Awaited<ReturnType<typeof import('../services/youtube/youtubeTranscript').fetchYoutubeTranscript>>,
 ) {
-  const { contentFieldsFromTranscript } = await import('../services/researchContentStatus.ts')
+  const { contentFieldsFromTranscript } = await import('../services/researchContentStatus')
   const existing = existingItem()
   const shouldRetry =
     !existing.content?.trim() ||
@@ -106,7 +106,7 @@ async function main() {
   assert(TRANSCRIPT_MESSAGES.disabled!.includes('Transcript unavailable'), 'sidebar maps disabled → "Transcript unavailable"')
 
   console.log('\nCase 3: transcript available on new item')
-  const { contentFieldsFromTranscript } = await import('../services/researchContentStatus.ts')
+  const { contentFieldsFromTranscript } = await import('../services/researchContentStatus')
   const fields3 = contentFieldsFromTranscript({ ok: true, text: 'Full transcript body.' })
   assert(fields3.content === 'Full transcript body.', 'ResearchItem.content populated on create')
   assert(fields3.contentStatus === 'ok', 'contentStatus is ok')

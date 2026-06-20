@@ -2,7 +2,7 @@ import { readFileSync } from 'fs'
 
 let cachedWindowsHost: string | undefined | null = null
 
-export function getWindowsHostIp(): string | undefined {
+function getWindowsHostIp(): string | undefined {
   if (cachedWindowsHost !== null) return cachedWindowsHost
 
   const fromEnv = process.env.WINDOWS_HOST_IP?.trim()

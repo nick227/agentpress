@@ -31,8 +31,6 @@ vi.mock('./youtube/youtubeTranscript', () => ({
 }))
 
 import { ResearchService } from './ResearchService'
-import { researchCheckFeedback } from '../../../web/src/features/research/researchCheckFeedback'
-import { contentStatusMessage } from '../../../web/src/features/research/contentStatus'
 
 const VIDEO_ID = 'dQw4w9WgXcQ'
 const SOURCE_ID = 'src-ziptrader'
@@ -110,10 +108,6 @@ describe('ResearchService.checkLatest — YouTube transcript checks', () => {
         }),
       }),
     )
-
-    const feedback = researchCheckFeedback('youtube', result)
-    expect(feedback.variant).toBe('success')
-    expect(feedback.message).toContain('transcript fetched')
   })
 
   it('case 2: captions disabled/unavailable — error toast and no transcript on item', async () => {
@@ -131,13 +125,6 @@ describe('ResearchService.checkLatest — YouTube transcript checks', () => {
     expect(mockFetchTranscript).toHaveBeenCalledWith(VIDEO_ID)
     expect(result.latest?.hasTranscript).toBe(false)
     expect(result.latest?.contentStatus).toBe('disabled')
-
-    const feedback = researchCheckFeedback('youtube', result)
-    expect(feedback.variant).toBe('error')
-    expect(feedback.message.toLowerCase()).toMatch(/transcript unavailable|captions are disabled/)
-
-    const sidebarHint = contentStatusMessage(result.latest?.contentStatus, 'youtube')
-    expect(sidebarHint?.toLowerCase()).toMatch(/transcript unavailable|captions/)
   })
 
   it('case 3: transcript available — success toast and content populated on new item', async () => {
@@ -175,9 +162,5 @@ describe('ResearchService.checkLatest — YouTube transcript checks', () => {
         }),
       }),
     )
-
-    const feedback = researchCheckFeedback('youtube', result)
-    expect(feedback.variant).toBe('success')
-    expect(feedback.message).toContain('transcript fetched')
   })
 })

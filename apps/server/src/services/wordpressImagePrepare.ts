@@ -3,7 +3,7 @@ import { mediaMimeType, sanitizeMediaFilename } from './wordpressMediaShared'
 
 const DEFAULT_MAX_BYTES = 900_000
 
-export function maxWordPressUploadBytes(): number {
+function maxWordPressUploadBytes(): number {
   const raw = process.env.WORDPRESS_MAX_UPLOAD_BYTES?.trim()
   const parsed = raw ? Number.parseInt(raw, 10) : DEFAULT_MAX_BYTES
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_BYTES

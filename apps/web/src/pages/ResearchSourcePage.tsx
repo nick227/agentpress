@@ -14,7 +14,6 @@ import {
   type ResearchSelection,
 } from '@/features/research/researchPageContext'
 
-export type { ResearchSelection }
 
 const ITEMS_PER_PAGE = 15
 

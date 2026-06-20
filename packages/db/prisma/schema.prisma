@@ -40,32 +40,34 @@ model Account {
   destinations    Destination[]
   researchSources ResearchSource[]
   imageAssets     ImageAsset[]
+  schedules       Schedule[]
 }
 
 model Pipeline {
-  id           String             @id @default(cuid())
-  accountId    String
-  account      Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  name         String
-  slug         String
-  description  String?
-  category     String?
-  status       String             @default("draft")
-  destinationId String?
-  wpCategoryIds Json?
-  bodyComposer Json?
-  dryRun       Boolean            @default(true)
-  scheduleMode String             @default("manual")
-  frequency    String?
-  timeOfDay    String?
-  timezone     String?
-  isPaused     Boolean            @default(false)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  variables    PipelineVariable[]
-  agents       PipelineAgent[]
-  runs         PipelineRun[]
-  imageAssets  ImageAsset[]
+  id              String                   @id @default(cuid())
+  accountId       String
+  account         Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name            String
+  slug            String
+  description     String?
+  category        String?
+  status          String                   @default("draft")
+  destinationId   String?
+  wpCategoryIds   Json?
+  bodyComposer    Json?
+  dryRun          Boolean                  @default(true)
+  scheduleMode    String                   @default("manual")
+  frequency       String?
+  timeOfDay       String?
+  timezone        String?
+  isPaused        Boolean                  @default(false)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  variables       PipelineVariable[]
+  agents          PipelineAgent[]
+  runs            PipelineRun[]
+  imageAssets     ImageAsset[]
+  scheduleActions SchedulePipelineAction[]
 
   @@unique([accountId, slug])
 }
@@ -86,67 +88,69 @@ model PipelineVariable {
 }
 
 model PipelineAgent {
-  id           String   @id @default(cuid())
-  pipelineId   String
-  pipeline     Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
-  uid          String
-  name         String
-  systemPrompt String   @db.Text
-  userPrompt   String   @db.Text
-  outputTarget String
-  outputFormat String   @default("text")
-  imageMode    String   @default("generate")
+  id                   String       @id @default(cuid())
+  pipelineId           String
+  pipeline             Pipeline     @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  uid                  String
+  name                 String
+  systemPrompt         String       @db.Text
+  userPrompt           String       @db.Text
+  outputTarget         String
+  outputFormat         String       @default("text")
+  imageMode            String       @default("generate")
   selectedImageAssetId String?
-  selectedImageAsset ImageAsset? @relation("SelectedImageAsset", fields: [selectedImageAssetId], references: [id], onDelete: SetNull)
-  enabled      Boolean  @default(true)
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  imageAssets  ImageAsset[] @relation("AgentImageAssets")
+  selectedImageAsset   ImageAsset?  @relation("SelectedImageAsset", fields: [selectedImageAssetId], references: [id], onDelete: SetNull)
+  enabled              Boolean      @default(true)
+  sortOrder            Int          @default(0)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  imageAssets          ImageAsset[] @relation("AgentImageAssets")
 
   @@unique([pipelineId, uid])
 }
 
 model ImageAsset {
-  id          String         @id @default(cuid())
-  accountId   String?
-  account     Account?       @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  pipelineId  String?
-  pipeline    Pipeline?      @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
-  agentId     String?
-  agentUid    String?
-  agent       PipelineAgent? @relation("AgentImageAssets", fields: [agentId], references: [id], onDelete: SetNull)
-  prompt      String         @db.Text
-  provider    String
-  model       String
-  size        String?
-  path        String
-  url         String?
-  status      String         @default("ready")
-  error       String?        @db.Text
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id               String          @id @default(cuid())
+  accountId        String?
+  account          Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  pipelineId       String?
+  pipeline         Pipeline?       @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
+  agentId          String?
+  agentUid         String?
+  agent            PipelineAgent?  @relation("AgentImageAssets", fields: [agentId], references: [id], onDelete: SetNull)
+  prompt           String          @db.Text
+  provider         String
+  model            String
+  size             String?
+  path             String
+  url              String?
+  status           String          @default("ready")
+  error            String?         @db.Text
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   selectedByAgents PipelineAgent[] @relation("SelectedImageAsset")
 }
 
 model PipelineRun {
-  id              String           @id @default(cuid())
-  accountId       String
-  pipelineId      String
-  pipeline        Pipeline         @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
-  title           String?
-  status          String           @default("queued")
-  dryRun          Boolean          @default(true)
-  variables       Json
-  generatedPost   Json?
-  outputFolder    String?
-  destinationId   String?
-  startedAt       DateTime         @default(now())
-  completedAt     DateTime?
-  error           String?          @db.Text
-  agentRuns       AgentRun[]
-  assets          RunAsset[]
-  publishAttempts PublishAttempt[]
+  id                          String                     @id @default(cuid())
+  accountId                   String
+  pipelineId                  String
+  pipeline                    Pipeline                   @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  title                       String?
+  status                      String                     @default("queued")
+  dryRun                      Boolean                    @default(true)
+  variables                   Json
+  generatedPost               Json?
+  outputFolder                String?
+  destinationId               String?
+  startedAt                   DateTime                   @default(now())
+  completedAt                 DateTime?
+  error                       String?                    @db.Text
+  agentRuns                   AgentRun[]
+  assets                      RunAsset[]
+  publishAttempts             PublishAttempt[]
+  schedulePipelineExecutionId String?                    @unique
+  schedulePipelineExecution   SchedulePipelineExecution? @relation(fields: [schedulePipelineExecutionId], references: [id], onDelete: SetNull)
 }
 
 model AgentRun {
@@ -185,55 +189,178 @@ model RunAsset {
 }
 
 model Destination {
-  id              String           @id @default(cuid())
-  accountId       String
-  account         Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  type            String           @default("wordpress")
-  name            String
-  siteUrl         String
-  authType        String           @default("application_password")
-  username        String?
-  encryptedSecret String
-  defaultStatus     String           @default("draft")
+  id                 String           @id @default(cuid())
+  accountId          String
+  account            Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type               String           @default("wordpress")
+  name               String
+  siteUrl            String
+  authType           String           @default("application_password")
+  username           String?
+  encryptedSecret    String
+  defaultStatus      String           @default("draft")
   defaultCategoryIds Json?
-  createdAt         DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  publishAttempts PublishAttempt[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  publishAttempts    PublishAttempt[]
 }
 
 model PublishAttempt {
-  id               String      @id @default(cuid())
-  pipelineRunId    String
-  pipelineRun      PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
-  destinationId    String
-  destination      Destination @relation(fields: [destinationId], references: [id])
-  status           String      @default("pending")
-  progressMessage  String?     @db.Text
-  remotePostId     String?
-  remoteUrl        String?
-  error            String?
-  createdAt        DateTime    @default(now())
+  id              String      @id @default(cuid())
+  pipelineRunId   String
+  pipelineRun     PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  destinationId   String
+  destination     Destination @relation(fields: [destinationId], references: [id])
+  status          String      @default("pending")
+  progressMessage String?     @db.Text
+  remotePostId    String?
+  remoteUrl       String?
+  error           String?
+  createdAt       DateTime    @default(now())
 }
 
 model ResearchSource {
-  id                     String         @id @default(cuid())
+  id                     String                          @id @default(cuid())
   accountId              String
-  account                Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  account                Account                         @relation(fields: [accountId], references: [id], onDelete: Cascade)
   name                   String
   slug                   String
   category               String?
-  sourceType             String         @default("youtube")
-  sourceUrl              String         @map("youtubeUrl")
-  externalId             String?        @map("channelId")
-  status                 String         @default("active")
+  sourceType             String                          @default("youtube")
+  sourceUrl              String                          @map("youtubeUrl")
+  externalId             String?                         @map("channelId")
+  status                 String                          @default("active")
   defaultSummaryPromptId String?
-  defaultSummaryPrompt   SummaryPrompt? @relation(fields: [defaultSummaryPromptId], references: [id], onDelete: SetNull)
+  defaultSummaryPrompt   SummaryPrompt?                  @relation(fields: [defaultSummaryPromptId], references: [id], onDelete: SetNull)
   lastChecked            DateTime?
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
+  createdAt              DateTime                        @default(now())
+  updatedAt              DateTime                        @updatedAt
   items                  ResearchItem[]
+  scheduleSources        ScheduleSource[]
+  scheduleTriggerSources SchedulePipelineTriggerSource[]
 
   @@unique([accountId, slug])
+}
+
+model Schedule {
+  id              String                   @id @default(cuid())
+  accountId       String
+  account         Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name            String
+  enabled         Boolean                  @default(false)
+  cadenceType     String                   @default("manual")
+  timezone        String                   @default("UTC")
+  minuteOfHour    Int?
+  timeOfDay       String?
+  dayOfWeek       Int?
+  dayOfMonth      Int?
+  nextRunAt       DateTime?
+  lastRunAt       DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  sources         ScheduleSource[]
+  pipelineActions SchedulePipelineAction[]
+  executions      ScheduleExecution[]
+
+  @@unique([accountId, name])
+  @@index([enabled, nextRunAt])
+}
+
+model ScheduleSource {
+  id         String         @id @default(cuid())
+  scheduleId String
+  schedule   Schedule       @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  sourceId   String
+  source     ResearchSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sortOrder  Int            @default(0)
+
+  @@unique([scheduleId, sourceId])
+}
+
+model SchedulePipelineAction {
+  id                String                          @id @default(cuid())
+  scheduleId        String
+  schedule          Schedule                        @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  pipelineId        String
+  pipeline          Pipeline                        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  triggerPolicy     String                          @default("always")
+  variableOverrides Json?
+  sortOrder         Int                             @default(0)
+  createdAt         DateTime                        @default(now())
+  updatedAt         DateTime                        @updatedAt
+  triggerSources    SchedulePipelineTriggerSource[]
+  executions        SchedulePipelineExecution[]
+
+  @@unique([scheduleId, pipelineId])
+}
+
+model SchedulePipelineTriggerSource {
+  id       String                 @id @default(cuid())
+  actionId String
+  action   SchedulePipelineAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  sourceId String
+  source   ResearchSource         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  cursorAt DateTime               @default(now())
+
+  @@unique([actionId, sourceId])
+}
+
+model ScheduleExecution {
+  id                 String                      @id @default(cuid())
+  scheduleId         String
+  schedule           Schedule                    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  origin             String                      @default("manual")
+  dedupeKey          String                      @unique
+  status             String                      @default("queued")
+  scheduledFor       DateTime?
+  cutoffAt           DateTime?
+  skipReason         String?
+  error              String?                     @db.Text
+  leaseExpiresAt     DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime                    @default(now())
+  researchChecks     ScheduleResearchCheck[]
+  pipelineExecutions SchedulePipelineExecution[]
+
+  @@index([status, leaseExpiresAt])
+  @@index([scheduleId, createdAt])
+}
+
+model ScheduleResearchCheck {
+  id           String            @id @default(cuid())
+  executionId  String
+  execution    ScheduleExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  sourceId     String?
+  sourceName   String
+  status       String            @default("pending")
+  newCount     Int               @default(0)
+  updatedCount Int               @default(0)
+  error        String?           @db.Text
+  startedAt    DateTime?
+  completedAt  DateTime?
+
+  @@unique([executionId, sourceId])
+}
+
+model SchedulePipelineExecution {
+  id              String                  @id @default(cuid())
+  executionId     String
+  execution       ScheduleExecution       @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  actionId        String?
+  action          SchedulePipelineAction? @relation(fields: [actionId], references: [id], onDelete: SetNull)
+  pipelineId      String
+  pipelineName    String
+  status          String                  @default("pending")
+  reason          String?
+  eligibleItemIds Json?
+  pinnedItemIds   Json?
+  pipelineRun     PipelineRun?
+  createdAt       DateTime                @default(now())
+  completedAt     DateTime?
+
+  @@unique([executionId, actionId])
+  @@index([pipelineId])
 }
 
 model ResearchFetchCache {
@@ -246,20 +373,20 @@ model ResearchFetchCache {
 }
 
 model ResearchItem {
-  id          String            @id @default(cuid())
-  sourceId    String
-  source      ResearchSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  externalId  String            @map("videoId")
-  title       String            @map("videoTitle")
-  itemUrl     String            @map("videoUrl")
-  publishedAt         DateTime
-  content             String?           @db.LongText @map("transcript")
-  contentStatus       String?
-  contentErrorReason  String?           @db.Text
-  contentCheckedAt    DateTime?
-  createdAt           DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  summaries   ResearchSummary[]
+  id                 String            @id @default(cuid())
+  sourceId           String
+  source             ResearchSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  externalId         String            @map("videoId")
+  title              String            @map("videoTitle")
+  itemUrl            String            @map("videoUrl")
+  publishedAt        DateTime
+  content            String?           @map("transcript") @db.LongText
+  contentStatus      String?
+  contentErrorReason String?           @db.Text
+  contentCheckedAt   DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  summaries          ResearchSummary[]
 
   @@unique([sourceId, externalId], map: "ResearchItem_sourceId_videoId_key")
 }

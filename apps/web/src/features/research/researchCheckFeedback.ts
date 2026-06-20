@@ -83,7 +83,3 @@ export function researchCheckFeedback(
   })
 }
 
-export function researchCheckSyncLine(result: ResearchCheckResult, sourceType: string): string {
-  const feedback = researchCheckFeedback(sourceType, result)
-  return feedback.message
-}

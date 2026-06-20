@@ -61,7 +61,7 @@ function resultFromResponse(data: OpenAI.Images.ImagesResponse['data']): ImageGe
 }
 
 export class OpenAIImageProvider implements ImageProvider {
-  readonly id = 'openai'
+  readonly id: string = 'openai'
 
   async generate(options: ImageGenerateOptions): Promise<ImageGenerateResult | null> {
     const model = normalizeModel(resolveImageModel())
@@ -80,9 +80,4 @@ export class OpenAIImageProvider implements ImageProvider {
     const response = await getClient().images.generate(params)
     return resultFromResponse(response.data)
   }
-}
-
-/** @deprecated Use OpenAIImageProvider */
-export class DalleProvider extends OpenAIImageProvider {
-  readonly id = 'dalle'
 }

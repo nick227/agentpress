@@ -10,7 +10,7 @@ import { createHash } from 'crypto'
 const REMOTE_CACHE_TTL_MS = 60 * 60 * 1000
 const YOUTUBE_MISSING_TRANSCRIPT_CACHE_TTL_MS = 5 * 60 * 1000
 
-export class ResearchFetchError extends Error {
+class ResearchFetchError extends Error {
   readonly code = 'RESEARCH_FETCH_FAILED'
   readonly retryable = true
 
@@ -414,7 +414,10 @@ export class ResearchService {
         continue
       }
 
-      const contentFields = contentFieldsFromFeedItem(feedItem)
+      const contentFields =
+        source.sourceType === 'youtube'
+          ? await this.backfillYoutubeContent(feedItem.externalId)
+          : contentFieldsFromFeedItem(feedItem)
       const created = await db.researchItem.create({
         data: {
           sourceId: source.id,

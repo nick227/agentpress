@@ -8,7 +8,7 @@ const CHANNEL_ID_PATTERNS = [
   /"channelUrl"\s*:\s*"https:\\\/\\\/www\.youtube\.com\\\/channel\\\/(UC[\w-]+)"/,
 ] as const
 
-export function extractChannelIdFromHtml(html: string): string | null {
+function extractChannelIdFromHtml(html: string): string | null {
   for (const pattern of CHANNEL_ID_PATTERNS) {
     const match = html.match(pattern)
     if (match?.[1]) return match[1]

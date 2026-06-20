@@ -1,26 +1,31 @@
 import Fastify from 'fastify'
 import cookie from '@fastify/cookie'
 import cors from '@fastify/cors'
+import fastifyStatic from '@fastify/static'
 import swagger from '@fastify/swagger'
 import swaggerUi from '@fastify/swagger-ui'
 import openapiGlue from 'fastify-openapi-glue'
 import { load } from 'js-yaml'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 import * as handlers from './handlers'
 import * as security from './plugins/security'
+import { SchedulePoller } from './services/SchedulePoller'
 
 const server = Fastify({ logger: true })
+const schedulePoller = new SchedulePoller()
 
 const specPath = resolve(__dirname, '../../../packages/api-spec/openapi.yaml')
 const spec = load(readFileSync(specPath, 'utf-8')) as object
 
 async function main() {
+  const corsAllowList = process.env.CORS_ORIGIN?.split(',').map(s => s.trim()).filter(Boolean) ?? []
   await server.register(cors, {
     origin: (origin, cb) => {
       if (!origin) { cb(null, true); return }
-      const allowed = /^http:\/\/(localhost|127\.0\.0\.1|172\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin)
-      cb(null, allowed)
+      if (corsAllowList.length > 0 && corsAllowList.includes(origin)) { cb(null, true); return }
+      const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1|172\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin)
+      cb(null, isLocal)
     },
     credentials: true,
   })
@@ -69,11 +74,22 @@ async function main() {
 
   server.get('/health', async () => ({ status: 'ok' }))
 
+  const webDistPath = resolve(__dirname, '../../web/dist')
+  if (existsSync(webDistPath)) {
+    await server.register(fastifyStatic, { root: webDistPath, prefix: '/', wildcard: false })
+    server.setNotFoundHandler((_req, reply) => reply.sendFile('index.html'))
+  }
+
   await server.listen({
     port: Number(process.env.PORT ?? 3001),
     host: '0.0.0.0',
   })
+  schedulePoller.start()
 }
+
+server.addHook('onClose', async () => {
+  schedulePoller.stop()
+})
 
 main().catch((err) => {
   console.error(err)

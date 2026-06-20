@@ -27,7 +27,7 @@ export function contentFieldsFromTranscript(result: TranscriptFetchResult): Cont
   }
 }
 
-export function contentFieldsFromPlainContent(content: string): ContentFields {
+function contentFieldsFromPlainContent(content: string): ContentFields {
   const trimmed = content.trim()
   return {
     content: trimmed || null,

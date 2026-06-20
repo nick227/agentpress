@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { ChevronLeft, Plus, Pencil, Trash2, Zap, LayoutTemplate, FlaskConical, Video, RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react'
-import { useAccount, usePipelines, useDeleteAccount, useDeletePipeline, useResearchSources, useSyncAccount, useCheckResearchSource } from '@project/sdk'
+import { ChevronLeft, Plus, Pencil, Trash2, Zap, LayoutTemplate, FlaskConical, Video, RefreshCw, CheckCircle2, AlertCircle, X, CalendarClock } from 'lucide-react'
+import { useAccount, usePipelines, useDeleteAccount, useDeletePipeline, useResearchSources, useSchedules, useSyncAccount, useCheckResearchSource } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -32,6 +32,7 @@ export function AccountDetailPage() {
   const account = accountData?.data
   const { data: pipelinesData, isLoading: pipelinesLoading } = usePipelines(account?.id ?? '')
   const { data: researchData, isLoading: researchLoading } = useResearchSources(account?.id ?? '')
+  const { data: schedulesData, isLoading: schedulesLoading } = useSchedules(account?.id ?? '')
   const deleteAccount = useDeleteAccount()
   const deletePipeline = useDeletePipeline()
   const [showEditAccount, setShowEditAccount] = useState(false)
@@ -51,6 +52,7 @@ export function AccountDetailPage() {
 
   const pipelines = pipelinesData?.data ?? []
   const researchSources = researchData?.data ?? []
+  const schedules = schedulesData?.data ?? []
   const activeResearchSources = researchSources.filter((source) => source.status === 'active')
 
   async function handleSync() {
@@ -323,6 +325,31 @@ export function AccountDetailPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      <div id="schedules" className="scroll-mt-6 border-t pt-5 mt-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold">Schedules</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Account-level research and pipeline orchestration.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate(`/accounts/${account.slug}/schedules`)}>Manage</Button>
+            <Button size="sm" onClick={() => navigate(`/accounts/${account.slug}/schedules/new`)}><Plus size={13} /> New Schedule</Button>
+          </div>
+        </div>
+        {schedulesLoading ? <Skeleton className="h-14 w-full" /> : schedules.length === 0 ? (
+          <EmptyState icon={CalendarClock} title="No schedules" description="Schedule research checks and conditional pipeline runs." action={{ label: 'New Schedule', onClick: () => navigate(`/accounts/${account.slug}/schedules/new`) }} />
+        ) : (
+          <div className="space-y-1.5">
+            {schedules.slice(0, 4).map((schedule) => (
+              <Link key={schedule.id} to={`/accounts/${account.slug}/schedules/${schedule.id}`} className="flex items-center justify-between px-4 py-3 rounded border bg-surface hover:bg-muted/40">
+                <div><p className="text-sm font-medium">{schedule.name}</p><p className="text-xs text-muted-foreground">{schedule.sourceCount} feeds · {schedule.pipelineCount} pipelines · {schedule.cadenceType}</p></div>
+                <span className={`text-xs px-2 py-0.5 rounded ${schedule.enabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>{schedule.enabled ? 'Enabled' : 'Paused'}</span>
+              </Link>
+            ))}
           </div>
         )}
       </div>

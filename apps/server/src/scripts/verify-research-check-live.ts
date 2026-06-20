@@ -3,8 +3,8 @@
  * Run: pnpm --filter server exec tsx --env-file=.env src/scripts/verify-research-check-live.ts
  */
 import { db } from '@project/db'
-import { ResearchService } from '../services/ResearchService.ts'
-import { formatResearchCheckMessage } from '../services/researchCheckMessage.ts'
+import { ResearchService } from '../services/ResearchService'
+import { formatResearchCheckMessage } from '../services/researchCheckMessage'
 
 const svc = new ResearchService()
 

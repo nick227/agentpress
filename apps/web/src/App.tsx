@@ -18,6 +18,12 @@ const PipelineBuilderPage = lazy(() =>
 const ResearchSourcePage = lazy(() =>
   import('@/pages/ResearchSourcePage').then((m) => ({ default: m.ResearchSourcePage })),
 )
+const SchedulesPage = lazy(() =>
+  import('@/pages/SchedulesPage').then((m) => ({ default: m.SchedulesPage })),
+)
+const ScheduleEditorPage = lazy(() =>
+  import('@/pages/ScheduleEditorPage').then((m) => ({ default: m.ScheduleEditorPage })),
+)
 
 function PageFallback() {
   return (
@@ -74,6 +80,8 @@ export function App() {
                 </LazyPage>
               }
             />
+            <Route path="/accounts/:accountSlug/schedules" element={<LazyPage><SchedulesPage /></LazyPage>} />
+            <Route path="/accounts/:accountSlug/schedules/:scheduleId" element={<LazyPage><ScheduleEditorPage /></LazyPage>} />
           </Route>
         </Route>
 

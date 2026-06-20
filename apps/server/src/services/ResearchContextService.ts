@@ -30,7 +30,10 @@ const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/
 export class ResearchContextService {
   private research = new ResearchService()
 
-  async resolveForPipeline(pipeline: PipelineForResearch): Promise<Record<string, ResearchContext>> {
+  async resolveForPipeline(
+    pipeline: PipelineForResearch,
+    itemOverridesBySourceId: Record<string, string> = {},
+  ): Promise<Record<string, ResearchContext>> {
     const contexts: Record<string, ResearchContext> = {}
 
     const referencedSources = this.findReferencedSources(pipeline)
@@ -43,7 +46,11 @@ export class ResearchContextService {
       for (const [slug, itemKeys] of referencedSources) {
         const source = sourceBySlug.get(slug)
         if (!source) throw new Error(`Research source "${slug}" was not found`)
-        const sourceContext = contexts[slug] ?? await this.resolveSource(source)
+        const sourceContext = contexts[slug] ?? await this.resolveSource(
+          source,
+          undefined,
+          itemOverridesBySourceId[source.id],
+        )
         contexts[slug] = sourceContext
 
         for (const itemKey of itemKeys) {
@@ -84,13 +91,15 @@ export class ResearchContextService {
     name: string
     sourceType: string
     defaultSummaryPromptId?: string | null
-  }, itemKey?: string): Promise<ResearchContext> {
+  }, itemKey?: string, overrideItemId?: string): Promise<ResearchContext> {
     let item = itemKey
       ? await this.findItemByKey(source.id, itemKey)
-      : await db.researchItem.findFirst({
-          where: { sourceId: source.id },
-          orderBy: { publishedAt: 'desc' },
-        })
+      : overrideItemId
+        ? await db.researchItem.findFirst({ where: { id: overrideItemId, sourceId: source.id } })
+        : await db.researchItem.findFirst({
+            where: { sourceId: source.id },
+            orderBy: { publishedAt: 'desc' },
+          })
 
     if (!item) {
       throw new Error(itemKey

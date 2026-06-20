@@ -29,7 +29,7 @@ function joinSegments(segments: Array<{ text: string; lang?: string }>): { text:
   return { text, language }
 }
 
-export type TranscriptFailure = Extract<TranscriptFetchResult, { ok: false }>
+type TranscriptFailure = Extract<TranscriptFetchResult, { ok: false }>
 
 function classifyError(err: unknown, videoId: string): TranscriptFailure {
   if (err instanceof YoutubeTranscriptTooManyRequestError) {

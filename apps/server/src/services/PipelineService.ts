@@ -37,11 +37,6 @@ function formatPipeline(p: any) {
     wpCategoryIds: wpCategoryIds.length > 0 ? wpCategoryIds : undefined,
     bodyComposer: p.bodyComposer ?? undefined,
     dryRun: p.dryRun,
-    scheduleMode: p.scheduleMode,
-    frequency: p.frequency ?? undefined,
-    timeOfDay: p.timeOfDay ?? undefined,
-    timezone: p.timezone ?? undefined,
-    isPaused: p.isPaused,
     variables: (p.variables ?? []).map((v: any) => ({
       id: v.id,
       pipelineId: v.pipelineId,

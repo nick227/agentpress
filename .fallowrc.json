@@ -4,8 +4,11 @@
     "apps/server/src/index.ts",
     "apps/web/src/main.tsx",
     "apps/server/src/scripts/smoke-openai.ts",
-    "apps/server/src/scripts/smoke-youtube.ts"
+    "apps/server/src/scripts/smoke-youtube.ts",
+    "apps/server/src/scripts/verify-research-check-cases.ts",
+    "apps/server/src/scripts/verify-research-check-live.ts"
   ],
+  "ignoreDependencies": ["react-refresh"],
   "ignoreExports": [
     {
       "file": "apps/server/src/handlers/**/*.ts",
@@ -36,6 +39,10 @@
     {
       "implements": "FeedAdapter",
       "members": ["resolveSource", "fetchLatest"]
+    },
+    {
+      "implements": "ImageProvider",
+      "members": ["id", "generate"]
     }
   ]
 }

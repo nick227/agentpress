@@ -157,24 +157,12 @@ components:
 
     PipelineSetup:
       type: object
-      required: [dryRun, scheduleMode, isPaused]
+      required: [dryRun]
       properties:
         destinationId:
           type: string
           nullable: true
         dryRun:
-          type: boolean
-        scheduleMode:
-          type: string
-          enum: [manual, recurring]
-        frequency:
-          type: string
-          enum: [daily, weekly, monthly]
-        timeOfDay:
-          type: string
-        timezone:
-          type: string
-        isPaused:
           type: boolean
 
     PipelineVariable:
@@ -288,7 +276,7 @@ components:
 
     Pipeline:
       type: object
-      required: [id, accountId, name, slug, status, dryRun, scheduleMode, isPaused, variables, agents, createdAt, updatedAt]
+      required: [id, accountId, name, slug, status, dryRun, variables, agents, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -318,18 +306,6 @@ components:
             type: object
             additionalProperties: true
         dryRun:
-          type: boolean
-        scheduleMode:
-          type: string
-          enum: [manual, recurring]
-        frequency:
-          type: string
-          enum: [daily, weekly, monthly]
-        timeOfDay:
-          type: string
-        timezone:
-          type: string
-        isPaused:
           type: boolean
         variables:
           type: array
@@ -939,6 +915,272 @@ components:
           type: string
           format: date-time
 
+    ScheduleActionInput:
+      type: object
+      required: [pipelineId, triggerPolicy]
+      properties:
+        id:
+          type: string
+        pipelineId:
+          type: string
+        triggerPolicy:
+          type: string
+          enum: [always, any_checked_feed_new, selected_feeds_new]
+        triggerSourceIds:
+          type: array
+          items:
+            type: string
+        variableOverrides:
+          type: object
+          additionalProperties: true
+
+    ScheduleInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        cadenceType:
+          type: string
+          enum: [manual, hourly, daily, weekly, monthly]
+        timezone:
+          type: string
+        minuteOfHour:
+          type: integer
+          nullable: true
+        timeOfDay:
+          type: string
+          nullable: true
+        dayOfWeek:
+          type: integer
+          nullable: true
+        dayOfMonth:
+          type: integer
+          nullable: true
+        sourceIds:
+          type: array
+          items:
+            type: string
+        pipelineActions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleActionInput'
+
+    SchedulePipelineAction:
+      type: object
+      required: [id, pipelineId, pipelineName, pipelineStatus, dryRun, triggerPolicy, triggerSourceIds, variableOverrides, pipelineVariables]
+      properties:
+        id:
+          type: string
+        pipelineId:
+          type: string
+        pipelineName:
+          type: string
+        pipelineStatus:
+          type: string
+        dryRun:
+          type: boolean
+        destinationId:
+          type: string
+        triggerPolicy:
+          type: string
+          enum: [always, any_checked_feed_new, selected_feeds_new]
+        triggerSourceIds:
+          type: array
+          items:
+            type: string
+        variableOverrides:
+          type: object
+          additionalProperties: true
+        pipelineVariables:
+          type: array
+          items:
+            $ref: '#/components/schemas/PipelineVariable'
+
+    Schedule:
+      type: object
+      required: [id, accountId, name, enabled, cadenceType, timezone, sourceIds, sources, pipelineActions, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+        cadenceType:
+          type: string
+          enum: [manual, hourly, daily, weekly, monthly]
+        timezone:
+          type: string
+        minuteOfHour:
+          type: integer
+        timeOfDay:
+          type: string
+        dayOfWeek:
+          type: integer
+        dayOfMonth:
+          type: integer
+        nextRunAt:
+          type: string
+          format: date-time
+        lastRunAt:
+          type: string
+          format: date-time
+        sourceIds:
+          type: array
+          items:
+            type: string
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResearchSource'
+        pipelineActions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchedulePipelineAction'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ScheduleSummary:
+      type: object
+      required: [id, accountId, name, enabled, cadenceType, timezone, sourceCount, pipelineCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+        cadenceType:
+          type: string
+        timezone:
+          type: string
+        nextRunAt:
+          type: string
+          format: date-time
+        lastRunAt:
+          type: string
+          format: date-time
+        sourceCount:
+          type: integer
+        pipelineCount:
+          type: integer
+        lastExecutionStatus:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ScheduleResearchCheck:
+      type: object
+      required: [id, sourceName, status, newCount, updatedCount]
+      properties:
+        id:
+          type: string
+        sourceId:
+          type: string
+        sourceName:
+          type: string
+        status:
+          type: string
+        newCount:
+          type: integer
+        updatedCount:
+          type: integer
+        error:
+          type: string
+
+    SchedulePipelineExecution:
+      type: object
+      required: [id, pipelineId, pipelineName, status, eligibleItemIds, pinnedItemIds, pinnedItems]
+      properties:
+        id:
+          type: string
+        pipelineId:
+          type: string
+        pipelineName:
+          type: string
+        status:
+          type: string
+        reason:
+          type: string
+        eligibleItemIds:
+          type: object
+          additionalProperties: true
+        pinnedItemIds:
+          type: object
+          additionalProperties: true
+        pinnedItems:
+          type: array
+          items:
+            type: object
+            required: [sourceId, itemId, title]
+            properties:
+              sourceId:
+                type: string
+              itemId:
+                type: string
+              title:
+                type: string
+        pipelineRunId:
+          type: string
+        pipelineRunStatus:
+          type: string
+
+    ScheduleExecution:
+      type: object
+      required: [id, scheduleId, origin, status, createdAt, researchChecks, pipelineExecutions]
+      properties:
+        id:
+          type: string
+        scheduleId:
+          type: string
+        origin:
+          type: string
+          enum: [manual, timer]
+        status:
+          type: string
+        scheduledFor:
+          type: string
+          format: date-time
+        cutoffAt:
+          type: string
+          format: date-time
+        skipReason:
+          type: string
+        error:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        researchChecks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScheduleResearchCheck'
+        pipelineExecutions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchedulePipelineExecution'
+
 paths:
   /auth/register:
     post:
@@ -1343,18 +1585,6 @@ paths:
                   type: array
                   items:
                     type: string
-                scheduleMode:
-                  type: string
-                  enum: [manual, recurring]
-                frequency:
-                  type: string
-                  enum: [daily, weekly, monthly]
-                timeOfDay:
-                  type: string
-                timezone:
-                  type: string
-                isPaused:
-                  type: boolean
                 variables:
                   type: array
                   items:
@@ -2638,3 +2868,197 @@ paths:
                 properties:
                   ok:
                     type: boolean
+
+  /api/accounts/{accountId}/schedules:
+    parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: listSchedules
+      tags: [schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Schedule list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduleSummary'
+    post:
+      operationId: createSchedule
+      tags: [schedules]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleInput'
+      responses:
+        '201':
+          description: Schedule created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Schedule'
+
+  /api/schedules/{scheduleId}:
+    parameters:
+      - name: scheduleId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getSchedule
+      tags: [schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Schedule
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Schedule'
+    patch:
+      operationId: updateSchedule
+      tags: [schedules]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleInput'
+      responses:
+        '200':
+          description: Schedule updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Schedule'
+    delete:
+      operationId: deleteSchedule
+      tags: [schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Schedule deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /api/schedules/{scheduleId}/run:
+    parameters:
+      - name: scheduleId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: runSchedule
+      tags: [schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Schedule execution queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [id, status]
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+
+  /api/schedules/{scheduleId}/executions:
+    parameters:
+      - name: scheduleId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+    get:
+      operationId: listScheduleExecutions
+      tags: [schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Schedule execution history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ScheduleExecution'
+
+  /api/schedule-executions/{executionId}:
+    parameters:
+      - name: executionId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getScheduleExecution
+      tags: [schedules]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Schedule execution
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ScheduleExecution'

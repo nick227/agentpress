@@ -20,4 +20,4 @@ export function getImageModelLabel(): string {
 }
 
 export { resolveImageModel }
-export type { ImageProvider, ImageGenerateOptions, ImageGenerateResult } from './types'
+export type { ImageProvider } from './types'

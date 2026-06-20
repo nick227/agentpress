@@ -49,6 +49,8 @@ interface StartRunOptions {
   title?: string
   forceRegenerate?: boolean
   forceRegenerateAgentUids?: string[]
+  schedulePipelineExecutionId?: string
+  researchItemOverrides?: Record<string, string>
 }
 
 interface InlineImageMeta {
@@ -206,21 +208,39 @@ export class PipelineRunService {
       ? dryRunOverrideOrOptions
       : { dryRun: dryRunOverrideOrOptions }
 
+    if (options.schedulePipelineExecutionId) {
+      const existing = await db.pipelineRun.findUnique({
+        where: { schedulePipelineExecutionId: options.schedulePipelineExecutionId },
+      })
+      if (existing) return existing
+    }
+
     const dryRun = options.dryRun !== undefined ? options.dryRun : pipeline.dryRun
     const runVariables = variables ?? {}
     const title = options.title?.trim() || pipeline.name
 
-    const run = await db.pipelineRun.create({
-      data: {
-        accountId: pipeline.accountId,
-        pipelineId: pipeline.id,
-        title,
-        status: 'running',
-        dryRun,
-        variables: runVariables as any,
-        destinationId: dryRun ? null : (pipeline.destinationId ?? null),
-      },
-    })
+    let run
+    try {
+      run = await db.pipelineRun.create({
+        data: {
+          accountId: pipeline.accountId,
+          pipelineId: pipeline.id,
+          title,
+          status: 'running',
+          dryRun,
+          variables: runVariables as any,
+          destinationId: dryRun ? null : (pipeline.destinationId ?? null),
+          schedulePipelineExecutionId: options.schedulePipelineExecutionId,
+        },
+      })
+    } catch (error: any) {
+      if (error.code !== 'P2002' || !options.schedulePipelineExecutionId) throw error
+      const existing = await db.pipelineRun.findUnique({
+        where: { schedulePipelineExecutionId: options.schedulePipelineExecutionId },
+      })
+      if (!existing) throw error
+      return existing
+    }
 
     this._executeRun(run.id, pipeline, runVariables, dryRun, options).catch(async (err) => {
       await db.pipelineRun.update({
@@ -239,7 +259,7 @@ export class PipelineRunService {
     dryRun: boolean,
     options: StartRunOptions = {},
   ) {
-    const resolvedResearch = await researchContext.resolveForPipeline(pipeline)
+    const resolvedResearch = await researchContext.resolveForPipeline(pipeline, options.researchItemOverrides)
     const runVariables = { ...variables, ...resolvedResearch }
 
     await db.pipelineRun.update({

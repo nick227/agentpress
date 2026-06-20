@@ -20,7 +20,8 @@
     "pages:generate": "tsx scripts/generate-pages.ts",
     "db:push": "pnpm --filter @project/db db:push",
     "db:seed": "pnpm --filter @project/db db:seed",
-    "db:studio": "pnpm --filter @project/db db:studio"
+    "db:studio": "pnpm --filter @project/db db:studio",
+    "schedules:backfill": "tsx scripts/backfill-schedules.ts"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.0",

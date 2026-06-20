@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { usePipeline } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FocusSidebarHeader } from '@/components/layout/FocusSidebarHeader'
@@ -17,12 +17,15 @@ const PIPELINE_SHELL_CHROME = {
   mainClassName: 'max-w-none mx-0 overflow-hidden',
 } as const
 
-export type { Selection }
 
 export function PipelineBuilderPage() {
   const { accountSlug, pipelineSlug } = useParams<{ accountSlug: string; pipelineSlug: string }>()
+  const [searchParams] = useSearchParams()
   const { data, isLoading } = usePipeline(pipelineSlug!)
-  const [selection, setSelection] = useState<Selection>({ type: 'setup' })
+  const [selection, setSelection] = useState<Selection>(() => {
+    const runId = searchParams.get('run')
+    return runId ? { type: 'run', id: runId } : { type: 'setup' }
+  })
 
   const pipeline = data?.data
   const recentRuns = useMemo(() => data?.recentRuns ?? [], [data?.recentRuns])

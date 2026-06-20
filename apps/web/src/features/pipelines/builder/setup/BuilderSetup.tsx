@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowDown, ArrowUp, Image, Play, Plus, Trash2, Type, Globe, ChevronDown, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUp, Image, Play, Plus, Trash2, Type, Globe, Zap } from 'lucide-react'
 import type { components } from '@project/sdk'
 import {
   useUpdatePipeline,
@@ -333,7 +333,7 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
                 </section>
               )}
 
-              {/* Run mode + Schedule — collapsed into a compact row group */}
+              {/* Run mode and pipeline status. Timed orchestration lives at the account level. */}
               <section className="space-y-3">
                 <Label>Settings</Label>
 
@@ -359,41 +359,6 @@ export function BuilderSetup({ pipeline, pipelineId, onRunCreated }: Props) {
                     />
                     Dry run only
                   </label>
-                </Row>
-
-                <Row label="Schedule">
-                  <div className="flex gap-1.5 flex-wrap items-center">
-                    {(['manual', 'recurring'] as const).map((mode) => (
-                      <Chip
-                        key={mode}
-                        active={pipeline.scheduleMode === mode}
-                        onClick={() => handleSave({ scheduleMode: mode })}
-                      >
-                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                      </Chip>
-                    ))}
-                    {pipeline.scheduleMode === 'recurring' && (
-                      <>
-                        <ChevronDown size={11} className="text-muted-foreground" />
-                        {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
-                          <Chip
-                            key={freq}
-                            active={pipeline.frequency === freq}
-                            accent
-                            onClick={() => handleSave({ frequency: freq })}
-                          >
-                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                          </Chip>
-                        ))}
-                        <Input
-                          type="time"
-                          value={pipeline.timeOfDay ?? ''}
-                          onChange={(e) => handleSave({ timeOfDay: e.target.value })}
-                          className="w-28 h-7 text-xs"
-                        />
-                      </>
-                    )}
-                  </div>
                 </Row>
 
                 <Row label="Status">

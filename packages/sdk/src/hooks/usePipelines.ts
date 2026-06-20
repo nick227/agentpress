@@ -65,11 +65,6 @@ export function useUpdatePipeline() {
       wpCategoryIds?: number[] | null
       bodyComposer?: Array<Record<string, unknown>>
       dryRun?: boolean
-      scheduleMode?: 'manual' | 'recurring'
-      frequency?: 'daily' | 'weekly' | 'monthly'
-      timeOfDay?: string
-      timezone?: string
-      isPaused?: boolean
       variables?: PipelineVariableInput[]
       agents?: PipelineAgentInput[]
     }) => {
