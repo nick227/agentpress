@@ -15,10 +15,8 @@ const envExample = resolve(root, '.env.example')
 function syncEnvCopies() {
   for (const rel of ['packages/db/.env']) {
     const target = resolve(root, rel)
-    if (!existsSync(target)) {
-      copyFileSync(envPath, target)
-      console.log(`   Copied .env → ${rel}`)
-    }
+    copyFileSync(envPath, target)
+    console.log(`   Synced .env → ${rel}`)
   }
 }
 
@@ -37,6 +35,7 @@ console.log('🚀 Bootstrapping AgentPress...\n')
 run('pnpm install', 'Install dependencies')
 run('pnpm --filter @project/db exec prisma generate', 'Generate Prisma client')
 run('pnpm db:push', 'Push schema to database')
+run('pnpm schedules:backfill', 'Backfill legacy pipeline schedules')
 run('pnpm sdk:generate', 'Generate SDK types from OpenAPI spec')
 run('pnpm db:seed', 'Seed development data')
 
