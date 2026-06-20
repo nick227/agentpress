@@ -32,6 +32,12 @@ async function main() {
 
   await server.register(cookie)
 
+  server.addContentTypeParser(
+    ['image/png', 'application/octet-stream'],
+    { parseAs: 'buffer' },
+    (_request, body, done) => done(null, body),
+  )
+
   await server.register(swagger, { openapi: spec })
   await server.register(swaggerUi, { routePrefix: '/docs' })
 
@@ -67,7 +73,7 @@ async function main() {
 
   await server.register(openapiGlue, {
     specification: specPath,
-    service: handlers,
+    serviceHandlers: handlers,
     securityHandlers: security,
     noAdditional: true,
   } as any)
