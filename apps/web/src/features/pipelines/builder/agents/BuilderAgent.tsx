@@ -279,30 +279,86 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
         </label>
       </Field>
 
+      <AgentContentSection
+        staticAgent={staticAgent}
+        imageAgent={imageAgent}
+        outputTarget={form.outputTarget}
+        systemPrompt={form.systemPrompt}
+        userPrompt={form.userPrompt}
+        imageMode={form.imageMode}
+        selectedImageAssetId={form.selectedImageAssetId}
+        pipeline={pipeline}
+        agent={agent}
+        pipelineId={pipelineId}
+        onChangeSystemPrompt={(v) => patch('systemPrompt', v)}
+        onChangeUserPrompt={(v) => patch('userPrompt', v)}
+        onImageModeChange={(mode) => saveAgentPatch({ imageMode: mode })}
+        onGenerated={handleGenerated}
+        onSelectImage={handleSelectImage}
+      />
+
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={handleDelete}>Delete</Button>
+        <Button size="sm" loading={update.isPending} disabled={!isDirty || update.isPending} onClick={handleSave}>Save</Button>
+      </div>
+    </div>
+  )
+}
+
+function AgentContentSection({
+  staticAgent,
+  imageAgent,
+  outputTarget,
+  systemPrompt,
+  userPrompt,
+  imageMode,
+  selectedImageAssetId,
+  pipeline,
+  agent,
+  pipelineId,
+  onChangeSystemPrompt,
+  onChangeUserPrompt,
+  onImageModeChange,
+  onGenerated,
+  onSelectImage,
+}: {
+  staticAgent: boolean
+  imageAgent: boolean
+  outputTarget: string
+  systemPrompt: string
+  userPrompt: string
+  imageMode: Agent['imageMode']
+  selectedImageAssetId: string
+  pipeline: Pipeline
+  agent: Agent
+  pipelineId: string
+  onChangeSystemPrompt: (v: string) => void
+  onChangeUserPrompt: (v: string) => void
+  onImageModeChange: (mode: 'selected' | 'generate' | 'none') => Promise<void>
+  onGenerated: (asset: ImageAsset) => Promise<void>
+  onSelectImage: (asset: ImageAsset) => Promise<void>
+}) {
+  return (
+    <>
       {staticAgent ? (
-        <StaticContentFields
-          outputTarget={form.outputTarget}
-          value={form.userPrompt}
-          onChange={(v) => patch('userPrompt', v)}
-        />
+        <StaticContentFields outputTarget={outputTarget} value={userPrompt} onChange={onChangeUserPrompt} />
       ) : (
         <>
           {!imageAgent && (
             <PromptField
               label="System Prompt"
-              value={form.systemPrompt}
-              onChange={(v) => patch('systemPrompt', v)}
+              value={systemPrompt}
+              onChange={onChangeSystemPrompt}
               promptKind="system"
               pipeline={pipeline}
               agent={agent}
               placeholder="You are a research assistant..."
             />
           )}
-
           <PromptField
             label={imageAgent ? 'Image Prompt' : 'User Prompt'}
-            value={form.userPrompt}
-            onChange={(v) => patch('userPrompt', v)}
+            value={userPrompt}
+            onChange={onChangeUserPrompt}
             promptKind="user"
             pipeline={pipeline}
             agent={agent}
@@ -310,34 +366,27 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
           />
         </>
       )}
-
-      {staticAgent && isImageOutputTarget(form.outputTarget) && (
+      {staticAgent && isImageOutputTarget(outputTarget) && (
         <StaticImagePanel
           pipelineId={pipelineId}
           agentId={agent.id}
-          selectedImageAssetId={form.selectedImageAssetId}
-          onSelectAsset={handleSelectImage}
+          selectedImageAssetId={selectedImageAssetId}
+          onSelectAsset={onSelectImage}
         />
       )}
-
       {imageAgent && (
         <ImageAgentPanel
           pipelineId={pipelineId}
           agentId={agent.id}
-          prompt={form.userPrompt}
-          imageMode={form.imageMode as 'selected' | 'generate' | 'none'}
-          selectedImageAssetId={form.selectedImageAssetId}
-          onImageModeChange={(mode) => saveAgentPatch({ imageMode: mode })}
-          onGenerated={handleGenerated}
-          onSelectAsset={handleSelectImage}
+          prompt={userPrompt}
+          imageMode={imageMode as 'selected' | 'generate' | 'none'}
+          selectedImageAssetId={selectedImageAssetId}
+          onImageModeChange={onImageModeChange}
+          onGenerated={onGenerated}
+          onSelectAsset={onSelectImage}
         />
       )}
-
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={handleDelete}>Delete</Button>
-        <Button size="sm" loading={update.isPending} disabled={!isDirty || update.isPending} onClick={handleSave}>Save</Button>
-      </div>
-    </div>
+    </>
   )
 }
 

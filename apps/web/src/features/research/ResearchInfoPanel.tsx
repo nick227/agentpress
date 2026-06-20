@@ -49,10 +49,9 @@ const TYPE_LABELS: Record<string, { urlLabel: string; externalIdLabel: string; c
 
 interface Props {
   source: ResearchSource
-  accountSlug: string
 }
 
-export function ResearchInfoPanel({ source, accountSlug }: Props) {
+export function ResearchInfoPanel({ source }: Props) {
   const navigate = useNavigate()
   const checkSource = useCheckResearchSource()
   const updateSource = useUpdateResearchSource()
@@ -111,7 +110,7 @@ export function ResearchInfoPanel({ source, accountSlug }: Props) {
     try {
       await deleteSource.mutateAsync(source.id)
       toast.success('Source deleted')
-      navigate(`/accounts/${accountSlug}`)
+      navigate('/')
     } catch (err: any) {
       toast.error(err.message ?? 'Delete failed')
     }

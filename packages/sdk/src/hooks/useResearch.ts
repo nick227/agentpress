@@ -1,17 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient, ApiError } from '../client'
 
-export function useResearchSources(accountId: string) {
+export function useResearchSources() {
   return useQuery({
-    queryKey: ['research-sources', accountId],
+    queryKey: ['research-sources'],
     queryFn: async () => {
-      const { data, error, response } = await getApiClient().GET('/api/accounts/{accountId}/research', {
-        params: { path: { accountId } },
-      })
+      const { data, error, response } = await getApiClient().GET('/api/research')
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    enabled: Boolean(accountId),
   })
 }
 
@@ -32,16 +29,13 @@ export function useResearchSource(idOrSlug: string) {
 export function useCreateResearchSource() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ accountId, ...body }: { accountId: string; name: string; sourceType?: 'youtube' | 'reddit' | 'rss'; category?: string; sourceUrl: string }) => {
-      const { data, error, response } = await getApiClient().POST('/api/accounts/{accountId}/research', {
-        params: { path: { accountId } },
-        body,
-      })
+    mutationFn: async (body: { name: string; sourceType?: 'youtube' | 'reddit' | 'rss'; category?: string; sourceUrl: string }) => {
+      const { data, error, response } = await getApiClient().POST('/api/research', { body })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: ['research-sources', accountId] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['research-sources'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
@@ -65,9 +59,9 @@ export function useUpdateResearchSource() {
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['research-source'] })
-      queryClient.invalidateQueries({ queryKey: ['research-sources', data.data.accountId] })
+      queryClient.invalidateQueries({ queryKey: ['research-sources'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
@@ -102,8 +96,27 @@ export function useCheckResearchSource() {
     },
     onSuccess: (_data, sourceId) => {
       queryClient.invalidateQueries({ queryKey: ['research-source'] })
+      queryClient.invalidateQueries({ queryKey: ['research-sources'] })
       queryClient.invalidateQueries({ queryKey: ['research-items', sourceId] })
       queryClient.invalidateQueries({ queryKey: ['research-items'] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
+    },
+  })
+}
+
+export function useCheckResearchSources() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: { category?: string } = {}) => {
+      const { data, error, response } = await getApiClient().POST('/api/research/check', { body })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['research-source'] })
+      queryClient.invalidateQueries({ queryKey: ['research-sources'] })
+      queryClient.invalidateQueries({ queryKey: ['research-items'] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }

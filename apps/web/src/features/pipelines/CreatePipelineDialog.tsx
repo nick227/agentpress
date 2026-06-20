@@ -20,12 +20,10 @@ const fields: FieldConfig[] = [
 ]
 
 interface Props {
-  accountId: string
-  accountSlug: string
   onClose: () => void
 }
 
-export function CreatePipelineDialog({ accountId, accountSlug, onClose }: Props) {
+export function CreatePipelineDialog({ onClose }: Props) {
   const navigate = useNavigate()
   const create = useCreatePipeline()
 
@@ -43,10 +41,10 @@ export function CreatePipelineDialog({ accountId, accountSlug, onClose }: Props)
             fields={fields}
             schema={schema}
             onSubmit={async (data) => {
-              const result = await create.mutateAsync({ accountId, ...data })
+              const result = await create.mutateAsync(data)
               toast.success('Pipeline created')
               onClose()
-              navigate(`/accounts/${accountSlug}/pipelines/${result.data.slug}`)
+              navigate(`/pipelines/${result.data.slug}`)
             }}
             isLoading={create.isPending}
             submitLabel="Create Pipeline"

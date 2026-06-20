@@ -1,18 +1,18 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { X, Layers, Tag } from 'lucide-react'
+import { Layers, Tag } from 'lucide-react'
 import { useContentTemplates, useApplyContentTemplate } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { CategoryTabBar } from './CategoryTabBar'
+import { ModalHeader } from './ModalHeader'
 
 type ContentTemplate = components['schemas']['ContentTemplate']
 
 interface Props {
-  accountId: string
-  accountSlug: string
   onClose: () => void
 }
 
@@ -30,7 +30,7 @@ const CATEGORY_ORDER = [
   'ecommerce',
 ]
 
-export function TemplateBrowser({ accountId, accountSlug, onClose }: Props) {
+export function TemplateBrowser({ onClose }: Props) {
   const { data, isLoading } = useContentTemplates()
   const apply = useApplyContentTemplate()
   const navigate = useNavigate()
@@ -56,10 +56,10 @@ export function TemplateBrowser({ accountId, accountSlug, onClose }: Props) {
     if (!selected) return
     const name = pipelineName.trim() || selected.name
     try {
-      const result = await apply.mutateAsync({ templateId: selected.id, accountId, name })
+      const result = await apply.mutateAsync({ templateId: selected.id, name })
       toast.success(`Pipeline "${name}" created from template`)
       onClose()
-      navigate(`/accounts/${accountSlug}/pipelines/${result.data.slug}`)
+      navigate(`/pipelines/${result.data.slug}`)
     } catch (err: any) {
       toast.error(err.message ?? 'Failed to apply template')
     }
@@ -73,47 +73,13 @@ export function TemplateBrowser({ accountId, accountSlug, onClose }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-lg border w-full max-w-3xl shadow-xl flex flex-col max-h-[85vh]">
-        {/* Header */}
-        <div className="px-5 py-4 border-b flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-sm font-semibold">Start from Template</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Pick a template — agents, prompts, and variables are pre-configured
-            </p>
-          </div>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X size={15} />
-          </Button>
-        </div>
+        <ModalHeader
+          title="Start from Template"
+          subtitle="Pick a template — agents, prompts, and variables are pre-configured"
+          onClose={onClose}
+        />
 
-        {/* Category tabs */}
-        <div className="px-5 py-3 border-b flex gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveCategory(null)}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              activeCategory === null
-                ? 'bg-foreground text-background'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-            }`}
-          >
-            All
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                activeCategory === cat.id
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+        <CategoryTabBar categories={categories} activeCategory={activeCategory} onChange={setActiveCategory} />
 
         {/* Template grid */}
         <div className="overflow-y-auto flex-1 p-5">

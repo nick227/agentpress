@@ -37,7 +37,6 @@ describe('ResearchContextService pinned schedule input', () => {
 
   it('resolves an ordinary feed reference from the pinned item ID', async () => {
     const result = await new ResearchContextService().resolveForPipeline({
-      accountId: 'account-1',
       agents: [{ systemPrompt: '', userPrompt: '{feed.summary}' }],
     }, { 'source-1': 'item-pinned' })
 
@@ -48,7 +47,6 @@ describe('ResearchContextService pinned schedule input', () => {
 
   it('keeps explicit date references independent from the pinned item', async () => {
     await new ResearchContextService().resolveForPipeline({
-      accountId: 'account-1',
       agents: [{ systemPrompt: '', userPrompt: '{feed.2026-06-18.summary}' }],
     }, { 'source-1': 'item-pinned' })
 

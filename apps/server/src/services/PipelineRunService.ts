@@ -76,6 +76,30 @@ interface GeneratedPost {
   wordpressMedia?: InlineImageUploadResult[]
 }
 
+interface AgentPromptRecord {
+  uid: string
+  name: string
+  outputTarget: string
+  cacheStatus: string
+  systemPrompt: string
+  userPrompt: string
+}
+
+interface AgentOutputRecord {
+  text: string
+  target: string
+  image?: InlineImageMeta
+}
+
+interface AgentExecutionResult {
+  output: string
+  outputJson: InlineImageMeta | null
+  cacheStatus: string
+  renderedSystemPrompt: string
+  renderedUserPrompt: string
+  directImageOutput: boolean
+}
+
 interface PublishToWordPressResult {
   postId: string
   postUrl: string
@@ -196,7 +220,6 @@ export class PipelineRunService {
     const pipeline = await db.pipeline.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       include: {
-        account: true,
         variables: { orderBy: { sortOrder: 'asc' } },
         agents: { orderBy: { sortOrder: 'asc' }, where: { enabled: true }, include: { selectedImageAsset: true } },
       },
@@ -223,7 +246,6 @@ export class PipelineRunService {
     try {
       run = await db.pipelineRun.create({
         data: {
-          accountId: pipeline.accountId,
           pipelineId: pipeline.id,
           title,
           status: 'running',
@@ -268,222 +290,29 @@ export class PipelineRunService {
     })
 
     const agentOutputs: Record<string, string> = {}
-    const agentPrompts: Array<{
-      uid: string
-      name: string
-      outputTarget: string
-      cacheStatus: string
-      systemPrompt: string
-      userPrompt: string
-    }> = []
+    const agentPrompts: AgentPromptRecord[] = []
     const generatedPost: GeneratedPost = { title: '', excerpt: '', body: '' }
-    const outputByUid: Record<string, { text: string; target: string; image?: InlineImageMeta }> = {}
-    const forceRegenerateAgents = new Set(options.forceRegenerateAgentUids ?? [])
-    const model = process.env.OPENAI_TEXT_MODEL ?? 'gpt-4o'
-    const imageModel = getImageModelLabel()
+    const outputByUid: Record<string, AgentOutputRecord> = {}
 
-    for (const agent of pipeline.agents) {
-      const imageAgent = isImageAgent(agent)
-      const staticAgent = isStaticAgent(agent)
-      const renderedSystemPrompt = imageAgent || staticAgent
-        ? ''
-        : renderer.render(agent.systemPrompt, runVariables, agentOutputs)
-      const renderedUserPrompt = renderer.render(agent.userPrompt, runVariables, agentOutputs)
-      const inputHash = computeAgentInputHash({
-        agentUid: agent.uid,
-        model: staticAgent ? 'static' : imageAgent ? imageProvider.id : model,
-        imageModel: imageAgent || isImageOutputTarget(agent.outputTarget) ? imageModel : undefined,
-        outputTarget: agent.outputTarget,
-        outputFormat: agent.outputFormat,
-        renderedSystemPrompt,
-        renderedUserPrompt,
-        selectedImageAssetId: isImageOutputTarget(agent.outputTarget)
-          ? (agent.selectedImageAssetId ?? '')
-          : undefined,
-      })
-
-      const agentRun = await db.agentRun.create({
-        data: {
-          pipelineRunId: runId,
-          agentUid: agent.uid,
-          agentName: agent.name,
-          outputTarget: agent.outputTarget,
-          renderedSystemPrompt,
-          renderedUserPrompt,
-          inputHash,
-          status: 'running',
-          sortOrder: agent.sortOrder,
-          startedAt: new Date(),
-        },
-      })
-
-      try {
-        const shouldBypassCache = options.forceRegenerate || forceRegenerateAgents.has(agent.uid)
-        const reusable = shouldBypassCache ? null : await this.findReusableAgentRun(pipeline.id, agent.uid, inputHash, agentRun.id)
-        let output: string
-        let cacheStatus: string
-        let outputJson: InlineImageMeta | null = (reusable?.outputJson as InlineImageMeta | null) ?? null
-
-        if (staticAgent) {
-          output = renderedUserPrompt
-          cacheStatus = reusable ? 'reused' : 'generated'
-          if (agent.outputTarget === 'thumbnail') {
-            outputJson = await this.resolveImageForAgent({
-              runId,
-              pipeline,
-              agent,
-              prompt: output,
-              reusableJson: reusable?.outputJson,
-              cacheStatus,
-              relativePath: 'thumbnail.png',
-              label: `Thumbnail: ${agent.name}`,
-              staticOnly: true,
-            })
-            generatedPost.thumbnailUrl = outputJson?.url
-            generatedPost.thumbnailLocalPath = outputJson?.path
-            generatedPost.thumbnailPrompt = output
-            generatedPost.thumbnailStatus = outputJson?.url || outputJson?.path ? 'done' : 'failed'
-          } else if (agent.outputTarget === 'image') {
-            outputJson = await this.resolveImageForAgent({
-              runId,
-              pipeline,
-              agent,
-              prompt: output,
-              reusableJson: reusable?.outputJson,
-              cacheStatus,
-              relativePath: `images/${slugify(agent.uid)}.png`,
-              label: `Inline Image: ${agent.name}`,
-              staticOnly: true,
-            })
-          }
-        } else if (imageAgent) {
-          output = renderedUserPrompt
-          cacheStatus = reusable ? 'reused' : 'generated'
-          if (agent.outputTarget === 'thumbnail') {
-            outputJson = await this.resolveImageForAgent({
-              runId,
-              pipeline,
-              agent,
-              prompt: output,
-              reusableJson: reusable?.outputJson,
-              cacheStatus,
-              relativePath: 'thumbnail.png',
-              label: `Thumbnail: ${agent.name}`,
-            })
-            generatedPost.thumbnailUrl = outputJson?.url
-            generatedPost.thumbnailLocalPath = outputJson?.path
-            generatedPost.thumbnailPrompt = output
-            generatedPost.thumbnailStatus = outputJson?.url || outputJson?.path ? 'done' : 'failed'
-          } else if (agent.outputTarget === 'image') {
-            outputJson = await this.resolveImageForAgent({
-              runId,
-              pipeline,
-              agent,
-              prompt: output,
-              reusableJson: reusable?.outputJson,
-              cacheStatus,
-              relativePath: `images/${slugify(agent.uid)}.png`,
-              label: `Inline Image: ${agent.name}`,
-            })
-          }
-        } else {
-          output = reusable?.outputText ?? await ai.generateText(renderedSystemPrompt, renderedUserPrompt)
-          cacheStatus = reusable ? 'reused' : 'generated'
-
-          if (agent.outputTarget === 'image') {
-            outputJson = await this.resolveImageForAgent({
-              runId,
-              pipeline,
-              agent,
-              prompt: output,
-              reusableJson: reusable?.outputJson,
-              cacheStatus,
-              relativePath: `images/${slugify(agent.uid)}.png`,
-              label: `Inline Image: ${agent.name}`,
-            })
-          }
-        }
-
-        agentOutputs[agent.uid] = output
-
-        outputByUid[agent.uid] = {
-          text: output,
-          target: agent.outputTarget,
-          image: outputJson ?? undefined,
-        }
-
-        switch (agent.outputTarget) {
-          case 'title':
-            generatedPost.title = output.trim()
-            break
-          case 'excerpt':
-            generatedPost.excerpt = output.trim()
-            break
-          case 'thumbnail_prompt':
-            generatedPost.thumbnailPrompt = output.trim()
-            break
-          case 'thumbnail':
-            break
-          case 'none':
-          case 'scratch':
-          case 'body':
-          case 'image':
-            break
-        }
-
-        await db.agentRun.update({
-          where: { id: agentRun.id },
-          data: {
-            outputText: output,
-            outputJson: outputJson as any,
-            status: 'completed',
-            cacheStatus,
-            reusedFromAgentRunId: reusable?.id ?? null,
-            completedAt: new Date(),
-          },
-        })
-
-        agentPrompts.push({
-          uid: agent.uid,
-          name: agent.name,
-          outputTarget: agent.outputTarget,
-          cacheStatus,
-          systemPrompt: renderedSystemPrompt,
-          userPrompt: renderedUserPrompt,
-        })
-      } catch (err: any) {
-        await db.agentRun.update({
-          where: { id: agentRun.id },
-          data: { status: 'failed', cacheStatus: 'failed', error: err.message, completedAt: new Date() },
-        })
-        throw err
-      }
-    }
+    await this.executeAgents({
+      runId,
+      pipeline,
+      runVariables,
+      options,
+      agentOutputs,
+      agentPrompts,
+      generatedPost,
+      outputByUid,
+    })
 
     const composed = this.composeBody(pipeline, outputByUid)
     generatedPost.body = composed.body
     generatedPost.inlineImages = composed.inlineImages
 
-    if (generatedPost.thumbnailPrompt && !generatedPost.thumbnailUrl) {
-      generatedPost.thumbnailStatus = 'generating'
-      await db.pipelineRun.update({ where: { id: runId }, data: { generatedPost: generatedPost as any } })
-
-      try {
-        const imageUrl = await ai.generateImage(generatedPost.thumbnailPrompt)
-        if (imageUrl) {
-          generatedPost.thumbnailUrl = imageUrl
-          generatedPost.thumbnailStatus = 'done'
-        } else {
-          generatedPost.thumbnailStatus = 'failed'
-        }
-      } catch {
-        generatedPost.thumbnailStatus = 'failed'
-      }
-    }
+    await this.generateFallbackThumbnail(runId, generatedPost)
 
     const { folder, thumbnailLocalPath } = await assets.saveRunAssets(
       runId,
-      pipeline.account.slug,
       pipeline.slug,
       generatedPost,
       agentPrompts,
@@ -498,53 +327,14 @@ export class PipelineRunService {
       select: { filename: true, path: true },
     })
 
-    let finalStatus = 'completed'
-
-    if (!dryRun && pipeline.destinationId) {
-      const destination = await db.destination.findUnique({ where: { id: pipeline.destinationId } })
-      if (destination) {
-        const attempt = await db.publishAttempt.create({
-          data: {
-            pipelineRunId: runId,
-            destinationId: destination.id,
-            status: 'pending',
-            progressMessage: 'Starting WordPress publish…',
-          },
-        })
-
-        try {
-          const result = await this.publishToWordPress(
-            generatedPost,
-            { outputFolder: folder, assets: runImageAssets },
-            pipeline,
-            destination,
-            publishProgressReporter(attempt.id),
-          )
-          generatedPost.publishedUrl = result.postUrl
-          generatedPost.wordpressMedia = result.inlineUploads
-          finalStatus = 'posted'
-
-          await db.publishAttempt.update({
-            where: { id: attempt.id },
-            data: {
-              status: 'success',
-              remotePostId: result.postId,
-              remoteUrl: result.postUrl,
-              progressMessage: `Published to ${result.postUrl}`,
-            },
-          })
-        } catch (err: any) {
-          await db.publishAttempt.update({
-            where: { id: attempt.id },
-            data: {
-              status: 'failed',
-              error: err.message,
-              progressMessage: err.message,
-            },
-          })
-        }
-      }
-    }
+    const finalStatus = await this.publishGeneratedPost({
+      runId,
+      pipeline,
+      generatedPost,
+      dryRun,
+      outputFolder: folder,
+      runImageAssets,
+    })
 
     await db.pipelineRun.update({
       where: { id: runId },
@@ -556,6 +346,253 @@ export class PipelineRunService {
     })
 
     new LibraryAgentService().promoteFromRun(pipeline).catch(() => {})
+  }
+
+  private async executeAgents(input: {
+    runId: string
+    pipeline: any
+    runVariables: Record<string, unknown>
+    options: StartRunOptions
+    agentOutputs: Record<string, string>
+    agentPrompts: AgentPromptRecord[]
+    generatedPost: GeneratedPost
+    outputByUid: Record<string, AgentOutputRecord>
+  }) {
+    const forceRegenerateAgents = new Set(input.options.forceRegenerateAgentUids ?? [])
+    const textModel = process.env.OPENAI_TEXT_MODEL ?? 'gpt-4o'
+    const imageModel = getImageModelLabel()
+
+    for (const agent of input.pipeline.agents) {
+      const result = await this.executeAgent({
+        runId: input.runId,
+        pipeline: input.pipeline,
+        agent,
+        runVariables: input.runVariables,
+        agentOutputs: input.agentOutputs,
+        bypassCache: Boolean(input.options.forceRegenerate || forceRegenerateAgents.has(agent.uid)),
+        textModel,
+        imageModel,
+      })
+
+      this.recordAgentOutput(agent, result, input.agentOutputs, input.outputByUid, input.generatedPost)
+      input.agentPrompts.push({
+        uid: agent.uid,
+        name: agent.name,
+        outputTarget: agent.outputTarget,
+        cacheStatus: result.cacheStatus,
+        systemPrompt: result.renderedSystemPrompt,
+        userPrompt: result.renderedUserPrompt,
+      })
+    }
+  }
+
+  private async executeAgent(input: {
+    runId: string
+    pipeline: any
+    agent: any
+    runVariables: Record<string, unknown>
+    agentOutputs: Record<string, string>
+    bypassCache: boolean
+    textModel: string
+    imageModel: string
+  }): Promise<AgentExecutionResult> {
+    const { agent } = input
+    const imageAgent = isImageAgent(agent)
+    const staticAgent = isStaticAgent(agent)
+    const renderedSystemPrompt = imageAgent || staticAgent
+      ? ''
+      : renderer.render(agent.systemPrompt, input.runVariables, input.agentOutputs)
+    const renderedUserPrompt = renderer.render(agent.userPrompt, input.runVariables, input.agentOutputs)
+    const inputHash = computeAgentInputHash({
+      agentUid: agent.uid,
+      model: staticAgent ? 'static' : imageAgent ? imageProvider.id : input.textModel,
+      imageModel: imageAgent || isImageOutputTarget(agent.outputTarget) ? input.imageModel : undefined,
+      outputTarget: agent.outputTarget,
+      outputFormat: agent.outputFormat,
+      renderedSystemPrompt,
+      renderedUserPrompt,
+      selectedImageAssetId: isImageOutputTarget(agent.outputTarget)
+        ? (agent.selectedImageAssetId ?? '')
+        : undefined,
+    })
+    const agentRun = await db.agentRun.create({
+      data: {
+        pipelineRunId: input.runId,
+        agentUid: agent.uid,
+        agentName: agent.name,
+        outputTarget: agent.outputTarget,
+        renderedSystemPrompt,
+        renderedUserPrompt,
+        inputHash,
+        status: 'running',
+        sortOrder: agent.sortOrder,
+        startedAt: new Date(),
+      },
+    })
+
+    try {
+      const reusable = input.bypassCache
+        ? null
+        : await this.findReusableAgentRun(input.pipeline.id, agent.uid, inputHash, agentRun.id)
+      const generated = await this.generateAgentOutput({
+        runId: input.runId,
+        pipeline: input.pipeline,
+        agent,
+        renderedSystemPrompt,
+        renderedUserPrompt,
+        reusable,
+      })
+      await db.agentRun.update({
+        where: { id: agentRun.id },
+        data: {
+          outputText: generated.output,
+          outputJson: generated.outputJson as any,
+          status: 'completed',
+          cacheStatus: generated.cacheStatus,
+          reusedFromAgentRunId: reusable?.id ?? null,
+          completedAt: new Date(),
+        },
+      })
+      return {
+        ...generated,
+        renderedSystemPrompt,
+        renderedUserPrompt,
+      }
+    } catch (err: any) {
+      await db.agentRun.update({
+        where: { id: agentRun.id },
+        data: { status: 'failed', cacheStatus: 'failed', error: err.message, completedAt: new Date() },
+      })
+      throw err
+    }
+  }
+
+  private async generateAgentOutput(input: {
+    runId: string
+    pipeline: any
+    agent: any
+    renderedSystemPrompt: string
+    renderedUserPrompt: string
+    reusable: any
+  }): Promise<Pick<AgentExecutionResult, 'output' | 'outputJson' | 'cacheStatus' | 'directImageOutput'>> {
+    const directImageOutput = isStaticAgent(input.agent) || isImageAgent(input.agent)
+    const output = directImageOutput
+      ? input.renderedUserPrompt
+      : (input.reusable?.outputText ?? await ai.generateText(input.renderedSystemPrompt, input.renderedUserPrompt))
+    const cacheStatus = input.reusable ? 'reused' : 'generated'
+    let outputJson = (input.reusable?.outputJson as InlineImageMeta | null) ?? null
+
+    if (input.agent.outputTarget === 'image' || (directImageOutput && input.agent.outputTarget === 'thumbnail')) {
+      const thumbnail = input.agent.outputTarget === 'thumbnail'
+      outputJson = await this.resolveImageForAgent({
+        runId: input.runId,
+        pipeline: input.pipeline,
+        agent: input.agent,
+        prompt: output,
+        reusableJson: input.reusable?.outputJson,
+        cacheStatus,
+        relativePath: thumbnail ? 'thumbnail.png' : `images/${slugify(input.agent.uid)}.png`,
+        label: `${thumbnail ? 'Thumbnail' : 'Inline Image'}: ${input.agent.name}`,
+        ...(isStaticAgent(input.agent) ? { staticOnly: true } : {}),
+      })
+    }
+
+    return { output, outputJson, cacheStatus, directImageOutput }
+  }
+
+  private recordAgentOutput(
+    agent: any,
+    result: AgentExecutionResult,
+    agentOutputs: Record<string, string>,
+    outputByUid: Record<string, AgentOutputRecord>,
+    generatedPost: GeneratedPost,
+  ) {
+    agentOutputs[agent.uid] = result.output
+    outputByUid[agent.uid] = {
+      text: result.output,
+      target: agent.outputTarget,
+      image: result.outputJson ?? undefined,
+    }
+
+    if (agent.outputTarget === 'title') generatedPost.title = result.output.trim()
+    if (agent.outputTarget === 'excerpt') generatedPost.excerpt = result.output.trim()
+    if (agent.outputTarget === 'thumbnail_prompt') generatedPost.thumbnailPrompt = result.output.trim()
+    if (agent.outputTarget === 'thumbnail' && result.directImageOutput) {
+      generatedPost.thumbnailUrl = result.outputJson?.url
+      generatedPost.thumbnailLocalPath = result.outputJson?.path
+      generatedPost.thumbnailPrompt = result.output
+      generatedPost.thumbnailStatus = result.outputJson?.url || result.outputJson?.path ? 'done' : 'failed'
+    }
+  }
+
+  private async generateFallbackThumbnail(runId: string, generatedPost: GeneratedPost) {
+    if (!generatedPost.thumbnailPrompt || generatedPost.thumbnailUrl) return
+
+    generatedPost.thumbnailStatus = 'generating'
+    await db.pipelineRun.update({ where: { id: runId }, data: { generatedPost: generatedPost as any } })
+
+    try {
+      const imageUrl = await ai.generateImage(generatedPost.thumbnailPrompt)
+      if (imageUrl) {
+        generatedPost.thumbnailUrl = imageUrl
+        generatedPost.thumbnailStatus = 'done'
+      } else {
+        generatedPost.thumbnailStatus = 'failed'
+      }
+    } catch {
+      generatedPost.thumbnailStatus = 'failed'
+    }
+  }
+
+  private async publishGeneratedPost(input: {
+    runId: string
+    pipeline: any
+    generatedPost: GeneratedPost
+    dryRun: boolean
+    outputFolder: string
+    runImageAssets: Array<{ filename: string; path: string }>
+  }): Promise<string> {
+    if (input.dryRun || !input.pipeline.destinationId) return 'completed'
+
+    const destination = await db.destination.findUnique({ where: { id: input.pipeline.destinationId } })
+    if (!destination) return 'completed'
+
+    const attempt = await db.publishAttempt.create({
+      data: {
+        pipelineRunId: input.runId,
+        destinationId: destination.id,
+        status: 'pending',
+        progressMessage: 'Starting WordPress publish…',
+      },
+    })
+
+    try {
+      const result = await this.publishToWordPress(
+        input.generatedPost,
+        { outputFolder: input.outputFolder, assets: input.runImageAssets },
+        input.pipeline,
+        destination,
+        publishProgressReporter(attempt.id),
+      )
+      input.generatedPost.publishedUrl = result.postUrl
+      input.generatedPost.wordpressMedia = result.inlineUploads
+      await db.publishAttempt.update({
+        where: { id: attempt.id },
+        data: {
+          status: 'success',
+          remotePostId: result.postId,
+          remoteUrl: result.postUrl,
+          progressMessage: `Published to ${result.postUrl}`,
+        },
+      })
+      return 'posted'
+    } catch (err: any) {
+      await db.publishAttempt.update({
+        where: { id: attempt.id },
+        data: { status: 'failed', error: err.message, progressMessage: err.message },
+      })
+      return 'completed'
+    }
   }
 
   private async findReusableAgentRun(pipelineId: string, agentUid: string, inputHash: string, currentAgentRunId: string) {
@@ -604,7 +641,6 @@ export class PipelineRunService {
     if (input.agent.imageMode === 'selected' && input.agent.selectedImageAsset?.path) {
       const copied = await assets.copyImageAsset({
         runId: input.runId,
-        accountSlug: input.pipeline.account.slug,
         pipelineSlug: input.pipeline.slug,
         sourcePath: input.agent.selectedImageAsset.path,
         relativePath: input.relativePath,
@@ -632,7 +668,6 @@ export class PipelineRunService {
     if (input.cacheStatus === 'reused' && input.reusableJson?.path) {
       const copied = await assets.copyImageAsset({
         runId: input.runId,
-        accountSlug: input.pipeline.account.slug,
         pipelineSlug: input.pipeline.slug,
         sourcePath: input.reusableJson.path,
         relativePath: input.relativePath,
@@ -652,7 +687,6 @@ export class PipelineRunService {
     const imageUrl = generated?.url ?? null
     const saved = imageUrl ? await assets.saveImageFromUrl({
       runId: input.runId,
-      accountSlug: input.pipeline.account.slug,
       pipelineSlug: input.pipeline.slug,
       imageUrl,
       relativePath: input.relativePath,

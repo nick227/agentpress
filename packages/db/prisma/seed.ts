@@ -238,44 +238,31 @@ async function main() {
     create: { email: 'admin@agentpress.local', passwordHash: hash, role: 'OWNER' },
   })
 
-  // Create a demo account
-  const account = await db.account.upsert({
-    where: { slug: 'demo-blog' },
-    update: {},
-    create: {
-      name: 'Demo Blog',
-      slug: 'demo-blog',
-      category: 'Content',
-      description: 'A demo account for testing pipelines.',
-    },
-  })
-
-  // Create a demo pipeline
+  // ── SEO Blog Post pipeline ─────────────────────────────────────────────
   const pipeline = await db.pipeline.upsert({
-    where: { accountId_slug: { accountId: account.id, slug: 'seo-blog-post' } },
+    where: { slug: 'seo-blog-post' },
     update: {},
     create: {
-      accountId: account.id,
       name: 'SEO Blog Post',
       slug: 'seo-blog-post',
-      description: 'Generate a full SEO-optimized blog post from a topic.',
+      description: 'Generate a full SEO-optimized blog post from a topic and keyword.',
       status: 'active',
       dryRun: true,
       scheduleMode: 'manual',
     },
   })
 
-  // Variables
   await db.pipelineVariable.deleteMany({ where: { pipelineId: pipeline.id } })
   await db.pipelineVariable.createMany({
     data: [
-      { pipelineId: pipeline.id, key: 'topic', label: 'Topic', type: 'text', required: true, exampleValue: 'The benefits of content marketing', sortOrder: 0 },
-      { pipelineId: pipeline.id, key: 'tone', label: 'Tone', type: 'text', required: false, defaultValue: 'professional', exampleValue: 'professional', sortOrder: 1 },
-      { pipelineId: pipeline.id, key: 'word_count', label: 'Word count', type: 'number', required: false, defaultValue: '1200', sortOrder: 2 },
+      { pipelineId: pipeline.id, key: 'topic', label: 'Topic', type: 'text', required: true, exampleValue: 'The benefits of content marketing for B2B companies', sortOrder: 0 },
+      { pipelineId: pipeline.id, key: 'target_keyword', label: 'Target keyword', type: 'text', required: false, exampleValue: 'content marketing strategy', sortOrder: 1 },
+      { pipelineId: pipeline.id, key: 'audience', label: 'Target audience', type: 'text', required: false, defaultValue: 'marketing professionals', exampleValue: 'B2B marketing managers and content leads', sortOrder: 2 },
+      { pipelineId: pipeline.id, key: 'tone', label: 'Tone', type: 'text', required: false, defaultValue: 'professional', exampleValue: 'professional', sortOrder: 3 },
+      { pipelineId: pipeline.id, key: 'word_count', label: 'Word count', type: 'number', required: false, defaultValue: '1500', exampleValue: '1500', sortOrder: 4 },
     ],
   })
 
-  // Agents
   await db.pipelineAgent.deleteMany({ where: { pipelineId: pipeline.id } })
   await db.pipelineAgent.createMany({
     data: [
@@ -283,8 +270,8 @@ async function main() {
         pipelineId: pipeline.id,
         uid: 'researcher',
         name: 'Researcher',
-        systemPrompt: 'You are an expert content researcher. Identify key points, data, and subtopics for a blog post.',
-        userPrompt: 'Research the following topic and provide an outline of key points to cover:\n\nTopic: {topic}\nTone: {tone}',
+        systemPrompt: `You are a senior content strategist with expertise in long-form SEO content. You research topics thoroughly and produce structured outlines that give writers everything they need to produce authoritative, comprehensive articles. Your outlines use H2 sections and H3 subpoints, each with a brief summary of what to cover.`,
+        userPrompt: `Research and outline an article on the following.\n\nTopic: {topic}\nTarget keyword: {target_keyword}\nTarget audience: {audience}\nTone: {tone}\n\nProvide:\n1. A one-sentence thesis — the specific argument or insight the article will make\n2. A structured outline with 4–6 H2 sections, each with 2–3 H3 subpoints and a one-sentence summary of what to cover\n3. Three to five types of evidence, data, or examples that would strengthen the article\n4. A suggested hook approach for the opening paragraph`,
         outputTarget: 'body',
         outputFormat: 'text',
         enabled: true,
@@ -294,8 +281,8 @@ async function main() {
         pipelineId: pipeline.id,
         uid: 'title_writer',
         name: 'Title Writer',
-        systemPrompt: 'You are an SEO copywriter. Write compelling, keyword-rich blog post titles.',
-        userPrompt: 'Based on this research, write an SEO-optimized title for a blog post:\n\n{agents.researcher.output}\n\nReturn only the title, no quotes.',
+        systemPrompt: `You are an SEO copywriter who writes titles that rank and get clicked. A great title places the target keyword near the front, stays under 65 characters, and gives the reader a specific reason to care. You output one final title — clean, no quotes, no explanation.`,
+        userPrompt: `Write an SEO-optimized title for this article.\n\nTopic: {topic}\nTarget keyword: {target_keyword}\nOutline and thesis: {agents.researcher.output}\n\nRequirements:\n- Place the target keyword in the first half of the title\n- Under 65 characters\n- Specific and benefit-forward — the reader should know exactly what they will learn\n\nOutput only the final title. No quotes, no options, no explanation.`,
         outputTarget: 'title',
         outputFormat: 'text',
         enabled: true,
@@ -305,10 +292,10 @@ async function main() {
         pipelineId: pipeline.id,
         uid: 'body_writer',
         name: 'Body Writer',
-        systemPrompt: 'You are a professional blog writer. Write comprehensive, engaging blog posts in {tone} tone.',
-        userPrompt: 'Write a full blog post of approximately {word_count} words based on this outline:\n\n{agents.researcher.output}\n\nTitle: {agents.title_writer.output}\n\nUse markdown formatting.',
+        systemPrompt: `You are a professional long-form blog writer. You write comprehensive, well-structured articles that inform and engage readers from the first paragraph to the last. You use clear H2 headings, concrete examples, and a consistent voice throughout. You never pad word count with filler — every paragraph earns its place.`,
+        userPrompt: `Write a full blog post of approximately {word_count} words.\n\nTitle: {agents.title_writer.output}\nOutline and research: {agents.researcher.output}\nTone: {tone}\nAudience: {audience}\n\nRequirements:\n- Use markdown with ## H2 headings for each section from the outline\n- Open with a compelling paragraph that earns the reader's attention\n- Each section should include a concrete example or specific detail\n- Use **bold** to highlight key terms on first use\n- End with a conclusion that gives the reader one clear takeaway or next step\n- Do not include a table of contents`,
         outputTarget: 'body',
-        outputFormat: 'text',
+        outputFormat: 'markdown',
         enabled: true,
         sortOrder: 2,
       },
@@ -316,8 +303,8 @@ async function main() {
         pipelineId: pipeline.id,
         uid: 'excerpt_writer',
         name: 'Excerpt Writer',
-        systemPrompt: 'You write concise blog post excerpts for SEO and social sharing.',
-        userPrompt: 'Write a 2-sentence excerpt for this blog post:\n\nTitle: {agents.title_writer.output}\n\nBody: {agents.body_writer.output}',
+        systemPrompt: `You write meta descriptions and post excerpts for SEO and social sharing. A great excerpt includes the target keyword naturally, promises a specific benefit, and stays under 160 characters. You output only the excerpt — no explanation, no options.`,
+        userPrompt: `Write a 1–2 sentence excerpt for this blog post.\n\nTitle: {agents.title_writer.output}\nTarget keyword: {target_keyword}\nOpening section: {agents.body_writer.output}\n\nRequirements:\n- Include the target keyword naturally in the first sentence\n- Under 160 characters total\n- Promise a specific benefit — what will the reader learn or gain?\n\nOutput only the excerpt.`,
         outputTarget: 'excerpt',
         outputFormat: 'text',
         enabled: true,
@@ -326,7 +313,70 @@ async function main() {
     ],
   })
 
-  // Seed summary prompts
+  // ── Political Commentary pipeline ──────────────────────────────────────
+  const politicalPipeline = await db.pipeline.upsert({
+    where: { slug: 'political-commentary' },
+    update: {},
+    create: {
+      name: 'Political Commentary',
+      slug: 'political-commentary',
+      description: 'Turn a video or transcript summary into a structured political analysis post with title and excerpt.',
+      status: 'active',
+      dryRun: true,
+      scheduleMode: 'manual',
+    },
+  })
+
+  await db.pipelineVariable.deleteMany({ where: { pipelineId: politicalPipeline.id } })
+  await db.pipelineVariable.createMany({
+    data: [
+      { pipelineId: politicalPipeline.id, key: 'vaush_summary', label: 'Video summary', type: 'text', required: true, exampleValue: "Vaush argues that the Democratic Party's failure to mobilize young voters in 2024 stems from policy timidity rather than messaging problems — citing polling on Medicare for All and student debt relief.", sortOrder: 0 },
+      { pipelineId: politicalPipeline.id, key: 'topic', label: 'Topic focus', type: 'text', required: false, exampleValue: 'Democratic Party electoral strategy', sortOrder: 1 },
+      { pipelineId: politicalPipeline.id, key: 'audience', label: 'Target audience', type: 'text', required: false, defaultValue: 'politically engaged progressives', exampleValue: 'politically engaged progressives', sortOrder: 2 },
+      { pipelineId: politicalPipeline.id, key: 'tone', label: 'Tone', type: 'text', required: false, defaultValue: 'analytical', exampleValue: 'analytical', sortOrder: 3 },
+    ],
+  })
+
+  await db.pipelineAgent.deleteMany({ where: { pipelineId: politicalPipeline.id } })
+  await db.pipelineAgent.createMany({
+    data: [
+      {
+        pipelineId: politicalPipeline.id,
+        uid: 'political_commentary_analyst',
+        name: 'Commentary Analyst',
+        systemPrompt: `You are a political journalist and media critic who specializes in analyzing progressive and left-wing commentary. You have deep familiarity with US political discourse, policy debates, and the online political commentary ecosystem. You write for a politically engaged audience that values nuance, intellectual honesty, and clear argumentation. You do not manufacture quotes — you work only from the material provided. Your analysis is fair-minded: you represent the original arguments accurately before evaluating them.`,
+        userPrompt: `Analyze the following summary of a Vaush video and write a structured political analysis post.\n\nVideo summary:\n{vaush_summary}\n\nAdditional context:\nTopic focus: {topic}\nAudience: {audience}\nTone: {tone}\n\nStructure your analysis as:\n\n## The Core Argument\nWhat is the central claim or position Vaush is making in this video? Summarize it in 2–3 sentences with precision.\n\n## Key Points Made\nList the 3–5 strongest points or pieces of evidence presented. Be specific — paraphrase accurately, do not editorialize yet.\n\n## Broader Political Context\nWhy does this argument matter right now? Connect it to current events, policy debates, or ongoing political dynamics.\n\n## Points of Contention\nWhat are the most credible objections or counterarguments? Present them fairly — a reader who disagrees with Vaush should feel their view is represented.\n\n## Takeaway\nWhat should a politically engaged reader do with this analysis? A concrete framing, question, or call to reflection — 2–3 sentences.`,
+        outputTarget: 'body',
+        outputFormat: 'markdown',
+        enabled: true,
+        sortOrder: 0,
+      },
+      {
+        pipelineId: politicalPipeline.id,
+        uid: 'political_title_writer',
+        name: 'Title Writer',
+        systemPrompt: `You are a headline writer for a politically engaged digital publication. You write titles that are specific, compelling, and accurate — they reflect the actual argument of the piece rather than manufacturing outrage. Good political titles name the specific issue and signal the angle. They avoid vague phrases like "What You Need to Know". They are under 70 characters. You output one final title — no quotes, no options.`,
+        userPrompt: `Write a title for this political analysis post.\n\nPost body:\n{agents.political_commentary_analyst.output}\n\nVideo summary it's based on:\n{vaush_summary}\n\nRequirements:\n- Name the specific issue or claim being analyzed\n- Under 70 characters\n- Signal the analytical angle — not clickbait, not vague\n\nOutput only the final title.`,
+        outputTarget: 'title',
+        outputFormat: 'text',
+        enabled: true,
+        sortOrder: 1,
+      },
+      {
+        pipelineId: politicalPipeline.id,
+        uid: 'political_excerpt_writer',
+        name: 'Excerpt Writer',
+        systemPrompt: `You write excerpts for political commentary posts. A great excerpt names the specific issue, signals the analytical angle, and makes a reader want to read more — in under 200 characters. It never starts with "In this article" or "We explore". It reads like the first sentence of an op-ed: a clear, confident, specific statement.`,
+        userPrompt: `Write a 1–2 sentence excerpt for this political analysis post.\n\nTitle: {agents.political_title_writer.output}\nPost body: {agents.political_commentary_analyst.output}\n\nRequirements:\n- 1–2 sentences, under 200 characters\n- Name the specific issue analyzed\n- Read like the opening of an op-ed — confident and direct\n\nOutput only the excerpt.`,
+        outputTarget: 'excerpt',
+        outputFormat: 'text',
+        enabled: true,
+        sortOrder: 2,
+      },
+    ],
+  })
+
+  // ── Summary prompts ────────────────────────────────────────────────────
   const SUMMARY_PROMPTS = [
     {
       name: 'News Brief',
@@ -417,60 +467,84 @@ async function main() {
   }
   console.log(`  ${SUMMARY_PROMPTS.length} prompts seeded`)
 
-  // Seed research sources
+  // ── Research sources ───────────────────────────────────────────────────
   const RESEARCH_SOURCES = [
     // YouTube — politics
     { name: 'Vaush', slug: 'vaush', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Vaush' },
+    { name: 'Destiny', slug: 'destiny', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@destiny' },
+    { name: 'HasanAbi', slug: 'hasanabi', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@HasanAbi' },
     // YouTube — financial
     { name: 'ZipTrader', slug: 'ziptrader', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@ZipTrader' },
     { name: 'Spencer Invests', slug: 'spencer-invests', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@SpencerInvests' },
     { name: 'Stock Moe', slug: 'stock-moe', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@StockMoe' },
     { name: 'Tom Nash TV', slug: 'tom-nash-tv', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@TomNashTV' },
     { name: 'Meet Kevin', slug: 'meet-kevin', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@MeetKevin' },
+    // YouTube — tech
+    { name: 'Fireship', slug: 'fireship', category: 'tech', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Fireship' },
+    { name: 'Theo', slug: 'theo', category: 'tech', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@t3dotgg' },
+    { name: 'ThePrimeagen', slug: 'theprimeagen', category: 'tech', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@ThePrimeagen' },
+    // YouTube — AI
+    { name: 'Mr. E Flow', slug: 'mr-e-flow', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@mreflow' },
+    { name: 'GitHub Awesome', slug: 'github-awesome', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@GithubAwesome' },
+    { name: 'The AI Search', slug: 'the-ai-search', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@theAIsearch' },
+    { name: 'AI Labs', slug: 'ai-labs', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@AILABS-393' },
+    { name: 'AI Code King', slug: 'ai-code-king', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@AICodeKing' },
+    { name: 'Prompt Engineer', slug: 'prompt-engineer', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@PromptEngineer48' },
+    { name: 'I Am AI Master', slug: 'i-am-ai-master', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@iamAImaster' },
+    { name: 'Kittl Design', slug: 'kittl-design', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Kittldesign' },
+    // YouTube — culture
+    { name: 'Dr. Roy Casagranda', slug: 'dr-roy-casagranda', category: 'culture', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@DrRoyCasagranda' },
+    { name: 'Channel 5', slug: 'channel-5', category: 'culture', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Channel5YouTube' },
+    // YouTube — additional financial
+    { name: 'Heresy Financial', slug: 'heresy-financial', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@HeresyFinancial' },
+    { name: 'WallStreetZen', slug: 'wallstreetzen', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@WallStreetZen' },
     // Reddit — financial
     { name: 'WallStreetBets', slug: 'wallstreetbets', category: 'financial', sourceType: 'reddit', sourceUrl: 'https://www.reddit.com/r/wallstreetbets' },
     { name: 'r/stocks', slug: 'r-stocks', category: 'financial', sourceType: 'reddit', sourceUrl: 'https://www.reddit.com/r/stocks' },
     // RSS — financial
-    { name: 'Reuters Business', slug: 'reuters-business', category: 'financial', sourceType: 'rss', sourceUrl: 'https://feeds.reuters.com/reuters/businessNews' },
     { name: 'Yahoo Finance', slug: 'yahoo-finance', category: 'financial', sourceType: 'rss', sourceUrl: 'https://finance.yahoo.com/rss/topstories' },
     { name: 'MarketWatch', slug: 'marketwatch', category: 'financial', sourceType: 'rss', sourceUrl: 'https://feeds.marketwatch.com/marketwatch/topstories' },
+    // RSS — politics
+    { name: 'NPR Politics', slug: 'npr-politics', category: 'politics', sourceType: 'rss', sourceUrl: 'https://feeds.npr.org/1014/rss.xml' },
+    // RSS — tech
+    { name: 'Hacker News', slug: 'hacker-news', category: 'tech', sourceType: 'rss', sourceUrl: 'https://news.ycombinator.com/rss' },
+    { name: 'TechCrunch', slug: 'techcrunch', category: 'tech', sourceType: 'rss', sourceUrl: 'https://techcrunch.com/feed/' },
   ]
 
   console.log('\nSeeding research sources...')
   for (const src of RESEARCH_SOURCES) {
     await db.researchSource.upsert({
-      where: { accountId_slug: { accountId: account.id, slug: src.slug } },
+      where: { slug: src.slug },
       update: {},
-      create: { accountId: account.id, status: 'active', ...src },
+      create: { status: 'active', ...src },
     })
   }
-  console.log(`  ${RESEARCH_SOURCES.length} sources seeded (YouTube, Reddit, RSS)`)
+  console.log(`  ${RESEARCH_SOURCES.length} sources seeded`)
 
-  // Seed library agents
+  // ── Library agents ─────────────────────────────────────────────────────
   console.log('\nSeeding library agents...')
   let created = 0
   let skipped = 0
 
   for (const agent of LIBRARY_AGENTS) {
-    const hash = promptHash(agent.systemPrompt, agent.userPrompt, agent.outputTarget)
-    const result = await db.libraryAgent.upsert({
-      where: { promptHash: hash },
-      update: {},
-      create: {
-        uid: agent.uid,
-        name: agent.name,
-        description: agent.description,
-        category: agent.category,
-        tags: agent.tags,
-        systemPrompt: agent.systemPrompt,
-        userPrompt: agent.userPrompt,
-        outputTarget: agent.outputTarget,
-        outputFormat: agent.outputFormat,
-        promptHash: hash,
-        usageCount: 0,
-      },
-    })
-    if (result.usageCount === 0 && result.createdAt === result.updatedAt) {
+    const agentHash = promptHash(agent.systemPrompt, agent.userPrompt, agent.outputTarget)
+    const existing = await db.libraryAgent.findUnique({ where: { promptHash: agentHash } })
+    if (!existing) {
+      await db.libraryAgent.create({
+        data: {
+          uid: agent.uid,
+          name: agent.name,
+          description: agent.description,
+          category: agent.category,
+          tags: agent.tags,
+          systemPrompt: agent.systemPrompt,
+          userPrompt: agent.userPrompt,
+          outputTarget: agent.outputTarget,
+          outputFormat: agent.outputFormat,
+          promptHash: agentHash,
+          usageCount: 0,
+        },
+      })
       created++
     } else {
       skipped++
@@ -479,12 +553,11 @@ async function main() {
 
   console.log(`  ${created} created, ${skipped} already exist`)
   console.log('\n✓ Seed complete')
-  console.log('  User:     admin@agentpress.local / password123')
-  console.log('  Account:  Demo Blog')
-  console.log('  Pipeline: SEO Blog Post (4 agents)')
-  console.log(`  Library:  ${LIBRARY_AGENTS.length} agents seeded`)
-  console.log(`  Research: ${RESEARCH_SOURCES.length} sources seeded (YouTube ×6, Reddit ×2, RSS ×3)`)
-  console.log('  Prompts:  5 summary prompts seeded')
+  console.log('  User:      admin@agentpress.local / password123')
+  console.log('  Pipelines: SEO Blog Post (4 agents), Political Commentary (3 agents)')
+  console.log(`  Library:   ${LIBRARY_AGENTS.length} agents seeded`)
+  console.log(`  Research:  ${RESEARCH_SOURCES.length} sources seeded`)
+  console.log(`  Prompts:   ${SUMMARY_PROMPTS.length} summary prompts seeded`)
 }
 
 main()

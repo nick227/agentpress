@@ -28,22 +28,20 @@ export function useApplyContentTemplate() {
   return useMutation({
     mutationFn: async ({
       templateId,
-      accountId,
       name,
     }: {
       templateId: string
-      accountId: string
       name?: string
     }) => {
       const { data, error, response } = await getApiClient().POST(
         '/api/content/templates/{templateId}/apply',
-        { params: { path: { templateId } }, body: { accountId, name } },
+        { params: { path: { templateId } }, body: { name } },
       )
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: ['pipelines', accountId] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] })
     },
   })
 }

@@ -43,6 +43,7 @@ export function DetailPanel({ pipeline, runs, pipelineId }: Props) {
         <BuilderSetup
           pipeline={pipeline}
           pipelineId={pipelineId}
+          runs={runs}
           onRunCreated={(id) => onSelect({ type: 'run', id })}
         />
       </Suspense>
@@ -54,14 +55,16 @@ export function DetailPanel({ pipeline, runs, pipelineId }: Props) {
     if (!variable) return <Placeholder text="Variable not found" />
     return (
       <Suspense fallback={<PanelFallback />}>
-        <BuilderVariable
-          key={variable.id}
-          variable={variable}
-          pipeline={pipeline}
-          pipelineId={pipelineId}
-          onSaved={(id) => onSelect({ type: 'variable', id })}
-          onDeleted={() => onSelect({ type: 'setup' })}
-        />
+        <InnerView onBack={() => onSelect({ type: 'setup' })} label="Back to Pipeline">
+          <BuilderVariable
+            key={variable.id}
+            variable={variable}
+            pipeline={pipeline}
+            pipelineId={pipelineId}
+            onSaved={(id) => onSelect({ type: 'variable', id })}
+            onDeleted={() => onSelect({ type: 'setup' })}
+          />
+        </InnerView>
       </Suspense>
     )
   }
@@ -71,14 +74,16 @@ export function DetailPanel({ pipeline, runs, pipelineId }: Props) {
     if (!agent) return <Placeholder text="Agent not found" />
     return (
       <Suspense fallback={<PanelFallback />}>
-        <BuilderAgent
-          key={agent.id}
-          agent={agent}
-          pipeline={pipeline}
-          pipelineId={pipelineId}
-          onSaved={(id) => onSelect({ type: 'agent', id })}
-          onDeleted={() => onSelect({ type: 'setup' })}
-        />
+        <InnerView onBack={() => onSelect({ type: 'setup' })} label="Back to Pipeline">
+          <BuilderAgent
+            key={agent.id}
+            agent={agent}
+            pipeline={pipeline}
+            pipelineId={pipelineId}
+            onSaved={(id) => onSelect({ type: 'agent', id })}
+            onDeleted={() => onSelect({ type: 'setup' })}
+          />
+        </InnerView>
       </Suspense>
     )
   }
@@ -86,12 +91,18 @@ export function DetailPanel({ pipeline, runs, pipelineId }: Props) {
   if (selection.type === 'run') {
     return (
       <Suspense fallback={<PanelFallback />}>
-        <BuilderRun runId={selection.id} pipeline={pipeline} />
+        <InnerView onBack={() => onSelect({ type: 'setup' })} label="Back to Pipeline">
+          <BuilderRun runId={selection.id} pipeline={pipeline} />
+        </InnerView>
       </Suspense>
     )
   }
 
   return null
+}
+
+function InnerView({ onBack, label, children }: { onBack: () => void; label: string; children: React.ReactNode }) {
+  return <div><button type="button" onClick={onBack} className="mx-6 mt-5 text-sm text-muted-foreground hover:text-foreground">← {label}</button>{children}</div>
 }
 
 function Placeholder({ text }: { text: string }) {

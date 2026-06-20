@@ -3,15 +3,15 @@ import { ResearchService } from '../services/ResearchService'
 
 const svc = new ResearchService()
 
-export async function listResearchSources(request: FastifyRequest<{ Params: { accountId: string } }>, reply: FastifyReply) {
-  return reply.send({ data: await svc.list(request.params.accountId) })
+export async function listResearchSources(_request: FastifyRequest, reply: FastifyReply) {
+  return reply.send({ data: await svc.list() })
 }
 
 export async function createResearchSource(
-  request: FastifyRequest<{ Params: { accountId: string }; Body: { name: string; category?: string; sourceType?: string; sourceUrl: string } }>,
+  request: FastifyRequest<{ Body: { name: string; category?: string; sourceType?: string; sourceUrl: string } }>,
   reply: FastifyReply,
 ) {
-  return reply.status(201).send({ data: await svc.create(request.params.accountId, request.body) })
+  return reply.status(201).send({ data: await svc.create(request.body) })
 }
 
 export async function getResearchSource(request: FastifyRequest<{ Params: { sourceId: string } }>, reply: FastifyReply) {
@@ -32,6 +32,13 @@ export async function deleteResearchSource(request: FastifyRequest<{ Params: { s
 
 export async function checkResearchSource(request: FastifyRequest<{ Params: { sourceId: string } }>, reply: FastifyReply) {
   return reply.send({ data: await svc.checkLatest(request.params.sourceId) })
+}
+
+export async function checkResearchSources(
+  request: FastifyRequest<{ Body: { category?: string } }>,
+  reply: FastifyReply,
+) {
+  return reply.send({ data: await svc.checkMany(request.body?.category) })
 }
 
 export async function listResearchItems(

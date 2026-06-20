@@ -26,29 +26,10 @@ model Session {
   createdAt DateTime @default(now())
 }
 
-model Account {
-  id              String           @id @default(cuid())
-  name            String
-  slug            String           @unique
-  category        String?
-  phone           String?
-  email           String?
-  description     String?          @db.Text
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  pipelines       Pipeline[]
-  destinations    Destination[]
-  researchSources ResearchSource[]
-  imageAssets     ImageAsset[]
-  schedules       Schedule[]
-}
-
 model Pipeline {
   id              String                   @id @default(cuid())
-  accountId       String
-  account         Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   name            String
-  slug            String
+  slug            String                   @unique
   description     String?
   category        String?
   status          String                   @default("draft")
@@ -69,7 +50,6 @@ model Pipeline {
   imageAssets     ImageAsset[]
   scheduleActions SchedulePipelineAction[]
 
-  @@unique([accountId, slug])
 }
 
 model PipelineVariable {
@@ -111,8 +91,6 @@ model PipelineAgent {
 
 model ImageAsset {
   id               String          @id @default(cuid())
-  accountId        String?
-  account          Account?        @relation(fields: [accountId], references: [id], onDelete: SetNull)
   pipelineId       String?
   pipeline         Pipeline?       @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
   agentId          String?
@@ -133,7 +111,6 @@ model ImageAsset {
 
 model PipelineRun {
   id                          String                     @id @default(cuid())
-  accountId                   String
   pipelineId                  String
   pipeline                    Pipeline                   @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   title                       String?
@@ -190,8 +167,6 @@ model RunAsset {
 
 model Destination {
   id                 String           @id @default(cuid())
-  accountId          String
-  account            Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
   type               String           @default("wordpress")
   name               String
   siteUrl            String
@@ -221,10 +196,8 @@ model PublishAttempt {
 
 model ResearchSource {
   id                     String                          @id @default(cuid())
-  accountId              String
-  account                Account                         @relation(fields: [accountId], references: [id], onDelete: Cascade)
   name                   String
-  slug                   String
+  slug                   String                          @unique
   category               String?
   sourceType             String                          @default("youtube")
   sourceUrl              String                          @map("youtubeUrl")
@@ -238,15 +211,11 @@ model ResearchSource {
   items                  ResearchItem[]
   scheduleSources        ScheduleSource[]
   scheduleTriggerSources SchedulePipelineTriggerSource[]
-
-  @@unique([accountId, slug])
 }
 
 model Schedule {
   id              String                   @id @default(cuid())
-  accountId       String
-  account         Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  name            String
+  name            String                   @unique
   enabled         Boolean                  @default(false)
   cadenceType     String                   @default("manual")
   timezone        String                   @default("UTC")
@@ -262,7 +231,6 @@ model Schedule {
   pipelineActions SchedulePipelineAction[]
   executions      ScheduleExecution[]
 
-  @@unique([accountId, name])
   @@index([enabled, nextRunAt])
 }
 

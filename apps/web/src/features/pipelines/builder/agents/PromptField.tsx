@@ -21,7 +21,7 @@ interface Props {
 
 export function PromptField({ label, value, onChange, promptKind, pipeline, agent, placeholder }: Props) {
   const promptAssist = usePromptAssist()
-  const { data: researchData } = useResearchSources(pipeline.accountId)
+  const { data: researchData } = useResearchSources()
   const [showAssist, setShowAssist] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [suggested, setSuggested] = useState('')

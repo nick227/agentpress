@@ -6,6 +6,7 @@ import { useGenerateImageAsset, useImageAssets } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { cn } from '@/lib/utils'
+import { useSelectAsset } from './useSelectAsset'
 
 type ImageAsset = components['schemas']['ImageAsset']
 type ImageMode = 'selected' | 'generate' | 'none'
@@ -47,7 +48,7 @@ export function ImageAgentPanel({
   const [phase, setPhase] = useState<GenPhase>('idle')
   const [elapsedSec, setElapsedSec] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [selectingId, setSelectingId] = useState<string | null>(null)
+  const { selectingId, handleSelect } = useSelectAsset(onSelectAsset)
 
   const busy = phase !== 'idle' || generateImage.isPending || Boolean(selectingId)
   const selectedAsset = imageAssets.find((asset) => asset.id === selectedImageAssetId)
@@ -96,17 +97,6 @@ export function ImageAgentPanel({
     }
   }
 
-  async function handleSelect(asset: ImageAsset) {
-    if (asset.status === 'failed') return
-    setSelectingId(asset.id)
-    try {
-      await onSelectAsset(asset)
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Could not select image')
-    } finally {
-      setSelectingId(null)
-    }
-  }
 
   const generateLabel = phase === 'saving'
     ? 'Saving…'

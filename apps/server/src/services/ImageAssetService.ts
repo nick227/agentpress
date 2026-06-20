@@ -26,7 +26,7 @@ export class ImageAssetService {
   private async resolvePipeline(idOrSlug: string) {
     const pipeline = await db.pipeline.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-      select: { id: true, accountId: true },
+      select: { id: true },
     })
     if (!pipeline) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
     return pipeline
@@ -79,7 +79,6 @@ export class ImageAssetService {
 
     const draft = await db.imageAsset.create({
       data: {
-        accountId: pipeline.accountId,
         pipelineId: pipeline.id,
         agentId: agent.id,
         agentUid: agent.uid,
@@ -94,7 +93,6 @@ export class ImageAssetService {
     })
 
     const saved = await assets.saveImageAssetFromUrl({
-      accountId: pipeline.accountId,
       assetId: draft.id,
       imageUrl: generated.url,
     })
@@ -130,7 +128,6 @@ export class ImageAssetService {
 
     const draft = await db.imageAsset.create({
       data: {
-        accountId: pipeline.accountId,
         pipelineId: pipeline.id,
         agentId: agent.id,
         agentUid: agent.uid,
@@ -143,7 +140,6 @@ export class ImageAssetService {
     })
 
     const saved = assets.saveImageAssetFromBuffer({
-      accountId: pipeline.accountId,
       assetId: draft.id,
       buffer,
       filename: `${draft.id}.${ext}`,

@@ -5,17 +5,14 @@ import type { components } from '../generated/types'
 type PipelineVariableInput = components['schemas']['PipelineVariableInput']
 type PipelineAgentInput = components['schemas']['PipelineAgentInput']
 
-export function usePipelines(accountId: string) {
+export function usePipelines() {
   return useQuery({
-    queryKey: ['pipelines', accountId],
+    queryKey: ['pipelines'],
     queryFn: async () => {
-      const { data, error, response } = await getApiClient().GET('/api/accounts/{accountId}/pipelines', {
-        params: { path: { accountId } },
-      })
+      const { data, error, response } = await getApiClient().GET('/api/pipelines')
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    enabled: Boolean(accountId),
   })
 }
 
@@ -36,16 +33,13 @@ export function usePipeline(pipelineId: string) {
 export function useCreatePipeline() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ accountId, ...body }: { accountId: string; name: string; description?: string }) => {
-      const { data, error, response } = await getApiClient().POST('/api/accounts/{accountId}/pipelines', {
-        params: { path: { accountId } },
-        body,
-      })
+    mutationFn: async (body: { name: string; description?: string }) => {
+      const { data, error, response } = await getApiClient().POST('/api/pipelines', { body })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: ['pipelines', accountId] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
@@ -81,6 +75,7 @@ export function useUpdatePipeline() {
         if (!current || typeof current !== 'object') return current
         return { ...current, data: data.data }
       })
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
@@ -89,15 +84,15 @@ export function useUpdatePipeline() {
 export function useDeletePipeline() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ pipelineId, accountId }: { pipelineId: string; accountId: string }) => {
+    mutationFn: async (pipelineId: string) => {
       const { data, error, response } = await getApiClient().DELETE('/api/pipelines/{pipelineId}', {
         params: { path: { pipelineId } },
       })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: ['pipelines', accountId] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })

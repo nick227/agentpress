@@ -44,7 +44,6 @@ export async function getPipelineRun(request: any, reply: any) {
   return reply.send({
     data: {
       id: run.id,
-      accountId: run.accountId,
       pipelineId: run.pipelineId,
       title: run.title ?? undefined,
       status: run.status,

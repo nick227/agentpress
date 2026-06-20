@@ -1,17 +1,12 @@
 import { db, Prisma } from '@project/db'
 import { encrypt, decrypt } from './PipelineRunService'
 import { WordPressService } from './WordPressService'
+import { parseCategoryIds } from './serviceUtils'
 
 const wp = new WordPressService()
 
-function parseCategoryIds(value: unknown): number[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0)
-}
-
 function formatDestination(d: {
   id: string
-  accountId: string
   type: string
   name: string
   siteUrl: string
@@ -25,7 +20,6 @@ function formatDestination(d: {
   const defaultCategoryIds = parseCategoryIds(d.defaultCategoryIds)
   return {
     id: d.id,
-    accountId: d.accountId,
     type: d.type,
     name: d.name,
     siteUrl: d.siteUrl,
@@ -39,12 +33,17 @@ function formatDestination(d: {
 }
 
 export class DestinationService {
-  async list(accountId: string) {
-    const destinations = await db.destination.findMany({ where: { accountId }, orderBy: { name: 'asc' } })
+  async get(destinationId: string) {
+    const destination = await db.destination.findUnique({ where: { id: destinationId } })
+    return destination ? formatDestination(destination) : null
+  }
+
+  async list() {
+    const destinations = await db.destination.findMany({ orderBy: { name: 'asc' } })
     return destinations.map(formatDestination)
   }
 
-  async create(accountId: string, data: {
+  async create(data: {
     name: string
     siteUrl: string
     username?: string
@@ -54,7 +53,6 @@ export class DestinationService {
   }) {
     const d = await db.destination.create({
       data: {
-        accountId,
         name: data.name,
         siteUrl: data.siteUrl,
         username: data.username,
@@ -68,6 +66,9 @@ export class DestinationService {
 
   async update(destinationId: string, data: {
     name?: string
+    siteUrl?: string
+    username?: string
+    secret?: string
     defaultStatus?: 'draft' | 'publish'
     defaultCategoryIds?: number[] | null
   }) {
@@ -75,6 +76,9 @@ export class DestinationService {
       where: { id: destinationId },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.siteUrl !== undefined ? { siteUrl: data.siteUrl } : {}),
+        ...(data.username !== undefined ? { username: data.username } : {}),
+        ...(data.secret ? { encryptedSecret: encrypt(data.secret) } : {}),
         ...(data.defaultStatus !== undefined ? { defaultStatus: data.defaultStatus } : {}),
         ...(data.defaultCategoryIds !== undefined
           ? {
@@ -102,6 +106,13 @@ export class DestinationService {
   }
 
   async delete(destinationId: string) {
-    await db.destination.delete({ where: { id: destinationId } })
+    const publishAttempts = await db.publishAttempt.count({ where: { destinationId } })
+    if (publishAttempts > 0) {
+      throw Object.assign(new Error('This destination has publish history and cannot be deleted'), { statusCode: 409 })
+    }
+    await db.$transaction([
+      db.pipeline.updateMany({ where: { destinationId }, data: { destinationId: null } }),
+      db.destination.delete({ where: { id: destinationId } }),
+    ])
   }
 }

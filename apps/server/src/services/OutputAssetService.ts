@@ -24,27 +24,26 @@ export class OutputAssetService {
     this.root = resolve(process.env.OUTPUT_ROOT ?? './outputs')
   }
 
-  getRunFolder(accountSlug: string, pipelineSlug: string, runId: string): string {
-    const folder = join(this.root, accountSlug, pipelineSlug, runId)
+  getRunFolder(pipelineSlug: string, runId: string): string {
+    const folder = join(this.root, pipelineSlug, runId)
     mkdirSync(folder, { recursive: true })
     return folder
   }
 
-  getImageAssetFolder(accountId: string): string {
-    const folder = join(this.root, 'image-assets', accountId)
+  getImageAssetFolder(): string {
+    const folder = join(this.root, 'image-assets')
     mkdirSync(folder, { recursive: true })
     return folder
   }
 
   async saveImageAssetFromUrl(input: {
-    accountId: string
     assetId: string
     imageUrl: string
     filename?: string
   }): Promise<{ path: string; filename: string } | null> {
     try {
       const filename = input.filename ?? `${input.assetId}.png`
-      const absolutePath = join(this.getImageAssetFolder(input.accountId), filename)
+      const absolutePath = join(this.getImageAssetFolder(), filename)
       const buffer = await this.imageBuffer(input.imageUrl)
       if (!buffer) return null
       writeFileSync(absolutePath, buffer)
@@ -55,14 +54,13 @@ export class OutputAssetService {
   }
 
   saveImageAssetFromBuffer(input: {
-    accountId: string
     assetId: string
     buffer: Buffer
     filename?: string
   }): { path: string; filename: string } | null {
     try {
       const filename = input.filename ?? `${input.assetId}.png`
-      const absolutePath = join(this.getImageAssetFolder(input.accountId), filename)
+      const absolutePath = join(this.getImageAssetFolder(), filename)
       writeFileSync(absolutePath, input.buffer)
       return { path: absolutePath, filename }
     } catch {
@@ -72,14 +70,13 @@ export class OutputAssetService {
 
   async saveImageFromUrl(input: {
     runId: string
-    accountSlug: string
     pipelineSlug: string
     imageUrl: string
     relativePath: string
     label: string
   }): Promise<{ path: string; relativePath: string } | null> {
     try {
-      const folder = this.getRunFolder(input.accountSlug, input.pipelineSlug, input.runId)
+      const folder = this.getRunFolder(input.pipelineSlug, input.runId)
       const absolutePath = join(folder, input.relativePath)
       mkdirSync(dirname(absolutePath), { recursive: true })
 
@@ -105,7 +102,6 @@ export class OutputAssetService {
 
   async copyImageAsset(input: {
     runId: string
-    accountSlug: string
     pipelineSlug: string
     sourcePath: string
     relativePath: string
@@ -113,7 +109,7 @@ export class OutputAssetService {
   }): Promise<{ path: string; relativePath: string } | null> {
     try {
       if (!existsSync(resolve(input.sourcePath))) return null
-      const folder = this.getRunFolder(input.accountSlug, input.pipelineSlug, input.runId)
+      const folder = this.getRunFolder(input.pipelineSlug, input.runId)
       const absolutePath = join(folder, input.relativePath)
       mkdirSync(dirname(absolutePath), { recursive: true })
       copyFileSync(resolve(input.sourcePath), absolutePath)
@@ -134,7 +130,6 @@ export class OutputAssetService {
 
   async saveRunAssets(
     runId: string,
-    accountSlug: string,
     pipelineSlug: string,
     generatedPost: {
       title: string
@@ -146,7 +141,7 @@ export class OutputAssetService {
     },
     agentPrompts: RunAgentPrompt[],
   ): Promise<{ folder: string; thumbnailLocalPath: string | null }> {
-    const folder = this.getRunFolder(accountSlug, pipelineSlug, runId)
+    const folder = this.getRunFolder(pipelineSlug, runId)
     const assets: Array<{ type: string; label: string; filename: string; path: string }> = []
 
     this._write(folder, 'agents.json', JSON.stringify(agentPrompts, null, 2))
@@ -198,36 +193,26 @@ export class OutputAssetService {
     return { folder, thumbnailLocalPath }
   }
 
+  private readFileSafe(filePath: string, filename: string): { filename: string; buffer: Buffer } | null {
+    const resolved = resolve(filePath)
+    const root = resolve(this.root)
+    const rel = relative(root, resolved)
+    if (rel.startsWith('..') || rel.includes(`..${sep}`)) return null
+    return { filename, buffer: readFileSync(resolved) }
+  }
+
   async getAssetFile(runId: string, assetId: string): Promise<{ filename: string; buffer: Buffer } | null> {
     const asset = await db.runAsset.findFirst({
       where: { id: assetId, pipelineRunId: runId },
     })
     if (!asset || !existsSync(asset.path)) return null
-
-    const resolved = resolve(asset.path)
-    const root = resolve(this.root)
-    const rel = relative(root, resolved)
-    if (rel.startsWith('..') || rel.includes(`..${sep}`)) return null
-
-    return {
-      filename: basename(asset.filename),
-      buffer: readFileSync(resolved),
-    }
+    return this.readFileSafe(asset.path, basename(asset.filename))
   }
 
   async getImageAssetFile(assetId: string): Promise<{ filename: string; buffer: Buffer } | null> {
     const asset = await db.imageAsset.findUnique({ where: { id: assetId } })
     if (!asset || !existsSync(asset.path)) return null
-
-    const resolved = resolve(asset.path)
-    const root = resolve(this.root)
-    const rel = relative(root, resolved)
-    if (rel.startsWith('..') || rel.includes(`..${sep}`)) return null
-
-    return {
-      filename: basename(asset.path),
-      buffer: readFileSync(resolved),
-    }
+    return this.readFileSafe(asset.path, basename(asset.path))
   }
 
   async readImageBytes(input: {

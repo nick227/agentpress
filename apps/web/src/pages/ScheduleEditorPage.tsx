@@ -3,7 +3,6 @@ import { ArrowDown, ArrowUp, ChevronLeft, Play, Plus, Trash2 } from 'lucide-reac
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  useAccount,
   useCreateSchedule,
   useDeleteSchedule,
   usePipeline,
@@ -17,6 +16,7 @@ import {
 } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
+import { Field } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
 import { Skeleton } from '@/components/ui/Skeleton'
 
@@ -57,14 +57,12 @@ const defaultForm = (): FormState => ({
 })
 
 export function ScheduleEditorPage() {
-  const { accountSlug, scheduleId = 'new' } = useParams<{ accountSlug: string; scheduleId: string }>()
+  const { scheduleId = 'new' } = useParams<{ scheduleId: string }>()
   const isNew = scheduleId === 'new'
   const navigate = useNavigate()
-  const { data: accountData } = useAccount(accountSlug!)
-  const account = accountData?.data
   const { data: scheduleData, isLoading: scheduleLoading } = useSchedule(isNew ? '' : scheduleId)
-  const { data: sourcesData } = useResearchSources(account?.id ?? '')
-  const { data: pipelinesData } = usePipelines(account?.id ?? '')
+  const { data: sourcesData } = useResearchSources()
+  const { data: pipelinesData } = usePipelines()
   const { data: executionsData } = useScheduleExecutions(isNew ? '' : scheduleId)
   const create = useCreateSchedule()
   const update = useUpdateSchedule()
@@ -165,13 +163,12 @@ export function ScheduleEditorPage() {
   }
 
   async function handleSave() {
-    if (!account) return
     try {
       const result = isNew
-        ? await create.mutateAsync({ accountId: account.id, ...requestBody() })
-        : await update.mutateAsync({ scheduleId, accountId: account.id, ...requestBody() })
+        ? await create.mutateAsync(requestBody())
+        : await update.mutateAsync({ scheduleId, ...requestBody() })
       toast.success(isNew ? 'Schedule created' : 'Schedule saved')
-      if (isNew) navigate(`/accounts/${account.slug}/schedules/${result.data.id}`, { replace: true })
+      if (isNew) navigate(`/schedules/${result.data.id}`, { replace: true })
       else setBaseline(JSON.stringify(form))
     } catch (error: any) {
       toast.error(error.message ?? 'Could not save schedule')
@@ -188,18 +185,17 @@ export function ScheduleEditorPage() {
   }
 
   async function handleDelete() {
-    if (!account) return
-    await remove.mutateAsync({ scheduleId, accountId: account.id })
+    await remove.mutateAsync(scheduleId)
     toast.success('Schedule deleted')
-    navigate(`/accounts/${account.slug}/schedules`, { replace: true })
+    navigate('/schedules', { replace: true })
   }
 
-  if (!account || (!isNew && scheduleLoading)) return <div className="p-6 max-w-4xl mx-auto"><Skeleton className="h-48 w-full" /></div>
+  if (!isNew && scheduleLoading) return <div className="p-6 max-w-4xl mx-auto"><Skeleton className="h-48 w-full" /></div>
   if (!isNew && !schedule) return <div className="p-6">Schedule not found.</div>
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <Link to={`/accounts/${account.slug}/schedules`} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link to="/schedules" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft size={14} /> Schedules
       </Link>
 
@@ -233,7 +229,7 @@ export function ScheduleEditorPage() {
 
       <section className="rounded border p-4 space-y-3">
         <div><h2 className="text-sm font-semibold">Research feeds</h2><p className="text-xs text-muted-foreground">Each selected feed is checked once per execution.</p></div>
-        {sources.length === 0 ? <p className="text-sm text-muted-foreground">No research feeds in this account.</p> : (
+        {sources.length === 0 ? <p className="text-sm text-muted-foreground">No research feeds yet.</p> : (
           <div className="grid sm:grid-cols-2 gap-2">
             {sources.map((source) => <label key={source.id} className="flex items-center gap-2 rounded border px-3 py-2 text-sm"><input type="checkbox" checked={form.sourceIds.includes(source.id)} onChange={() => toggleSource(source.id)} />{source.name}</label>)}
           </div>
@@ -244,11 +240,11 @@ export function ScheduleEditorPage() {
         <div className="flex items-center justify-between"><div><h2 className="text-sm font-semibold">Pipeline actions</h2><p className="text-xs text-muted-foreground">Actions evaluate freshness independently.</p></div><Button variant="outline" size="sm" disabled={form.pipelineActions.length === pipelines.length} onClick={addPipeline}><Plus size={13} /> Add pipeline</Button></div>
         {form.pipelineActions.length === 0 && <p className="text-sm text-muted-foreground">This schedule only checks research feeds.</p>}
         {form.pipelineActions.map((action, index) => (
-          <PipelineActionCard key={action.id ?? `${action.pipelineId}-${index}`} action={action} index={index} actionCount={form.pipelineActions.length} accountSlug={account.slug} sourceIds={form.sourceIds} sources={sources} pipelines={pipelines} usedPipelineIds={form.pipelineActions.map((item) => item.pipelineId)} onChange={(next) => updateAction(index, next)} onMove={(direction) => moveAction(index, direction)} onRemove={() => patch('pipelineActions', form.pipelineActions.filter((_, itemIndex) => itemIndex !== index))} />
+          <PipelineActionCard key={action.id ?? `${action.pipelineId}-${index}`} action={action} index={index} actionCount={form.pipelineActions.length} sourceIds={form.sourceIds} sources={sources} pipelines={pipelines} usedPipelineIds={form.pipelineActions.map((item) => item.pipelineId)} onChange={(next) => updateAction(index, next)} onMove={(direction) => moveAction(index, direction)} onRemove={() => patch('pipelineActions', form.pipelineActions.filter((_, itemIndex) => itemIndex !== index))} />
         ))}
       </section>
 
-      {!isNew && <ExecutionHistory executions={executions} accountSlug={account.slug} pipelines={pipelines} />}
+      {!isNew && <ExecutionHistory executions={executions} pipelines={pipelines} />}
 
       {!isNew && <section className="border-t pt-4">{confirmDelete ? <div className="flex gap-2"><Button variant="destructive" size="sm" loading={remove.isPending} onClick={handleDelete}>Delete schedule</Button><Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>Cancel</Button></div> : <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}><Trash2 size={13} /> Delete schedule</Button>}</section>}
     </div>
@@ -259,7 +255,6 @@ function PipelineActionCard({ action, index, actionCount, sourceIds, sources, pi
   action: ActionForm
   index: number
   actionCount: number
-  accountSlug: string
   sourceIds: string[]
   sources: components['schemas']['ResearchSource'][]
   pipelines: components['schemas']['PipelineSummary'][]
@@ -299,10 +294,7 @@ function PipelineActionCard({ action, index, actionCount, sourceIds, sources, pi
   )
 }
 
-function ExecutionHistory({ executions, accountSlug, pipelines }: { executions: components['schemas']['ScheduleExecution'][]; accountSlug: string; pipelines: components['schemas']['PipelineSummary'][] }) {
-  return <section className="rounded border p-4 space-y-3"><h2 className="text-sm font-semibold">Execution history</h2>{executions.length === 0 ? <p className="text-sm text-muted-foreground">No executions yet.</p> : executions.map((execution) => <details key={execution.id} className="rounded border px-3 py-2"><summary className="cursor-pointer text-sm"><span className="font-medium capitalize">{execution.status}</span><span className="text-muted-foreground"> · {execution.origin} · {new Date(execution.createdAt).toLocaleString()}</span></summary><div className="pt-3 space-y-2">{execution.skipReason && <p className="text-xs text-muted-foreground">{execution.skipReason}</p>}{execution.error && <p className="text-xs text-destructive">{execution.error}</p>}{execution.researchChecks.map((check) => <p key={check.id} className="text-xs">{check.sourceName}: {check.status}{check.status === 'completed' ? ` · ${check.newCount} new` : ''}{check.error ? ` · ${check.error}` : ''}</p>)}{execution.pipelineExecutions.map((item) => { const pipeline = pipelines.find((entry) => entry.id === item.pipelineId); return <div key={item.id} className="text-xs"><p>{item.pipelineName}: {item.status}{item.reason ? ` · ${item.reason}` : ''}{item.pipelineRunId && pipeline ? <> · <Link className="text-primary hover:underline" to={`/accounts/${accountSlug}/pipelines/${pipeline.slug}?run=${item.pipelineRunId}`}>View run</Link></> : null}</p>{item.pinnedItems.map((pinned) => <p key={pinned.itemId} className="text-muted-foreground pl-3">Pinned: {pinned.title}</p>)}</div> })}</div></details>)}</section>
+function ExecutionHistory({ executions, pipelines }: { executions: components['schemas']['ScheduleExecution'][]; pipelines: components['schemas']['PipelineSummary'][] }) {
+  return <section className="rounded border p-4 space-y-3"><h2 className="text-sm font-semibold">Execution history</h2>{executions.length === 0 ? <p className="text-sm text-muted-foreground">No executions yet.</p> : executions.map((execution) => <details key={execution.id} className="rounded border px-3 py-2"><summary className="cursor-pointer text-sm"><span className="font-medium capitalize">{execution.status}</span><span className="text-muted-foreground"> · {execution.origin} · {new Date(execution.createdAt).toLocaleString()}</span></summary><div className="pt-3 space-y-2">{execution.skipReason && <p className="text-xs text-muted-foreground">{execution.skipReason}</p>}{execution.error && <p className="text-xs text-destructive">{execution.error}</p>}{execution.researchChecks.map((check) => <p key={check.id} className="text-xs">{check.sourceName}: {check.status}{check.status === 'completed' ? ` · ${check.newCount} new` : ''}{check.error ? ` · ${check.error}` : ''}</p>)}{execution.pipelineExecutions.map((item) => { const pipeline = pipelines.find((entry) => entry.id === item.pipelineId); return <div key={item.id} className="text-xs"><p>{item.pipelineName}: {item.status}{item.reason ? ` · ${item.reason}` : ''}{item.pipelineRunId && pipeline ? <> · <Link className="text-primary hover:underline" to={`/pipelines/${pipeline.slug}?run=${item.pipelineRunId}`}>View run</Link></> : null}</p>{item.pinnedItems.map((pinned) => <p key={pinned.itemId} className="text-muted-foreground pl-3">Pinned: {pinned.title}</p>)}</div> })}</div></details>)}</section>
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block space-y-1.5"><span className="text-xs font-medium text-muted-foreground">{label}</span>{children}</label>
-}

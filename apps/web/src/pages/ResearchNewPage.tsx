@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useNavigate } from 'react-router-dom'
-import { X, Youtube, MessageSquare, Rss } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Youtube, MessageSquare, Rss } from 'lucide-react'
 import { useCreateResearchSource } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
-const CATEGORIES = ['politics', 'technology', 'financial', 'health', 'entertainment', 'sports', 'education', 'science', 'business', 'culture']
+const CATEGORIES = ['ai', 'technology', 'financial', 'culture', 'politics', 'business', 'science', 'health', 'education', 'entertainment', 'sports']
 
 const SOURCE_TYPES = [
   {
@@ -35,13 +35,7 @@ const SOURCE_TYPES = [
   },
 ]
 
-interface Props {
-  accountId: string
-  accountSlug: string
-  onClose: () => void
-}
-
-export function CreateResearchSourceDialog({ accountId, accountSlug, onClose }: Props) {
+export function ResearchNewPage() {
   const navigate = useNavigate()
   const create = useCreateResearchSource()
   const [sourceType, setSourceType] = useState('youtube')
@@ -58,31 +52,27 @@ export function CreateResearchSourceDialog({ accountId, accountSlug, onClose }: 
     if (!name.trim() || !sourceUrl.trim()) return
     try {
       const result = await create.mutateAsync({
-        accountId,
         name: name.trim(),
         sourceType: sourceType as 'youtube' | 'reddit' | 'rss',
         sourceUrl: sourceUrl.trim(),
         category: effectiveCategory || undefined,
       })
       toast.success('Research source created')
-      onClose()
-      navigate(`/accounts/${accountSlug}/research/${result.data.slug}`)
+      navigate(`/research/${result.data.slug}`, { replace: true })
     } catch (err: any) {
       toast.error(err.message ?? 'Failed to create source')
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-lg border w-full max-w-sm shadow-xl">
-        <div className="px-5 py-4 border-b flex items-center justify-between">
-          <h2 className="text-sm font-semibold">New Research Source</h2>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X size={15} />
-          </Button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Source type picker */}
+    <div className="max-w-lg mx-auto pb-10">
+      <Link to="/" className="mx-6 mt-5 inline-flex text-sm text-muted-foreground hover:text-foreground">← Home</Link>
+
+      <div className="px-6 pt-4">
+        <h1 className="text-lg font-semibold mb-1">New Research Source</h1>
+        <p className="text-sm text-muted-foreground mb-6">Connect a YouTube channel, subreddit, or RSS feed to pull content into your pipelines.</p>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-xs font-medium mb-1.5">Source type</label>
             <div className="grid grid-cols-3 gap-1.5">
@@ -93,13 +83,13 @@ export function CreateResearchSourceDialog({ accountId, accountSlug, onClose }: 
                     key={t.id}
                     type="button"
                     onClick={() => { setSourceType(t.id); setSourceUrl('') }}
-                    className={`flex flex-col items-center gap-1 py-2 px-1 rounded border text-xs font-medium transition-colors ${
+                    className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded border text-xs font-medium transition-colors ${
                       sourceType === t.id
                         ? 'border-foreground bg-foreground/5 text-foreground'
                         : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30'
                     }`}
                   >
-                    <Icon size={14} />
+                    <Icon size={15} />
                     {t.label}
                   </button>
                 )
@@ -130,7 +120,9 @@ export function CreateResearchSourceDialog({ accountId, accountSlug, onClose }: 
           </div>
 
           <div>
-            <label className="block text-xs font-medium mb-1">Category <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <label className="block text-xs font-medium mb-1.5">
+              Category <span className="text-muted-foreground font-normal">(optional)</span>
+            </label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {CATEGORIES.map((cat) => (
                 <button
@@ -169,10 +161,12 @@ export function CreateResearchSourceDialog({ accountId, accountSlug, onClose }: 
             )}
           </div>
 
-          <div className="flex gap-2 justify-end pt-1">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <div className="flex gap-2 pt-1">
             <Button type="submit" size="sm" loading={create.isPending} disabled={!name.trim() || !sourceUrl.trim()}>
-              Create
+              Create source
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => navigate('/')}>
+              Cancel
             </Button>
           </div>
         </form>

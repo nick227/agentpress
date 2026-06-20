@@ -1,65 +1,37 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { usePipeline } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { FocusSidebarHeader } from '@/components/layout/FocusSidebarHeader'
-import { SidebarPortal } from '@/components/layout/SidebarPortal'
-import { useFocusSidebar } from '@/components/layout/Shell'
-import { BuilderSidebar } from '@/features/pipelines/builder/BuilderSidebar'
 import { DetailPanel } from '@/features/pipelines/builder/DetailPanel'
 import {
   PipelineSelectionProvider,
   type Selection,
 } from '@/features/pipelines/builder/pipelineSelectionContext'
 
-const PIPELINE_SHELL_CHROME = {
-  mainClassName: 'max-w-none mx-0 overflow-hidden',
-} as const
-
-
 export function PipelineBuilderPage() {
-  const { accountSlug, pipelineSlug } = useParams<{ accountSlug: string; pipelineSlug: string }>()
-  const [searchParams] = useSearchParams()
+  const { pipelineSlug } = useParams<{ pipelineSlug: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { data, isLoading } = usePipeline(pipelineSlug!)
-  const [selection, setSelection] = useState<Selection>(() => {
-    const runId = searchParams.get('run')
-    return runId ? { type: 'run', id: runId } : { type: 'setup' }
-  })
 
   const pipeline = data?.data
   const recentRuns = useMemo(() => data?.recentRuns ?? [], [data?.recentRuns])
-  const sidebar = useMemo(() => {
-    if (isLoading) {
-      return <FocusSidebarSkeleton rows={4} />
+  const selection = useMemo<Selection>(() => {
+    const variableId = searchParams.get('variable')
+    const agentId = searchParams.get('agent')
+    const runId = searchParams.get('run')
+    if (variableId) return { type: 'variable', id: variableId }
+    if (agentId) return { type: 'agent', id: agentId }
+    if (runId) return { type: 'run', id: runId }
+    return { type: 'setup' }
+  }, [searchParams])
+
+  function handleSelect(next: Selection) {
+    if (next.type === 'setup') {
+      setSearchParams({}, { replace: false })
+      return
     }
-
-    if (!pipeline) {
-      return (
-        <FocusSidebarHeader
-          accountSlug={accountSlug!}
-          title="Pipeline not found"
-          eyebrow="Pipeline"
-          allHref={`/accounts/${accountSlug}#pipelines`}
-          allLabel="All Pipelines"
-        />
-      )
-    }
-
-    return (
-      <>
-        <FocusSidebarHeader
-          accountSlug={accountSlug!}
-          title={pipeline.name}
-          eyebrow="Pipeline"
-          allHref={`/accounts/${accountSlug}#pipelines`}
-          allLabel="All Pipelines"
-        />
-        <BuilderSidebar pipeline={pipeline} runs={recentRuns} pipelineId={pipelineSlug!} />
-      </>
-    )
-  }, [accountSlug, isLoading, pipeline, pipelineSlug, recentRuns])
-
-  useFocusSidebar(PIPELINE_SHELL_CHROME)
+    setSearchParams({ [next.type]: next.id }, { replace: false })
+  }
 
   let content: React.ReactNode
   if (isLoading) {
@@ -76,29 +48,15 @@ export function PipelineBuilderPage() {
     )
   } else {
     content = (
-      <div className="h-screen overflow-hidden bg-background">
-        <div className="h-full overflow-auto">
-          <DetailPanel pipeline={pipeline} runs={recentRuns} pipelineId={pipelineSlug!} />
-        </div>
+      <div className="min-h-screen bg-background">
+        <DetailPanel pipeline={pipeline} runs={recentRuns} pipelineId={pipelineSlug!} />
       </div>
     )
   }
 
   return (
-    <PipelineSelectionProvider selection={selection} onSelect={setSelection}>
-      <SidebarPortal>{sidebar}</SidebarPortal>
+    <PipelineSelectionProvider selection={selection} onSelect={handleSelect}>
       {content}
     </PipelineSelectionProvider>
-  )
-}
-
-function FocusSidebarSkeleton({ rows }: { rows: number }) {
-  return (
-    <div className="p-4 space-y-3">
-      <Skeleton className="h-5 w-32" />
-      {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton key={i} className={i === 1 ? 'h-4 w-3/4' : 'h-4 w-full'} />
-      ))}
-    </div>
   )
 }

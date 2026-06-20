@@ -1,35 +1,27 @@
-import { CalendarClock, ChevronLeft, Plus } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useAccount, useSchedules } from '@project/sdk'
+import { CalendarClock, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useSchedules } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 export function SchedulesPage() {
-  const { accountSlug } = useParams<{ accountSlug: string }>()
   const navigate = useNavigate()
-  const { data: accountData, isLoading: accountLoading } = useAccount(accountSlug!)
-  const account = accountData?.data
-  const { data, isLoading } = useSchedules(account?.id ?? '')
+  const { data, isLoading } = useSchedules()
   const schedules = data?.data ?? []
 
-  if (accountLoading || isLoading) {
+  if (isLoading) {
     return <div className="p-6 max-w-4xl mx-auto space-y-3"><Skeleton className="h-7 w-44" /><Skeleton className="h-20 w-full" /></div>
   }
-  if (!account) return <div className="p-6">Account not found.</div>
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <Link to={`/accounts/${account.slug}`} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-5">
-        <ChevronLeft size={14} />
-        {account.name}
-      </Link>
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-lg font-semibold">Schedules</h1>
           <p className="text-sm text-muted-foreground">Check research feeds and conditionally dispatch pipelines.</p>
         </div>
-        <Button size="sm" onClick={() => navigate(`/accounts/${account.slug}/schedules/new`)}>
+        <Button size="sm" onClick={() => navigate('/schedules/new')}>
           <Plus size={13} /> New schedule
         </Button>
       </div>
@@ -38,16 +30,17 @@ export function SchedulesPage() {
         <EmptyState
           icon={CalendarClock}
           title="No schedules"
-          description="Create account-level orchestration for research checks and pipeline runs."
-          action={{ label: 'New schedule', onClick: () => navigate(`/accounts/${account.slug}/schedules/new`) }}
+          description="Create a schedule to orchestrate research checks and pipeline runs."
+          action={{ label: 'New schedule', onClick: () => navigate('/schedules/new') }}
         />
       ) : (
         <div className="space-y-2">
           {schedules.map((schedule) => (
-            <Link
+            <button
               key={schedule.id}
-              to={`/accounts/${account.slug}/schedules/${schedule.id}`}
-              className="flex items-center justify-between rounded border bg-surface px-4 py-3 hover:bg-muted/40"
+              type="button"
+              onClick={() => navigate(`/schedules/${schedule.id}`)}
+              className="flex w-full items-center justify-between rounded border bg-surface px-4 py-3 hover:bg-muted/40 text-left"
             >
               <div>
                 <p className="text-sm font-medium">{schedule.name}</p>
@@ -61,7 +54,7 @@ export function SchedulesPage() {
                 </span>
                 {schedule.nextRunAt && <p className="text-xs text-muted-foreground mt-1">Next {new Date(schedule.nextRunAt).toLocaleString()}</p>}
               </div>
-            </Link>
+            </button>
           ))}
         </div>
       )}

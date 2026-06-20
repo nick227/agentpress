@@ -1,17 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient, ApiError } from '../client'
 
-export function useDestinations(accountId: string) {
+export function useDestinations() {
   return useQuery({
-    queryKey: ['destinations', accountId],
+    queryKey: ['destinations'],
     queryFn: async () => {
-      const { data, error, response } = await getApiClient().GET('/api/accounts/{accountId}/destinations', {
-        params: { path: { accountId } },
+      const { data, error, response } = await getApiClient().GET('/api/destinations')
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+  })
+}
+
+export function useDestination(destinationId: string) {
+  return useQuery({
+    queryKey: ['destination', destinationId],
+    queryFn: async () => {
+      const { data, error, response } = await getApiClient().GET('/api/destinations/{destinationId}', {
+        params: { path: { destinationId } },
       })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    enabled: Boolean(accountId),
+    enabled: Boolean(destinationId),
   })
 }
 
@@ -32,11 +43,7 @@ export function useWordPressCategories(destinationId?: string) {
 export function useCreateDestination() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({
-      accountId,
-      ...body
-    }: {
-      accountId: string
+    mutationFn: async (body: {
       name: string
       siteUrl: string
       username: string
@@ -44,15 +51,12 @@ export function useCreateDestination() {
       defaultStatus?: 'draft' | 'publish'
       defaultCategoryIds?: number[]
     }) => {
-      const { data, error, response } = await getApiClient().POST('/api/accounts/{accountId}/destinations', {
-        params: { path: { accountId } },
-        body,
-      })
+      const { data, error, response } = await getApiClient().POST('/api/destinations', { body })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: ['destinations', accountId] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['destinations'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
@@ -63,12 +67,13 @@ export function useUpdateDestination() {
   return useMutation({
     mutationFn: async ({
       destinationId,
-      accountId,
       ...body
     }: {
       destinationId: string
-      accountId: string
       name?: string
+      siteUrl?: string
+      username?: string
+      secret?: string
       defaultStatus?: 'draft' | 'publish'
       defaultCategoryIds?: number[] | null
     }) => {
@@ -79,8 +84,9 @@ export function useUpdateDestination() {
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId, destinationId }) => {
-      queryClient.invalidateQueries({ queryKey: ['destinations', accountId] })
+    onSuccess: (_data, { destinationId }) => {
+      queryClient.invalidateQueries({ queryKey: ['destinations'] })
+      queryClient.invalidateQueries({ queryKey: ['destination', destinationId] })
       queryClient.invalidateQueries({ queryKey: ['wordpress-categories', destinationId] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
@@ -90,15 +96,15 @@ export function useUpdateDestination() {
 export function useDeleteDestination() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ destinationId, accountId }: { destinationId: string; accountId: string }) => {
+    mutationFn: async (destinationId: string) => {
       const { data, error, response } = await getApiClient().DELETE('/api/destinations/{destinationId}', {
         params: { path: { destinationId } },
       })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: ['destinations', accountId] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['destinations'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })

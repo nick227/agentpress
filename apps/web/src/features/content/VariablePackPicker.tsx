@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { X, Check } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { useVariablePacks, useUpdatePipeline } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { CategoryTabBar } from './CategoryTabBar'
+import { ModalHeader } from './ModalHeader'
 
 type Pipeline = components['schemas']['Pipeline']
 type VariablePack = components['schemas']['VariablePack']
@@ -75,47 +77,13 @@ export function VariablePackPicker({ pipeline, pipelineId, onClose }: Props) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-lg border w-full max-w-2xl shadow-xl flex flex-col max-h-[80vh]">
-        {/* Header */}
-        <div className="px-5 py-4 border-b flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-sm font-semibold">Import Variable Pack</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              New variables are merged in — existing keys are never overwritten
-            </p>
-          </div>
-          <Button variant="ghost" size="icon-sm" onClick={onClose}>
-            <X size={15} />
-          </Button>
-        </div>
+        <ModalHeader
+          title="Import Variable Pack"
+          subtitle="New variables are merged in — existing keys are never overwritten"
+          onClose={onClose}
+        />
 
-        {/* Category tabs */}
-        <div className="px-5 py-3 border-b flex gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveCategory(null)}
-            className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              activeCategory === null
-                ? 'bg-foreground text-background'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-            }`}
-          >
-            All
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                activeCategory === cat.id
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
+        <CategoryTabBar categories={categories} activeCategory={activeCategory} onChange={setActiveCategory} />
 
         {/* Packs list */}
         <div className="overflow-y-auto flex-1 p-5 space-y-3">

@@ -71,6 +71,7 @@ export function useStartPipelineRun() {
     },
     onSuccess: (_data, { pipelineId }) => {
       queryClient.invalidateQueries({ queryKey: ['pipeline', pipelineId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }

@@ -1,4 +1,5 @@
 import { db, Prisma } from '@project/db'
+import { parseCategoryIds } from './serviceUtils'
 
 function toSlug(name: string): string {
   return name
@@ -7,27 +8,21 @@ function toSlug(name: string): string {
     .replace(/^-|-$/g, '')
 }
 
-async function uniqueSlug(accountId: string, base: string): Promise<string> {
+async function uniqueSlug(base: string): Promise<string> {
   let slug = base
   let suffix = 0
   while (true) {
-    const existing = await db.pipeline.findUnique({ where: { accountId_slug: { accountId, slug } } })
+    const existing = await db.pipeline.findUnique({ where: { slug } })
     if (!existing) return slug
     suffix++
     slug = `${base}-${suffix}`
   }
 }
 
-function parseCategoryIds(value: unknown): number[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0)
-}
-
 function formatPipeline(p: any) {
   const wpCategoryIds = parseCategoryIds(p.wpCategoryIds)
   return {
     id: p.id,
-    accountId: p.accountId,
     name: p.name,
     slug: p.slug,
     description: p.description ?? undefined,
@@ -77,9 +72,8 @@ export class PipelineService {
     return p.id
   }
 
-  async list(accountId: string) {
+  async list() {
     const pipelines = await db.pipeline.findMany({
-      where: { accountId },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { agents: true } },
@@ -89,7 +83,6 @@ export class PipelineService {
 
     return pipelines.map((p) => ({
       id: p.id,
-      accountId: p.accountId,
       name: p.name,
       slug: p.slug,
       description: p.description ?? undefined,
@@ -104,6 +97,7 @@ export class PipelineService {
   async get(pipelineId: string) {
     const p = await db.pipeline.findFirst({
       where: { OR: [{ id: pipelineId }, { slug: pipelineId }] },
+
       include: {
         variables: { orderBy: { sortOrder: 'asc' } },
         agents: { orderBy: { sortOrder: 'asc' } },
@@ -116,7 +110,6 @@ export class PipelineService {
       data: formatPipeline(p),
       recentRuns: p.runs.map((r) => ({
         id: r.id,
-        accountId: r.accountId,
         pipelineId: r.pipelineId,
         title: r.title ?? undefined,
         status: r.status,
@@ -132,11 +125,10 @@ export class PipelineService {
     }
   }
 
-  async create(accountId: string, data: { name: string; description?: string; category?: string }) {
-    const slug = await uniqueSlug(accountId, toSlug(data.name))
+  async create(data: { name: string; description?: string; category?: string }) {
+    const slug = await uniqueSlug(toSlug(data.name))
     const p = await db.pipeline.create({
       data: {
-        accountId,
         name: data.name,
         slug,
         description: data.description,
@@ -248,7 +240,6 @@ export class PipelineService {
     const varKeys = new Set(p.variables.map((v) => v.key))
     const agentUidSet = new Set(uids)
     const researchSources = await db.researchSource.findMany({
-      where: { accountId: p.accountId },
       select: { slug: true },
     })
     const researchSourceSlugs = new Set(researchSources.map((source) => source.slug))

@@ -41,9 +41,8 @@ function apiError(message: string, statusCode = 400) {
 }
 
 export class ScheduleService {
-  async list(accountId: string) {
+  async list() {
     const schedules = await db.schedule.findMany({
-      where: { accountId },
       include: {
         _count: { select: { sources: true, pipelineActions: true } },
         executions: { orderBy: { createdAt: 'desc' }, take: 1 },
@@ -52,7 +51,6 @@ export class ScheduleService {
     })
     return schedules.map((schedule) => ({
       id: schedule.id,
-      accountId: schedule.accountId,
       name: schedule.name,
       enabled: schedule.enabled,
       cadenceType: schedule.cadenceType,
@@ -72,11 +70,10 @@ export class ScheduleService {
     return schedule ? this.format(schedule) : null
   }
 
-  async create(accountId: string, input: ScheduleInput) {
-    const normalized = await this.validate(accountId, input)
+  async create(input: ScheduleInput) {
+    const normalized = await this.validate(input)
     const schedule = await db.schedule.create({
       data: {
-        accountId,
         ...normalized.fields,
         sources: {
           create: normalized.sourceIds.map((sourceId, sortOrder) => ({ sourceId, sortOrder })),
@@ -99,8 +96,7 @@ export class ScheduleService {
   }
 
   async update(scheduleId: string, input: ScheduleInput) {
-    const existing = await db.schedule.findUniqueOrThrow({ where: { id: scheduleId } })
-    const normalized = await this.validate(existing.accountId, input)
+    const normalized = await this.validate(input)
 
     await db.$transaction(async (tx) => {
       await tx.schedule.update({ where: { id: scheduleId }, data: normalized.fields })
@@ -202,7 +198,6 @@ export class ScheduleService {
   private format(schedule: any) {
     return {
       id: schedule.id,
-      accountId: schedule.accountId,
       name: schedule.name,
       enabled: schedule.enabled,
       cadenceType: schedule.cadenceType,
@@ -285,7 +280,7 @@ export class ScheduleService {
     return new Map(items.map((item) => [item.id, item]))
   }
 
-  private async validate(accountId: string, input: ScheduleInput) {
+  private async validate(input: ScheduleInput) {
     const name = input.name?.trim()
     if (!name) throw apiError('Schedule name is required')
     const sourceIds = [...new Set(input.sourceIds ?? [])]
@@ -298,14 +293,14 @@ export class ScheduleService {
     }
 
     const [sources, pipelines] = await Promise.all([
-      db.researchSource.findMany({ where: { id: { in: sourceIds }, accountId } }),
+      db.researchSource.findMany({ where: { id: { in: sourceIds } } }),
       db.pipeline.findMany({
-        where: { id: { in: actions.map((action) => action.pipelineId) }, accountId },
+        where: { id: { in: actions.map((action) => action.pipelineId) } },
         include: { variables: true },
       }),
     ])
-    if (sources.length !== sourceIds.length) throw apiError('Every research feed must belong to this account')
-    if (pipelines.length !== actions.length) throw apiError('Every pipeline must belong to this account')
+    if (sources.length !== sourceIds.length) throw apiError('One or more research feeds could not be found')
+    if (pipelines.length !== actions.length) throw apiError('One or more pipelines could not be found')
     const pipelineById = new Map(pipelines.map((pipeline) => [pipeline.id, pipeline]))
 
     const normalizedActions = actions.map((action) => {

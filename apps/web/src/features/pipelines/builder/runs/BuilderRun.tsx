@@ -55,7 +55,7 @@ export function BuilderRun({ runId, pipeline }: Props) {
   const [publishing, setPublishing] = useState(false)
   const publish = usePublishRun()
   const { data, isLoading } = usePipelineRun(runId, { pollForPublish: publishing || publish.isPending })
-  const { data: destinationsData } = useDestinations(pipeline.accountId)
+  const { data: destinationsData } = useDestinations()
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const assets = data?.assets ?? []
@@ -186,57 +186,7 @@ export function BuilderRun({ runId, pipeline }: Props) {
         </div>
       )}
 
-      {/* Generated post */}
-      {post && (
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold">Generated Post</h2>
-
-          {post.title && (
-            <Section title="Title">
-              <p className="text-base font-semibold">{post.title}</p>
-            </Section>
-          )}
-
-          {(post.thumbnailPrompt || post.thumbnailUrl) && (
-            <Section title="Thumbnail">
-              {post.thumbnailStatus === 'generating' ? (
-                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground h-32 border rounded bg-muted/20">
-                  <Loader2 size={15} className="animate-spin" />
-                  Generating image…
-                </div>
-              ) : post.thumbnailUrl ? (
-                <img
-                  src={post.thumbnailUrl}
-                  alt="Generated thumbnail"
-                  loading="lazy"
-                  decoding="async"
-                  className="rounded max-w-sm w-full"
-                />
-              ) : post.thumbnailStatus === 'failed' ? (
-                <div className="text-sm text-destructive border border-destructive/20 rounded p-3 bg-destructive/5">
-                  Image generation failed
-                </div>
-              ) : post.thumbnailPrompt ? (
-                <p className="text-sm text-muted-foreground">{post.thumbnailPrompt}</p>
-              ) : null}
-            </Section>
-          )}
-
-          {post.excerpt && (
-            <Section title="Excerpt">
-              <p className="text-sm">{post.excerpt}</p>
-            </Section>
-          )}
-
-          {post.body && (
-            <Section title="Body">
-              <div className="prose prose-sm max-w-none text-foreground/90 whitespace-pre-wrap text-sm leading-relaxed border rounded p-4 bg-muted/20 max-h-96 overflow-y-auto font-mono">
-                {post.body}
-              </div>
-            </Section>
-          )}
-        </div>
-      )}
+      {post && <GeneratedPostPanel post={post} />}
 
       {/* Image thumbs */}
       {imageAssets.length > 0 && (
@@ -255,91 +205,149 @@ export function BuilderRun({ runId, pipeline }: Props) {
         </Section>
       )}
 
-      {/* Assets */}
       {downloadAssets.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold mb-2">Saved Assets</h2>
-          {run.outputFolder && (
-            <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3 rounded border bg-muted/20 px-3 py-2">
-              <FolderOpen size={13} className="mt-0.5 shrink-0" />
-              <span className="font-mono break-all truncate whitespace-nowrap">{run.outputFolder}</span>
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            {downloadAssets.map((asset) => {
-              const displayName = asset.filename.includes('/') ? asset.filename.split('/').pop()! : asset.filename
-              const isDownloading = downloadingId === asset.id
-              return (
-                <button
-                  key={asset.id}
-                  type="button"
-                  onClick={() => handleDownloadAsset(asset.id, asset.filename)}
-                  disabled={isDownloading}
-                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border bg-surface hover:bg-muted/40 hover:border-foreground/20 transition-colors disabled:opacity-60"
-                  title={`Download ${asset.filename}`}
-                >
-                  <span className="text-muted-foreground">{ASSET_ICON[asset.type] ?? <Image size={13} />}</span>
-                  <span className="text-accent hover:underline">{displayName}</span>
-                  {isDownloading ? (
-                    <Loader2 size={11} className="animate-spin text-muted-foreground" />
-                  ) : (
-                    <Download size={11} className="text-muted-foreground" />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <SavedAssetsPanel
+          outputFolder={run.outputFolder ?? undefined}
+          assets={downloadAssets}
+          downloadingId={downloadingId}
+          onDownload={handleDownloadAsset}
+        />
       )}
 
-      {/* Agent details */}
-      {agentRuns.length > 0 && (
-        <details>
-          <summary className="text-sm font-semibold cursor-pointer select-none">
-            Agent Outputs ({agentRuns.length})
-          </summary>
-          <div className="mt-3 space-y-3">
-            {agentRuns.map((ar) => {
-              const info = STATUS_MAP[ar.status] ?? STATUS_MAP.queued!
-              return (
-                <div key={ar.id} className="border rounded p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold">
-                      {ar.agentName}{' '}
-                      <span className="text-muted-foreground font-normal">→ {ar.outputTarget}</span>
-                    </p>
-                    <div className="flex items-center gap-1.5">
-                      {ar.cacheStatus && (
-                        <span className={cn('px-1.5 py-0.5 rounded text-[11px] font-medium', CACHE_STATUS[ar.cacheStatus]?.className)}>
-                          {CACHE_STATUS[ar.cacheStatus]?.label ?? ar.cacheStatus}
-                        </span>
-                      )}
-                      <span className={cn('flex items-center gap-1 text-xs', info.color)}>
-                        {info.icon}
-                        {info.label}
-                      </span>
-                    </div>
-                  </div>
-                  {ar.cacheStatus === 'reused' && ar.reusedFromAgentRunId && (
-                    <p className="text-xs text-muted-foreground">Reused from agent run {ar.reusedFromAgentRunId}</p>
-                  )}
-                  {ar.renderedSystemPrompt?.trim() && (
-                    <PromptBlock label="System prompt" text={ar.renderedSystemPrompt} />
-                  )}
-                  {ar.renderedUserPrompt?.trim() && (
-                    <PromptBlock label="User prompt" text={ar.renderedUserPrompt} />
-                  )}
-                  {ar.outputText && (
-                    <PromptBlock label="Output" text={ar.outputText} />
-                  )}
-                  {ar.error && <p className="text-xs text-destructive">{ar.error}</p>}
-                </div>
-              )
-            })}
+      {agentRuns.length > 0 && <AgentRunsPanel agentRuns={agentRuns} />}
+    </div>
+  )
+}
+
+function GeneratedPostPanel({ post }: { post: any }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-sm font-semibold">Generated Post</h2>
+      {post.title && (
+        <Section title="Title">
+          <p className="text-base font-semibold">{post.title}</p>
+        </Section>
+      )}
+      {(post.thumbnailPrompt || post.thumbnailUrl) && (
+        <Section title="Thumbnail">
+          {post.thumbnailStatus === 'generating' ? (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground h-32 border rounded bg-muted/20">
+              <Loader2 size={15} className="animate-spin" />
+              Generating image…
+            </div>
+          ) : post.thumbnailUrl ? (
+            <img src={post.thumbnailUrl} alt="Generated thumbnail" loading="lazy" decoding="async" className="rounded max-w-sm w-full" />
+          ) : post.thumbnailStatus === 'failed' ? (
+            <div className="text-sm text-destructive border border-destructive/20 rounded p-3 bg-destructive/5">Image generation failed</div>
+          ) : post.thumbnailPrompt ? (
+            <p className="text-sm text-muted-foreground">{post.thumbnailPrompt}</p>
+          ) : null}
+        </Section>
+      )}
+      {post.excerpt && (
+        <Section title="Excerpt">
+          <p className="text-sm">{post.excerpt}</p>
+        </Section>
+      )}
+      {post.body && (
+        <Section title="Body">
+          <div className="prose prose-sm max-w-none text-foreground/90 whitespace-pre-wrap text-sm leading-relaxed border rounded p-4 bg-muted/20 max-h-96 overflow-y-auto font-mono">
+            {post.body}
           </div>
-        </details>
+        </Section>
       )}
     </div>
+  )
+}
+
+function SavedAssetsPanel({
+  outputFolder,
+  assets,
+  downloadingId,
+  onDownload,
+}: {
+  outputFolder?: string
+  assets: RunAsset[]
+  downloadingId: string | null
+  onDownload: (assetId: string, filename: string) => void
+}) {
+  return (
+    <div>
+      <h2 className="text-sm font-semibold mb-2">Saved Assets</h2>
+      {outputFolder && (
+        <div className="flex items-start gap-2 text-xs text-muted-foreground mb-3 rounded border bg-muted/20 px-3 py-2">
+          <FolderOpen size={13} className="mt-0.5 shrink-0" />
+          <span className="font-mono break-all truncate whitespace-nowrap">{outputFolder}</span>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {assets.map((asset) => {
+          const displayName = asset.filename.includes('/') ? asset.filename.split('/').pop()! : asset.filename
+          const isDownloading = downloadingId === asset.id
+          return (
+            <button
+              key={asset.id}
+              type="button"
+              onClick={() => onDownload(asset.id, asset.filename)}
+              disabled={isDownloading}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border bg-surface hover:bg-muted/40 hover:border-foreground/20 transition-colors disabled:opacity-60"
+              title={`Download ${asset.filename}`}
+            >
+              <span className="text-muted-foreground">{ASSET_ICON[asset.type] ?? <Image size={13} />}</span>
+              <span className="text-accent hover:underline">{displayName}</span>
+              {isDownloading ? (
+                <Loader2 size={11} className="animate-spin text-muted-foreground" />
+              ) : (
+                <Download size={11} className="text-muted-foreground" />
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function AgentRunsPanel({ agentRuns }: { agentRuns: any[] }) {
+  return (
+    <details>
+      <summary className="text-sm font-semibold cursor-pointer select-none">
+        Agent Outputs ({agentRuns.length})
+      </summary>
+      <div className="mt-3 space-y-3">
+        {agentRuns.map((ar) => {
+          const info = STATUS_MAP[ar.status] ?? STATUS_MAP.queued!
+          return (
+            <div key={ar.id} className="border rounded p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold">
+                  {ar.agentName}{' '}
+                  <span className="text-muted-foreground font-normal">→ {ar.outputTarget}</span>
+                </p>
+                <div className="flex items-center gap-1.5">
+                  {ar.cacheStatus && (
+                    <span className={cn('px-1.5 py-0.5 rounded text-[11px] font-medium', CACHE_STATUS[ar.cacheStatus]?.className)}>
+                      {CACHE_STATUS[ar.cacheStatus]?.label ?? ar.cacheStatus}
+                    </span>
+                  )}
+                  <span className={cn('flex items-center gap-1 text-xs', info.color)}>
+                    {info.icon}
+                    {info.label}
+                  </span>
+                </div>
+              </div>
+              {ar.cacheStatus === 'reused' && ar.reusedFromAgentRunId && (
+                <p className="text-xs text-muted-foreground">Reused from agent run {ar.reusedFromAgentRunId}</p>
+              )}
+              {ar.renderedSystemPrompt?.trim() && <PromptBlock label="System prompt" text={ar.renderedSystemPrompt} />}
+              {ar.renderedUserPrompt?.trim() && <PromptBlock label="User prompt" text={ar.renderedUserPrompt} />}
+              {ar.outputText && <PromptBlock label="Output" text={ar.outputText} />}
+              {ar.error && <p className="text-xs text-destructive">{ar.error}</p>}
+            </div>
+          )
+        })}
+      </div>
+    </details>
   )
 }
 

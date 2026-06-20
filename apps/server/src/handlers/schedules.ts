@@ -4,8 +4,8 @@ import { ScheduleService } from '../services/ScheduleService'
 const schedules = new ScheduleService()
 const executor = new ScheduleExecutor()
 
-export async function listSchedules(request: any, reply: any) {
-  return reply.send({ data: await schedules.list(request.params.accountId) })
+export async function listSchedules(_request: any, reply: any) {
+  return reply.send({ data: await schedules.list() })
 }
 
 export async function getSchedule(request: any, reply: any) {
@@ -15,7 +15,7 @@ export async function getSchedule(request: any, reply: any) {
 }
 
 export async function createSchedule(request: any, reply: any) {
-  const data = await schedules.create(request.params.accountId, request.body)
+  const data = await schedules.create(request.body)
   return reply.status(201).send({ data })
 }
 

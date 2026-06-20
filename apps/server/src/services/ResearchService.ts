@@ -5,6 +5,7 @@ import { OpenAIService } from './OpenAIService'
 import { fetchYoutubeTranscript } from './youtube/youtubeTranscript'
 import { contentFieldsFromFeedItem, contentFieldsFromTranscript } from './researchContentStatus'
 import { resolveGlobalDefaultSummaryPrompt } from './summaryPromptResolve'
+import { formatResearchCheckMessage } from './researchCheckMessage'
 import { createHash } from 'crypto'
 
 const REMOTE_CACHE_TTL_MS = 60 * 60 * 1000
@@ -33,10 +34,18 @@ function toSlug(name: string): string {
     .slice(0, 60)
 }
 
-async function uniqueSlug(accountId: string, base: string): Promise<string> {
+function canonicalCategory(category?: string | null): string {
+  const value = category?.trim().toLowerCase() || 'uncategorized'
+  if (value === 'tech') return 'technology'
+  if (value === 'finance') return 'financial'
+  if (value === 'political') return 'politics'
+  return value
+}
+
+async function uniqueSlug(base: string): Promise<string> {
   let slug = base
   let n = 2
-  while (await db.researchSource.findUnique({ where: { accountId_slug: { accountId, slug } } })) {
+  while (await db.researchSource.findUnique({ where: { slug } })) {
     slug = `${base}-${n++}`
   }
   return slug
@@ -196,11 +205,10 @@ export class ResearchService {
     } as const
   }
 
-  async list(accountId: string) {
+  async list() {
     const [sources, globalDefault] = await Promise.all([
       db.researchSource.findMany({
-        where: { accountId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { name: 'asc' },
         include: this.sourceInclude(),
       }),
       resolveGlobalDefaultSummaryPrompt(),
@@ -219,10 +227,10 @@ export class ResearchService {
     return this.formatSource(source, globalDefault)
   }
 
-  async create(accountId: string, data: { name: string; category?: string; sourceType?: string; sourceUrl: string }) {
+  async create(data: { name: string; category?: string; sourceType?: string; sourceUrl: string }) {
     const sourceType = data.sourceType ?? 'youtube'
     const baseSlug = toSlug(data.name) || 'source'
-    const slug = await uniqueSlug(accountId, baseSlug)
+    const slug = await uniqueSlug(baseSlug)
 
     let externalId: string | null = null
     try {
@@ -231,7 +239,6 @@ export class ResearchService {
 
     const source = await db.researchSource.create({
       data: {
-        accountId,
         name: data.name,
         slug,
         category: data.category ?? null,
@@ -308,6 +315,97 @@ export class ResearchService {
     }
   }
 
+  private async processFeedItem(
+    source: { id: string; sourceType: string },
+    feedItem: FeedItem,
+  ): Promise<{
+    isNew: boolean
+    isUpdated: boolean
+    item: object
+    latest: ReturnType<ResearchService['latestFromItem']> | undefined
+  }> {
+    const existing = await db.researchItem.findUnique({
+      where: { sourceId_externalId: { sourceId: source.id, externalId: feedItem.externalId } },
+    })
+
+    if (existing) {
+      const contentFields = contentFieldsFromFeedItem(feedItem)
+      const shouldRefreshExisting =
+        source.sourceType === 'reddit' &&
+        (
+          existing.title !== feedItem.title ||
+          existing.itemUrl !== feedItem.itemUrl ||
+          existing.content !== contentFields.content ||
+          existing.contentStatus !== contentFields.contentStatus
+        )
+
+      if (shouldRefreshExisting) {
+        const updated = await db.researchItem.update({
+          where: { id: existing.id },
+          data: {
+            title: feedItem.title,
+            itemUrl: feedItem.itemUrl,
+            publishedAt: feedItem.publishedAt,
+            content: contentFields.content,
+            contentStatus: contentFields.contentStatus,
+            contentErrorReason: contentFields.contentErrorReason,
+            contentCheckedAt: contentFields.contentCheckedAt,
+          },
+        })
+        return { isNew: false, isUpdated: true, item: updated, latest: this.latestFromItem(updated, false, true) }
+      }
+
+      const shouldRetryContent =
+        !existing.content?.trim() ||
+        existing.contentStatus === 'rate_limited' ||
+        existing.contentStatus === 'error'
+
+      if (shouldRetryContent) {
+        const fields =
+          source.sourceType === 'youtube'
+            ? await this.backfillYoutubeContent(feedItem.externalId)
+            : contentFieldsFromFeedItem(feedItem)
+
+        const contentChanged = Boolean(fields.content) || fields.contentStatus !== existing.contentStatus
+        const updated = contentChanged
+          ? await db.researchItem.update({
+              where: { id: existing.id },
+              data: {
+                content: fields.content,
+                contentStatus: fields.contentStatus,
+                contentErrorReason: fields.contentErrorReason,
+                contentCheckedAt: fields.contentCheckedAt,
+              },
+            })
+          : existing
+
+        const isUpdated = source.sourceType === 'youtube' || contentChanged
+        return { isNew: false, isUpdated, item: updated, latest: this.latestFromItem(updated, false, true) }
+      }
+
+      return { isNew: false, isUpdated: false, item: existing, latest: this.latestFromItem(existing, false, false) }
+    }
+
+    const contentFields =
+      source.sourceType === 'youtube'
+        ? await this.backfillYoutubeContent(feedItem.externalId)
+        : contentFieldsFromFeedItem(feedItem)
+    const created = await db.researchItem.create({
+      data: {
+        sourceId: source.id,
+        externalId: feedItem.externalId,
+        title: feedItem.title,
+        itemUrl: feedItem.itemUrl,
+        publishedAt: feedItem.publishedAt,
+        content: contentFields.content,
+        contentStatus: contentFields.contentStatus,
+        contentErrorReason: contentFields.contentErrorReason,
+        contentCheckedAt: contentFields.contentCheckedAt,
+      },
+    })
+    return { isNew: true, isUpdated: false, item: created, latest: this.latestFromItem(created, true, true) }
+  }
+
   async checkLatest(sourceId: string): Promise<{
     checked: boolean
     newItem: boolean
@@ -346,97 +444,101 @@ export class ResearchService {
     let latest: ReturnType<ResearchService['latestFromItem']> | undefined
 
     for (const feedItem of feedItems) {
-      const existing = await db.researchItem.findUnique({
-        where: { sourceId_externalId: { sourceId: source.id, externalId: feedItem.externalId } },
-      })
-
-      if (existing) {
-        const contentFields = contentFieldsFromFeedItem(feedItem)
-        const shouldRefreshExisting =
-          source.sourceType === 'reddit' &&
-          (
-            existing.title !== feedItem.title ||
-            existing.itemUrl !== feedItem.itemUrl ||
-            existing.content !== contentFields.content ||
-            existing.contentStatus !== contentFields.contentStatus
-          )
-
-        if (shouldRefreshExisting) {
-          const updated = await db.researchItem.update({
-            where: { id: existing.id },
-            data: {
-              title: feedItem.title,
-              itemUrl: feedItem.itemUrl,
-              publishedAt: feedItem.publishedAt,
-              content: contentFields.content,
-              contentStatus: contentFields.contentStatus,
-              contentErrorReason: contentFields.contentErrorReason,
-              contentCheckedAt: contentFields.contentCheckedAt,
-            },
-          })
-          updatedCount++
-          latest = this.latestFromItem(updated, false, true)
-          continue
-        }
-
-        const shouldRetryContent =
-          !existing.content?.trim() ||
-          existing.contentStatus === 'rate_limited' ||
-          existing.contentStatus === 'error'
-
-        if (shouldRetryContent) {
-          const fields =
-            source.sourceType === 'youtube'
-              ? await this.backfillYoutubeContent(feedItem.externalId)
-              : contentFieldsFromFeedItem(feedItem)
-
-          const contentChanged = Boolean(fields.content) || fields.contentStatus !== existing.contentStatus
-          const updated = contentChanged
-            ? await db.researchItem.update({
-                where: { id: existing.id },
-                data: {
-                  content: fields.content,
-                  contentStatus: fields.contentStatus,
-                  contentErrorReason: fields.contentErrorReason,
-                  contentCheckedAt: fields.contentCheckedAt,
-                },
-              })
-            : existing
-
-          if (source.sourceType === 'youtube' || contentChanged) {
-            updatedCount++
-          }
-          latest = this.latestFromItem(updated, false, true)
-          continue
-        }
-
-        latest = this.latestFromItem(existing, false, false)
-        continue
+      const result = await this.processFeedItem(source, feedItem)
+      if (result.isNew) {
+        if (!firstNew) firstNew = result.item
+        newCount++
+      } else if (result.isUpdated) {
+        updatedCount++
       }
-
-      const contentFields =
-        source.sourceType === 'youtube'
-          ? await this.backfillYoutubeContent(feedItem.externalId)
-          : contentFieldsFromFeedItem(feedItem)
-      const created = await db.researchItem.create({
-        data: {
-          sourceId: source.id,
-          externalId: feedItem.externalId,
-          title: feedItem.title,
-          itemUrl: feedItem.itemUrl,
-          publishedAt: feedItem.publishedAt,
-          content: contentFields.content,
-          contentStatus: contentFields.contentStatus,
-          contentErrorReason: contentFields.contentErrorReason,
-          contentCheckedAt: contentFields.contentCheckedAt,
-        },
-      })
-      if (!firstNew) firstNew = created
-      newCount++
-      latest = this.latestFromItem(created, true, true)
+      if (result.latest) latest = result.latest
     }
 
     return { checked: true, newItem: newCount > 0, newCount, updatedCount, item: firstNew, latest }
+  }
+
+  async checkMany(category?: string): Promise<{
+    category?: string
+    checked: number
+    succeeded: number
+    failed: number
+    newCount: number
+    updatedCount: number
+    results: Array<{
+      sourceId: string
+      sourceName: string
+      status: 'completed' | 'failed'
+      newCount: number
+      updatedCount: number
+      message?: string
+      error?: string
+    }>
+  }> {
+    const requestedCategory = category ? canonicalCategory(category) : undefined
+    const activeSources = await db.researchSource.findMany({
+      where: { status: 'active' },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, sourceType: true, category: true },
+    })
+    const sources = requestedCategory
+      ? activeSources.filter((source) => canonicalCategory(source.category) === requestedCategory)
+      : activeSources
+
+    const results: Array<{
+      sourceId: string
+      sourceName: string
+      status: 'completed' | 'failed'
+      newCount: number
+      updatedCount: number
+      message?: string
+      error?: string
+    }> = []
+
+    // Keep checks sequential to avoid bursts against YouTube and Reddit rate limits.
+    for (const source of sources) {
+      try {
+        const result = await this.checkLatest(source.id)
+        const message = result.message ?? formatResearchCheckMessage(source.sourceType, result)
+        if (!result.checked) {
+          results.push({
+            sourceId: source.id,
+            sourceName: source.name,
+            status: 'failed',
+            newCount: 0,
+            updatedCount: 0,
+            error: message,
+          })
+          continue
+        }
+        results.push({
+          sourceId: source.id,
+          sourceName: source.name,
+          status: 'completed',
+          newCount: result.newCount,
+          updatedCount: result.updatedCount,
+          message,
+        })
+      } catch (error: unknown) {
+        results.push({
+          sourceId: source.id,
+          sourceName: source.name,
+          status: 'failed',
+          newCount: 0,
+          updatedCount: 0,
+          error: error instanceof Error ? error.message : 'Check failed',
+        })
+      }
+    }
+
+    return {
+      ...(requestedCategory ? { category: requestedCategory } : {}),
+      checked: sources.length,
+      succeeded: results.filter((result) => result.status === 'completed').length,
+      failed: results.filter((result) => result.status === 'failed').length,
+      newCount: results.reduce((total, result) => total + result.newCount, 0),
+      updatedCount: results.reduce((total, result) => total + result.updatedCount, 0),
+      results,
+    }
   }
 
   async listItems(sourceId: string, page = 1, limit = 15) {

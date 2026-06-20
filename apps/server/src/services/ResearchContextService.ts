@@ -19,7 +19,6 @@ export interface ResearchContext {
 }
 
 type PipelineForResearch = {
-  accountId: string
   variables?: Array<{ key: string }>
   agents?: Array<{ systemPrompt: string; userPrompt: string }>
 }
@@ -39,7 +38,7 @@ export class ResearchContextService {
     const referencedSources = this.findReferencedSources(pipeline)
     if (referencedSources.size > 0) {
       const sources = await db.researchSource.findMany({
-        where: { accountId: pipeline.accountId, slug: { in: [...referencedSources.keys()] } },
+        where: { slug: { in: [...referencedSources.keys()] } },
       })
       const sourceBySlug = new Map(sources.map((source) => [source.slug, source]))
 

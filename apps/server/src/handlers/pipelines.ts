@@ -2,8 +2,8 @@ import { PipelineService } from '../services/PipelineService'
 
 const svc = new PipelineService()
 
-export async function listPipelines(request: any, reply: any) {
-  const data = await svc.list(request.params.accountId)
+export async function listPipelines(_request: any, reply: any) {
+  const data = await svc.list()
   return reply.send({ data })
 }
 
@@ -14,7 +14,7 @@ export async function getPipeline(request: any, reply: any) {
 }
 
 export async function createPipeline(request: any, reply: any) {
-  const data = await svc.create(request.params.accountId, request.body)
+  const data = await svc.create(request.body)
   return reply.status(201).send({ data })
 }
 

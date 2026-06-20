@@ -11,7 +11,7 @@ export async function listVariablePacks(_request: any, reply: any) {
 }
 
 export async function applyContentTemplate(request: any, reply: any) {
-  const { accountId, name } = request.body
-  const pipeline = await svc.applyTemplate(request.params.templateId, accountId, name)
+  const { name } = request.body
+  const pipeline = await svc.applyTemplate(request.params.templateId, name)
   return reply.status(201).send({ data: pipeline })
 }

@@ -18,11 +18,11 @@ export class ContentService {
     return getVariablePacks()
   }
 
-  async applyTemplate(templateId: string, accountId: string, name?: string) {
+  async applyTemplate(templateId: string, name?: string) {
     const template = getTemplate(templateId)
     if (!template) throw Object.assign(new Error('Template not found'), { statusCode: 404 })
 
-    const pipeline = await pipelines.create(accountId, {
+    const pipeline = await pipelines.create({
       name: name ?? template.name,
       category: template.category,
     })

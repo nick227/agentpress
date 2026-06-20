@@ -4,17 +4,14 @@ import type { components } from '../generated/types'
 
 export type ScheduleInput = components['schemas']['ScheduleInput']
 
-export function useSchedules(accountId: string) {
+export function useSchedules() {
   return useQuery({
-    queryKey: ['schedules', accountId],
+    queryKey: ['schedules'],
     queryFn: async () => {
-      const { data, error, response } = await getApiClient().GET('/api/accounts/{accountId}/schedules', {
-        params: { path: { accountId } },
-      })
+      const { data, error, response } = await getApiClient().GET('/api/schedules')
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    enabled: Boolean(accountId),
   })
 }
 
@@ -35,16 +32,13 @@ export function useSchedule(scheduleId: string) {
 export function useCreateSchedule() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ accountId, ...body }: ScheduleInput & { accountId: string }) => {
-      const { data, error, response } = await getApiClient().POST('/api/accounts/{accountId}/schedules', {
-        params: { path: { accountId } },
-        body,
-      })
+    mutationFn: async (body: ScheduleInput) => {
+      const { data, error, response } = await getApiClient().POST('/api/schedules', { body })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: ['schedules', accountId] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
@@ -53,7 +47,7 @@ export function useCreateSchedule() {
 export function useUpdateSchedule() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ scheduleId, accountId: _accountId, ...body }: ScheduleInput & { scheduleId: string; accountId: string }) => {
+    mutationFn: async ({ scheduleId, ...body }: ScheduleInput & { scheduleId: string }) => {
       const { data, error, response } = await getApiClient().PATCH('/api/schedules/{scheduleId}', {
         params: { path: { scheduleId } },
         body,
@@ -61,9 +55,9 @@ export function useUpdateSchedule() {
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (data, { scheduleId, accountId }) => {
+    onSuccess: (data, { scheduleId }) => {
       queryClient.setQueryData(['schedule', scheduleId], data)
-      queryClient.invalidateQueries({ queryKey: ['schedules', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['schedules'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
@@ -72,16 +66,16 @@ export function useUpdateSchedule() {
 export function useDeleteSchedule() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ scheduleId, accountId }: { scheduleId: string; accountId: string }) => {
+    mutationFn: async (scheduleId: string) => {
       const { data, error, response } = await getApiClient().DELETE('/api/schedules/{scheduleId}', {
         params: { path: { scheduleId } },
       })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
-      return { data: data!, accountId }
+      return data!
     },
-    onSuccess: ({ accountId }, { scheduleId }) => {
+    onSuccess: (_data, scheduleId) => {
       queryClient.removeQueries({ queryKey: ['schedule', scheduleId] })
-      queryClient.invalidateQueries({ queryKey: ['schedules', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['schedules'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
