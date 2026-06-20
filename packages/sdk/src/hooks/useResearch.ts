@@ -42,6 +42,7 @@ export function useCreateResearchSource() {
     },
     onSuccess: (_data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: ['research-sources', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -67,6 +68,7 @@ export function useUpdateResearchSource() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['research-source'] })
       queryClient.invalidateQueries({ queryKey: ['research-sources', data.data.accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -83,6 +85,7 @@ export function useDeleteResearchSource() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['research-sources'] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }

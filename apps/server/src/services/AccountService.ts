@@ -22,6 +22,45 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
 }
 
 export class AccountService {
+  async navigation() {
+    const accounts = await db.account.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        pipelines: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, slug: true, status: true },
+        },
+        schedules: {
+          orderBy: { name: 'asc' },
+          include: { executions: { orderBy: { createdAt: 'desc' }, take: 1, select: { status: true } } },
+        },
+        researchSources: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, slug: true, status: true },
+        },
+        destinations: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, type: true },
+        },
+      },
+    })
+    return accounts.map((account) => ({
+      id: account.id,
+      name: account.name,
+      slug: account.slug,
+      pipelines: account.pipelines,
+      schedules: account.schedules.map((schedule) => ({
+        id: schedule.id,
+        name: schedule.name,
+        enabled: schedule.enabled,
+        nextRunAt: schedule.nextRunAt ?? undefined,
+        lastExecutionStatus: schedule.executions[0]?.status,
+      })),
+      researchSources: account.researchSources,
+      destinations: account.destinations,
+    }))
+  }
+
   async list() {
     const accounts = await db.account.findMany({
       orderBy: { name: 'asc' },

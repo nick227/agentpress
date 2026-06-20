@@ -7,6 +7,10 @@ export async function listAccounts(_request: any, reply: any) {
   return reply.send({ data })
 }
 
+export async function listAccountNavigation(_request: any, reply: any) {
+  return reply.send({ data: await svc.navigation() })
+}
+
 export async function getAccount(request: any, reply: any) {
   const data = await svc.get(request.params.accountId)
   if (!data) return reply.status(404).send({ error: 'Account not found' })

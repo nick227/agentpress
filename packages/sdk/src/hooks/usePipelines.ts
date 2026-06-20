@@ -46,6 +46,7 @@ export function useCreatePipeline() {
     },
     onSuccess: (_data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: ['pipelines', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -80,6 +81,7 @@ export function useUpdatePipeline() {
         if (!current || typeof current !== 'object') return current
         return { ...current, data: data.data }
       })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -96,6 +98,7 @@ export function useDeletePipeline() {
     },
     onSuccess: (_data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: ['pipelines', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }

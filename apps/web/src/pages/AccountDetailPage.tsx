@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ChevronLeft, Plus, Pencil, Trash2, Zap, LayoutTemplate, FlaskConical, Video, RefreshCw, CheckCircle2, AlertCircle, X, CalendarClock } from 'lucide-react'
@@ -27,6 +27,7 @@ type ResearchSyncProgress = {
 export function AccountDetailPage() {
   const { accountSlug } = useParams<{ accountSlug: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const { data: accountData, isLoading: accountLoading } = useAccount(accountSlug!)
   const account = accountData?.data
@@ -54,6 +55,13 @@ export function AccountDetailPage() {
   const researchSources = researchData?.data ?? []
   const schedules = schedulesData?.data ?? []
   const activeResearchSources = researchSources.filter((source) => source.status === 'active')
+
+  useEffect(() => {
+    const create = searchParams.get('create')
+    if (create === 'pipeline') setShowCreatePipeline(true)
+    if (create === 'research') setShowCreateResearch(true)
+    if (create) setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   async function handleSync() {
     if (!account) return

@@ -4,7 +4,7 @@ import { usePipeline } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { FocusSidebarHeader } from '@/components/layout/FocusSidebarHeader'
 import { SidebarPortal } from '@/components/layout/SidebarPortal'
-import { useShellChrome } from '@/components/layout/Shell'
+import { useFocusSidebar } from '@/components/layout/Shell'
 import { BuilderSidebar } from '@/features/pipelines/builder/BuilderSidebar'
 import { DetailPanel } from '@/features/pipelines/builder/DetailPanel'
 import {
@@ -13,7 +13,6 @@ import {
 } from '@/features/pipelines/builder/pipelineSelectionContext'
 
 const PIPELINE_SHELL_CHROME = {
-  customSidebar: true,
   mainClassName: 'max-w-none mx-0 overflow-hidden',
 } as const
 
@@ -60,7 +59,7 @@ export function PipelineBuilderPage() {
     )
   }, [accountSlug, isLoading, pipeline, pipelineSlug, recentRuns])
 
-  useShellChrome(PIPELINE_SHELL_CHROME)
+  useFocusSidebar(PIPELINE_SHELL_CHROME)
 
   let content: React.ReactNode
   if (isLoading) {

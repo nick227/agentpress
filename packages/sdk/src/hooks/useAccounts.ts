@@ -12,6 +12,17 @@ export function useAccounts() {
   })
 }
 
+export function useAccountNavigation() {
+  return useQuery({
+    queryKey: ['account-navigation'],
+    queryFn: async () => {
+      const { data, error, response } = await getApiClient().GET('/api/accounts/navigation')
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+  })
+}
+
 export function useAccount(accountId: string) {
   return useQuery({
     queryKey: ['accounts', accountId],
@@ -36,6 +47,7 @@ export function useCreateAccount() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -54,6 +66,7 @@ export function useUpdateAccount() {
     onSuccess: (_data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
       queryClient.invalidateQueries({ queryKey: ['accounts', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -70,6 +83,7 @@ export function useDeleteAccount() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }

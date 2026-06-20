@@ -43,7 +43,10 @@ export function useCreateSchedule() {
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, { accountId }) => queryClient.invalidateQueries({ queryKey: ['schedules', accountId] }),
+    onSuccess: (_data, { accountId }) => {
+      queryClient.invalidateQueries({ queryKey: ['schedules', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
+    },
   })
 }
 
@@ -61,6 +64,7 @@ export function useUpdateSchedule() {
     onSuccess: (data, { scheduleId, accountId }) => {
       queryClient.setQueryData(['schedule', scheduleId], data)
       queryClient.invalidateQueries({ queryKey: ['schedules', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -78,6 +82,7 @@ export function useDeleteSchedule() {
     onSuccess: ({ accountId }, { scheduleId }) => {
       queryClient.removeQueries({ queryKey: ['schedule', scheduleId] })
       queryClient.invalidateQueries({ queryKey: ['schedules', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -95,6 +100,7 @@ export function useRunSchedule() {
     onSuccess: (_data, scheduleId) => {
       queryClient.invalidateQueries({ queryKey: ['schedule-executions', scheduleId] })
       queryClient.invalidateQueries({ queryKey: ['schedules'] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }

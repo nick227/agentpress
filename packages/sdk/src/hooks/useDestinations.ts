@@ -53,6 +53,7 @@ export function useCreateDestination() {
     },
     onSuccess: (_data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: ['destinations', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -81,6 +82,7 @@ export function useUpdateDestination() {
     onSuccess: (_data, { accountId, destinationId }) => {
       queryClient.invalidateQueries({ queryKey: ['destinations', accountId] })
       queryClient.invalidateQueries({ queryKey: ['wordpress-categories', destinationId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }
@@ -97,6 +99,7 @@ export function useDeleteDestination() {
     },
     onSuccess: (_data, { accountId }) => {
       queryClient.invalidateQueries({ queryKey: ['destinations', accountId] })
+      queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })
 }

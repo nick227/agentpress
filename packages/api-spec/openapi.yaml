@@ -915,6 +915,62 @@ components:
           type: string
           format: date-time
 
+    NavigationPipeline:
+      type: object
+      required: [id, name, slug, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        status: { type: string }
+
+    NavigationSchedule:
+      type: object
+      required: [id, name, enabled]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        enabled: { type: boolean }
+        nextRunAt: { type: string, format: date-time }
+        lastExecutionStatus: { type: string }
+
+    NavigationResearchSource:
+      type: object
+      required: [id, name, slug, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        status: { type: string }
+
+    NavigationDestination:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+
+    NavigationAccount:
+      type: object
+      required: [id, name, slug, pipelines, schedules, researchSources, destinations]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        pipelines:
+          type: array
+          items: { $ref: '#/components/schemas/NavigationPipeline' }
+        schedules:
+          type: array
+          items: { $ref: '#/components/schemas/NavigationSchedule' }
+        researchSources:
+          type: array
+          items: { $ref: '#/components/schemas/NavigationResearchSource' }
+        destinations:
+          type: array
+          items: { $ref: '#/components/schemas/NavigationDestination' }
+
     ScheduleActionInput:
       type: object
       required: [pipelineId, triggerPolicy]
@@ -1345,6 +1401,27 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Account'
+
+  /api/accounts/navigation:
+    get:
+      operationId: listAccountNavigation
+      tags: [accounts]
+      summary: List compact account resources for global navigation
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account navigation tree
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NavigationAccount'
 
   /api/accounts/{accountId}:
     parameters:
