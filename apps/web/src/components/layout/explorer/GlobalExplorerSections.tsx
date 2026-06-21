@@ -1,4 +1,4 @@
-import { CalendarClock, Database, FlaskConical, Workflow } from 'lucide-react'
+import { CalendarClock, Database, FlaskConical, Play, Workflow } from 'lucide-react'
 import { ResearchCategoryGroup, ResourceGroup, ResourceLink } from './ExplorerPrimitives'
 import { isInProgress } from './explorerTime'
 import type { GlobalExplorerSidebarModel } from './useGlobalExplorerSidebar'
@@ -10,6 +10,7 @@ export function GlobalExplorerSections({ explorer }: { explorer: GlobalExplorerS
       <ScheduleSection explorer={explorer} />
       <ResearchSection explorer={explorer} />
       <DestinationSection explorer={explorer} />
+      <RunsSection explorer={explorer} />
       {explorer.needle && !explorer.hasResults && (
         <p className="px-4 py-3 text-xs text-muted-foreground">No matching resources.</p>
       )}
@@ -17,7 +18,6 @@ export function GlobalExplorerSections({ explorer }: { explorer: GlobalExplorerS
   )
 }
 
-// Standard resources use a flat list beneath their heading.
 function PipelineSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
   if (explorer.pipelines.length === 0 && explorer.needle) return null
 
@@ -25,6 +25,7 @@ function PipelineSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
     <ResourceGroup
       label="Pipelines"
       icon={Workflow}
+      indexHref="/"
       addHref="/pipelines/new"
       onRefetch={explorer.refreshPipelines}
       isRefetching={explorer.pipelinesFetching}
@@ -51,6 +52,7 @@ function ScheduleSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
     <ResourceGroup
       label="Schedules"
       icon={CalendarClock}
+      indexHref="/schedules"
       addHref="/schedules/new"
       onRefetch={explorer.refreshSchedules}
       isRefetching={explorer.schedulesFetching}
@@ -71,7 +73,6 @@ function ScheduleSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
   )
 }
 
-// Research adds a category layer and upstream checks at all three scopes.
 function ResearchSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
   if (explorer.researchGroups.length === 0 && explorer.needle) return null
 
@@ -79,6 +80,7 @@ function ResearchSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
     <ResourceGroup
       label="Research"
       icon={FlaskConical}
+      indexHref="/research"
       addHref="/research/new"
       onRefetch={() => explorer.checkResearch()}
       isRefetching={explorer.checkingAllResearch}
@@ -124,6 +126,7 @@ function DestinationSection({ explorer }: { explorer: GlobalExplorerSidebarModel
     <ResourceGroup
       label="Destinations"
       icon={Database}
+      indexHref="/destinations"
       addHref="/destinations/new"
       onRefetch={explorer.refreshDestinations}
       isRefetching={explorer.destinationsFetching}
@@ -141,8 +144,46 @@ function DestinationSection({ explorer }: { explorer: GlobalExplorerSidebarModel
   )
 }
 
+function RunsSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
+  if (explorer.runs.length === 0 && explorer.needle) return null
+
+  return (
+    <ResourceGroup
+      label="Runs"
+      icon={Play}
+      indexHref="/runs"
+      onRefetch={explorer.refreshRuns}
+      isRefetching={explorer.runsFetching}
+    >
+      {explorer.runs.slice(0, 20).map((run) => (
+        <ResourceLink
+          key={run.id}
+          href={`/pipelines/${run.pipelineSlug}`}
+          label={run.title ?? run.pipelineName}
+          active={false}
+          status={runStatus(run.status)}
+          activityAt={run.startedAt}
+          activityLabel="Started"
+          activityState={run.status === 'running' || run.status === 'queued' ? capitalise(run.status) : undefined}
+        />
+      ))}
+    </ResourceGroup>
+  )
+}
+
 function scheduleStatus(schedule: GlobalExplorerSidebarModel['schedules'][number]) {
   if (schedule.lastExecutionStatus === 'failed') return 'failed'
   if (schedule.lastExecutionStatus === 'partial') return 'warning'
   return schedule.enabled ? 'active' : 'paused'
+}
+
+function runStatus(status: string) {
+  if (status === 'completed' || status === 'posted') return 'active'
+  if (status === 'failed') return 'failed'
+  if (status === 'running' || status === 'queued') return 'paused'
+  return 'draft'
+}
+
+function capitalise(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }

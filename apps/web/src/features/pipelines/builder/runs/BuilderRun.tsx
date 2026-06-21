@@ -251,7 +251,7 @@ function GeneratedPostPanel({ post }: { post: any }) {
       )}
       {post.body && (
         <Section title="Body">
-          <div className="prose prose-sm max-w-none text-foreground/90 whitespace-pre-wrap text-sm leading-relaxed border rounded p-4 bg-muted/20 max-h-96 overflow-y-auto font-mono">
+          <div className="prose prose-sm max-w-none text-foreground/90 whitespace-pre-wrap text-sm leading-relaxed border rounded p-4 bg-muted/20 bg-white font-mono">
             {post.body}
           </div>
         </Section>

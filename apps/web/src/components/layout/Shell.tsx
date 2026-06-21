@@ -4,6 +4,8 @@ import { LogOut, Moon, Sun } from 'lucide-react'
 import { useLogout } from '@project/sdk'
 import { toggleTheme } from '@/lib/theme'
 import { GlobalExplorerSidebar } from './GlobalExplorerSidebar'
+import { MobileNav } from './MobileNav'
+import { TopNav } from './TopNav'
 
 export function Shell() {
   const logout = useLogout()
@@ -57,10 +59,14 @@ export function Shell() {
         </div>
       </aside>
 
-      {/* Content */}
-      <main className="flex-1 min-h-screen overflow-auto max-w-7xl mx-auto">
-        <Outlet />
-      </main>
+      {/* Content column: mobile header + top nav + page content */}
+      <div className="flex flex-1 flex-col">
+        <MobileNav />
+        <TopNav />
+        <main className="flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

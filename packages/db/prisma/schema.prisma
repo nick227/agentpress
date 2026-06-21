@@ -8,13 +8,66 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String
-  role         String    @default("OWNER")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  sessions     Session[]
+  id                     String                      @id @default(cuid())
+  email                  String                      @unique
+  passwordHash           String
+  role                   String                      @default("OWNER")
+  createdAt              DateTime                    @default(now())
+  updatedAt              DateTime                    @updatedAt
+  sessions               Session[]
+  workspaceMemberships   WorkspaceMember[]
+  createdPipelines       Pipeline[]                  @relation("PipelineCreator")
+  createdResearchSources ResearchSource[]            @relation("ResearchSourceCreator")
+  createdDestinations    Destination[]               @relation("DestinationCreator")
+  createdPipelineRuns    PipelineRun[]               @relation("PipelineRunCreator")
+  createdSchedules       Schedule[]                  @relation("ScheduleCreator")
+  feedSubscriptions      WorkspaceFeedSubscription[] @relation("FeedSubscriptionCreator")
+}
+
+enum WorkspaceType {
+  PERSONAL
+  TEAM
+  COMMUNITY
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum Visibility {
+  PRIVATE
+  PUBLIC
+}
+
+model Workspace {
+  id                String                      @id @default(cuid())
+  type              WorkspaceType
+  name              String
+  slug              String                      @unique
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  members           WorkspaceMember[]
+  pipelines         Pipeline[]
+  researchSources   ResearchSource[]
+  destinations      Destination[]
+  pipelineRuns      PipelineRun[]
+  schedules         Schedule[]
+  feedSubscriptions WorkspaceFeedSubscription[]
+}
+
+model WorkspaceMember {
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole
+  joinedAt    DateTime      @default(now())
+
+  @@id([workspaceId, userId])
+  @@index([userId])
 }
 
 model Session {
@@ -27,29 +80,41 @@ model Session {
 }
 
 model Pipeline {
-  id              String                   @id @default(cuid())
-  name            String
-  slug            String                   @unique
-  description     String?
-  category        String?
-  status          String                   @default("draft")
-  destinationId   String?
-  wpCategoryIds   Json?
-  bodyComposer    Json?
-  dryRun          Boolean                  @default(true)
-  scheduleMode    String                   @default("manual")
-  frequency       String?
-  timeOfDay       String?
-  timezone        String?
-  isPaused        Boolean                  @default(false)
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-  variables       PipelineVariable[]
-  agents          PipelineAgent[]
-  runs            PipelineRun[]
-  imageAssets     ImageAsset[]
-  scheduleActions SchedulePipelineAction[]
+  id               String                   @id @default(cuid())
+  name             String
+  slug             String                   @unique
+  description      String?
+  category         String?
+  status           String                   @default("draft")
+  destinationId    String?
+  wpCategoryIds    Json?
+  bodyComposer     Json?
+  dryRun           Boolean                  @default(true)
+  scheduleMode     String                   @default("manual")
+  frequency        String?
+  timeOfDay        String?
+  timezone         String?
+  isPaused         Boolean                  @default(false)
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  workspaceId      String
+  workspace        Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  visibility       Visibility               @default(PRIVATE)
+  createdByUserId  String?
+  createdBy        User?                    @relation("PipelineCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sourcePipelineId String?
+  sourcePipeline   Pipeline?                @relation("PipelineForks", fields: [sourcePipelineId], references: [id], onDelete: SetNull)
+  forks            Pipeline[]               @relation("PipelineForks")
+  sourceVersionAt  DateTime?
+  forkedAt         DateTime?
+  variables        PipelineVariable[]
+  agents           PipelineAgent[]
+  runs             PipelineRun[]
+  imageAssets      ImageAsset[]
+  scheduleActions  SchedulePipelineAction[]
+  feedLinks        PipelineFeed[]
 
+  @@index([workspaceId, visibility, updatedAt])
 }
 
 model PipelineVariable {
@@ -123,11 +188,17 @@ model PipelineRun {
   startedAt                   DateTime                   @default(now())
   completedAt                 DateTime?
   error                       String?                    @db.Text
+  workspaceId                 String
+  workspace                   Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdByUserId             String?
+  createdBy                   User?                      @relation("PipelineRunCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   agentRuns                   AgentRun[]
   assets                      RunAsset[]
   publishAttempts             PublishAttempt[]
   schedulePipelineExecutionId String?                    @unique
   schedulePipelineExecution   SchedulePipelineExecution? @relation(fields: [schedulePipelineExecutionId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, startedAt])
 }
 
 model AgentRun {
@@ -177,7 +248,13 @@ model Destination {
   defaultCategoryIds Json?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
+  workspaceId        String
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdByUserId    String?
+  createdBy          User?            @relation("DestinationCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   publishAttempts    PublishAttempt[]
+
+  @@index([workspaceId, updatedAt])
 }
 
 model PublishAttempt {
@@ -208,9 +285,44 @@ model ResearchSource {
   lastChecked            DateTime?
   createdAt              DateTime                        @default(now())
   updatedAt              DateTime                        @updatedAt
+  workspaceId            String
+  workspace              Workspace                       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  visibility             Visibility                      @default(PRIVATE)
+  createdByUserId        String?
+  createdBy              User?                           @relation("ResearchSourceCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   items                  ResearchItem[]
   scheduleSources        ScheduleSource[]
   scheduleTriggerSources SchedulePipelineTriggerSource[]
+  subscriptions          WorkspaceFeedSubscription[]
+  pipelineLinks          PipelineFeed[]
+
+  @@index([workspaceId, visibility, updatedAt])
+}
+
+model WorkspaceFeedSubscription {
+  workspaceId     String
+  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceId        String
+  source          ResearchSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  createdByUserId String?
+  createdBy       User?          @relation("FeedSubscriptionCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+
+  @@id([workspaceId, sourceId])
+  @@index([sourceId])
+}
+
+model PipelineFeed {
+  pipelineId String
+  pipeline   Pipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  sourceId   String
+  source     ResearchSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  alias      String?
+  createdAt  DateTime       @default(now())
+
+  @@id([pipelineId, sourceId])
+  @@unique([pipelineId, alias])
+  @@index([sourceId])
 }
 
 model Schedule {
@@ -227,11 +339,16 @@ model Schedule {
   lastRunAt       DateTime?
   createdAt       DateTime                 @default(now())
   updatedAt       DateTime                 @updatedAt
+  workspaceId     String
+  workspace       Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdByUserId String?
+  createdBy       User?                    @relation("ScheduleCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   sources         ScheduleSource[]
   pipelineActions SchedulePipelineAction[]
   executions      ScheduleExecution[]
 
   @@index([enabled, nextRunAt])
+  @@index([workspaceId, updatedAt])
 }
 
 model ScheduleSource {

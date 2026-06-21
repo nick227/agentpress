@@ -30,3 +30,5 @@ AgentPress is a minimal account-based AI pipeline builder for generating blog po
 14. Component Library / UI Kit
 15. Content Inventory
 16. Development Handoff Checklist
+17. Account-Level Schedules Proposal
+18. Permissions, Visibility, Teams, and Community Plan

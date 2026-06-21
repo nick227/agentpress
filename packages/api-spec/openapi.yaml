@@ -474,6 +474,47 @@ components:
         error:
           type: string
 
+    RunSummary:
+      type: object
+      required: [id, pipelineId, pipelineName, pipelineSlug, status, dryRun, startedAt, hasPost, variables, agentCount, assetCount]
+      properties:
+        id:
+          type: string
+        pipelineId:
+          type: string
+        pipelineName:
+          type: string
+        pipelineSlug:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed, posted]
+        dryRun:
+          type: boolean
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+        hasPost:
+          type: boolean
+        postTitle:
+          type: string
+        destinationId:
+          type: string
+        variables:
+          type: object
+          additionalProperties: true
+        agentCount:
+          type: integer
+        assetCount:
+          type: integer
+
     Destination:
       type: object
       required: [id, type, name, siteUrl, authType, defaultStatus, createdAt, updatedAt]
@@ -1315,6 +1356,40 @@ paths:
         '401':
           description: Not authenticated
 
+    patch:
+      operationId: updateCurrentUser
+      tags: [auth]
+      summary: Update current user profile or change password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error
+        '401':
+          description: Current password incorrect
+
   /api/accounts/navigation:
     get:
       operationId: listAccountNavigation
@@ -1726,6 +1801,33 @@ paths:
               schema:
                 type: string
                 format: binary
+
+  /api/pipeline-runs:
+    get:
+      operationId: listAllRuns
+      tags: [runs]
+      summary: List all pipeline runs across all pipelines, newest first
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Run list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RunSummary'
 
   /api/pipeline-runs/{runId}:
     parameters:

@@ -25,7 +25,7 @@ export function PromptsPanel() {
         <div>
           <h1 className="text-base font-semibold">Summary Prompts</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Reusable AI prompts applied to collected research content. Use <code className="font-mono bg-muted px-1 rounded">{'{{transcript}}'}</code> in your user prompt.
+            Use <code className="font-mono bg-muted px-1 rounded">{'{{transcript}}'}</code> in your user prompt.
           </p>
         </div>
         <Button className="flex items-center gap-2 whitespace-nowrap bg-green-500" size="sm" onClick={() => setShowNew(true)}>

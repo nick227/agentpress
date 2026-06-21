@@ -1,6 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient, ApiError } from '../client'
 
+export function useAllRuns(limit = 50) {
+  return useQuery({
+    queryKey: ['all-runs', limit],
+    queryFn: async () => {
+      const { data, error, response } = await getApiClient().GET('/api/pipeline-runs', {
+        params: { query: { limit } },
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
+  })
+}
+
 export function usePipelineRun(runId: string, options?: { pollForPublish?: boolean }) {
   return useQuery({
     queryKey: ['run', runId],
@@ -71,6 +86,7 @@ export function useStartPipelineRun() {
     },
     onSuccess: (_data, { pipelineId }) => {
       queryClient.invalidateQueries({ queryKey: ['pipeline', pipelineId] })
+      queryClient.invalidateQueries({ queryKey: ['all-runs'] })
       queryClient.invalidateQueries({ queryKey: ['account-navigation'] })
     },
   })

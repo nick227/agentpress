@@ -2,6 +2,42 @@ import { PipelineRunService } from '../services/PipelineRunService'
 import { mimeTypeForAsset, OutputAssetService } from '../services/OutputAssetService'
 import { db } from '@project/db'
 
+export async function listAllRuns(request: any, reply: any) {
+  const limit = Math.min(Number(request.query?.limit ?? 50), 200)
+  const rows = await db.pipelineRun.findMany({
+    orderBy: { startedAt: 'desc' },
+    take: limit,
+    include: {
+      pipeline: { select: { name: true, slug: true } },
+      _count: { select: { agentRuns: true, assets: true } },
+    },
+  })
+
+  return reply.send({
+    data: rows.map((r) => {
+      const post = r.generatedPost as Record<string, unknown> | null
+      return {
+        id: r.id,
+        pipelineId: r.pipelineId,
+        pipelineName: r.pipeline.name,
+        pipelineSlug: r.pipeline.slug,
+        title: r.title ?? undefined,
+        status: r.status,
+        dryRun: r.dryRun,
+        startedAt: r.startedAt,
+        completedAt: r.completedAt ?? undefined,
+        error: r.error ?? undefined,
+        hasPost: post !== null,
+        postTitle: typeof post?.title === 'string' ? post.title : undefined,
+        destinationId: r.destinationId ?? undefined,
+        variables: r.variables as Record<string, unknown>,
+        agentCount: r._count.agentRuns,
+        assetCount: r._count.assets,
+      }
+    }),
+  })
+}
+
 const svc = new PipelineRunService()
 const assets = new OutputAssetService()
 

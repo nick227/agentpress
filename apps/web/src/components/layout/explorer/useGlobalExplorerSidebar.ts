@@ -35,6 +35,12 @@ export function useGlobalExplorerSidebar() {
     () => needle ? resources.destinations.filter((destination) => destination.name.toLowerCase().includes(needle)) : resources.destinations,
     [resources.destinations, needle],
   )
+  const visibleRuns = useMemo(
+    () => needle
+      ? resources.runs.filter((run) => (run.pipelineName + ' ' + (run.title ?? '')).toLowerCase().includes(needle))
+      : resources.runs,
+    [resources.runs, needle],
+  )
   const researchGroups = useMemo(() => groupResearchSources(visibleSources), [visibleSources])
 
   // Category interaction.
@@ -55,6 +61,7 @@ export function useGlobalExplorerSidebar() {
     pipelines: visiblePipelines,
     schedules: visibleSchedules,
     destinations: visibleDestinations,
+    runs: visibleRuns,
     researchGroups: researchGroups.map((group) => ({
       ...group,
       collapsed: !needle && collapsedResearchCategories.has(group.category),
@@ -63,13 +70,16 @@ export function useGlobalExplorerSidebar() {
     hasResults: visiblePipelines.length > 0
       || visibleSchedules.length > 0
       || visibleSources.length > 0
-      || visibleDestinations.length > 0,
+      || visibleDestinations.length > 0
+      || visibleRuns.length > 0,
     pipelinesFetching: resources.pipelinesFetching,
     schedulesFetching: resources.schedulesFetching,
     destinationsFetching: resources.destinationsFetching,
+    runsFetching: resources.runsFetching,
     refreshPipelines: resources.refreshPipelines,
     refreshSchedules: resources.refreshSchedules,
     refreshDestinations: resources.refreshDestinations,
+    refreshRuns: resources.refreshRuns,
     toggleResearchCategory,
     checkResearch: researchRefresh.checkResearch,
     checkSource: researchRefresh.checkSource,

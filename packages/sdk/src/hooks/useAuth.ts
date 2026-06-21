@@ -54,3 +54,17 @@ export function useLogout() {
     },
   })
 }
+
+export function useChangePassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (body: { currentPassword: string; newPassword: string }) => {
+      const { data, error, response } = await getApiClient().PATCH('/auth/me', { body })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+    },
+  })
+}

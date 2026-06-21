@@ -32,3 +32,12 @@ export async function logout(request: any, reply: any) {
 export async function getCurrentUser(request: any, reply: any) {
   return reply.send({ data: request.user })
 }
+
+export async function updateCurrentUser(request: any, reply: any) {
+  const { currentPassword, newPassword } = request.body ?? {}
+  if (!currentPassword || !newPassword) {
+    return reply.status(400).send({ error: 'currentPassword and newPassword are required' })
+  }
+  const updated = await authService.changePassword(request.user.id, currentPassword, newPassword)
+  return reply.send({ data: updated })
+}

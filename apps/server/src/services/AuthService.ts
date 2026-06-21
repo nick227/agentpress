@@ -35,6 +35,15 @@ export class AuthService {
     await db.session.deleteMany({ where: { token } })
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await db.user.findUniqueOrThrow({ where: { id: userId } })
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash)
+    if (!valid) throw { statusCode: 401, message: 'Current password is incorrect' }
+    if (newPassword.length < 8) throw { statusCode: 400, message: 'New password must be at least 8 characters' }
+    const hash = await bcrypt.hash(newPassword, 12)
+    return db.user.update({ where: { id: userId }, data: { passwordHash: hash } })
+  }
+
   private async _createSession(userId: string) {
     return db.session.create({
       data: {

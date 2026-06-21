@@ -472,7 +472,6 @@ async function main() {
     // YouTube — politics
     { name: 'Vaush', slug: 'vaush', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Vaush' },
     { name: 'Destiny', slug: 'destiny', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@destiny' },
-    { name: 'HasanAbi', slug: 'hasanabi', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@HasanAbi' },
     // YouTube — financial
     { name: 'ZipTrader', slug: 'ziptrader', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@ZipTrader' },
     { name: 'Spencer Invests', slug: 'spencer-invests', category: 'financial', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@SpencerInvests' },
@@ -551,13 +550,6 @@ async function main() {
     }
   }
 
-  console.log(`  ${created} created, ${skipped} already exist`)
-  console.log('\n✓ Seed complete')
-  console.log('  User:      admin@agentpress.local / password123')
-  console.log('  Pipelines: SEO Blog Post (4 agents), Political Commentary (3 agents)')
-  console.log(`  Library:   ${LIBRARY_AGENTS.length} agents seeded`)
-  console.log(`  Research:  ${RESEARCH_SOURCES.length} sources seeded`)
-  console.log(`  Prompts:   ${SUMMARY_PROMPTS.length} summary prompts seeded`)
 }
 
 main()

@@ -18,6 +18,9 @@ const ResearchSourcePage = lazy(() =>
 const ResearchNewPage = lazy(() =>
   import('@/pages/ResearchNewPage').then((m) => ({ default: m.ResearchNewPage })),
 )
+const ResearchPage = lazy(() =>
+  import('@/pages/ResearchPage').then((m) => ({ default: m.ResearchPage })),
+)
 const PipelinesNewPage = lazy(() =>
   import('@/pages/PipelinesNewPage').then((m) => ({ default: m.PipelinesNewPage })),
 )
@@ -29,6 +32,15 @@ const ScheduleEditorPage = lazy(() =>
 )
 const DestinationEditorPage = lazy(() =>
   import('@/pages/DestinationEditorPage').then((m) => ({ default: m.DestinationEditorPage })),
+)
+const DestinationsPage = lazy(() =>
+  import('@/pages/DestinationsPage').then((m) => ({ default: m.DestinationsPage })),
+)
+const RunsPage = lazy(() =>
+  import('@/pages/RunsPage').then((m) => ({ default: m.RunsPage })),
+)
+const ProfilePage = lazy(() =>
+  import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 )
 
 function PageFallback() {
@@ -73,10 +85,14 @@ export function App() {
             />
             <Route path="/schedules" element={<LazyPage><SchedulesPage /></LazyPage>} />
             <Route path="/schedules/:scheduleId" element={<LazyPage><ScheduleEditorPage /></LazyPage>} />
+            <Route path="/research" element={<LazyPage><ResearchPage /></LazyPage>} />
             <Route path="/research/new" element={<LazyPage><ResearchNewPage /></LazyPage>} />
             <Route path="/research/:sourceSlug" element={<LazyPage><ResearchSourcePage /></LazyPage>} />
+            <Route path="/destinations" element={<LazyPage><DestinationsPage /></LazyPage>} />
             <Route path="/destinations/new" element={<LazyPage><DestinationEditorPage /></LazyPage>} />
             <Route path="/destinations/:destinationId" element={<LazyPage><DestinationEditorPage /></LazyPage>} />
+            <Route path="/runs" element={<LazyPage><RunsPage /></LazyPage>} />
+            <Route path="/profile" element={<LazyPage><ProfilePage /></LazyPage>} />
           </Route>
         </Route>
 

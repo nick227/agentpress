@@ -7,6 +7,7 @@ import { activityTooltip, compactRelativeTime } from './explorerTime'
 type ResourceGroupProps = {
   label: string
   icon: LucideIcon
+  indexHref?: string
   addHref?: string
   onRefetch?: () => void
   isRefetching?: boolean
@@ -15,10 +16,11 @@ type ResourceGroupProps = {
   children: React.ReactNode
 }
 
-// Top-level resource headings shared by pipelines, schedules, research, and destinations.
+// Top-level resource headings shared by pipelines, schedules, research, destinations, and runs.
 export function ResourceGroup({
   label,
   icon: Icon,
+  indexHref,
   addHref,
   onRefetch,
   isRefetching,
@@ -28,9 +30,19 @@ export function ResourceGroup({
 }: ResourceGroupProps) {
   return (
     <div className="mt-2">
-      <div className="group flex items-center gap-1 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="group flex items-center gap-1 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground bg-gray-100">
         <Icon size={11} />
-        <span className="ml-0.5 flex-1">{label}</span>
+        {indexHref ? (
+          <Link
+            to={indexHref}
+            className="ml-0.5 flex-1 hover:text-foreground transition-colors"
+            title={`View all ${label.toLowerCase()}`}
+          >
+            {label}
+          </Link>
+        ) : (
+          <span className="ml-0.5 flex-1">{label}</span>
+        )}
         {onRefetch && (
           <button
             type="button"
@@ -52,7 +64,7 @@ export function ResourceGroup({
           </Link>
         )}
       </div>
-      <div>{children}</div>
+      <div className="max-h-64 overflow-auto">{children}</div>
     </div>
   )
 }
