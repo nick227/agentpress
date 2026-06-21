@@ -386,10 +386,10 @@ export function AgentsSection({ pipeline, pipelineId }: { pipeline: Pipeline; pi
 
 function AgentSectionHeader({ pending, onBrowse, onAdd }: { pending: boolean; onBrowse: () => void; onAdd: (definition: AgentDefinition) => void }) {
   return (
-    <SectionHeader title="Agents" description="Set the execution and final-body order. Disable any step you want to skip.">
-      <Button variant="ghost" size="icon-sm" onClick={onBrowse} title="Browse agent library"><BookOpen size={13} /></Button>
-      <Button variant="ghost" size="icon-sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankImage)} title="Add image agent"><Image size={13} /></Button>
-      <Button variant="ghost" size="icon-sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.staticImage)} title="Add static agent"><FileText size={13} /></Button>
+    <SectionHeader title="Workflow" description="Set the execution and final-body order. Disable any step you want to skip.">
+      <Button variant="outline" size="sm" onClick={onBrowse} title="Browse agent library"><BookOpen size={13} /> Browse library</Button>
+      <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankImage)} title="Add image agent"><Image size={13} />Add image</Button>
+      <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.staticImage)} title="Add static agent"><FileText size={13} /> Static text</Button>
       <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankText)}><Plus size={13} /> Add agent</Button>
     </SectionHeader>
   )

@@ -245,7 +245,7 @@ const LIBRARY_AGENTS = [
 ]
 
 async function main() {
-  // Create owner user
+  console.log('Starting seed...')
   const hash = await bcrypt.hash('password123', 12)
   const owner = await db.user.upsert({
     where: { email: 'admin@agentpress.local' },
@@ -1234,5 +1234,5 @@ async function main() {
 }
 
 main()
-  .catch(console.error)
+  .catch((e) => { console.error('Seed failed:', e); process.exit(1) })
   .finally(() => db.$disconnect())
