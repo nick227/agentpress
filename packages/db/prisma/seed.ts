@@ -490,7 +490,8 @@ async function main() {
 
   // ── Research sources ───────────────────────────────────────────────────
   const RESEARCH_SOURCES = [
-    // YouTube — AI
+    // YouTube — AI 
+    { name: 'AIAgentsStudio', slug: 'aiagentsstudio', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/aiagentsstudio' },
     { name: 'Nate Herk', slug: 'nateherk', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/nateherk' },
     { name: 'Intheworldofai', slug: 'intheworldofai', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/intheworldofai' },
     { name: 'AIBrainbox', slug: 'aibrainbox', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/aibrainbox' },
