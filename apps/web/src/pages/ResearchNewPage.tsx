@@ -65,10 +65,10 @@ export function ResearchNewPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto pb-10">
-      <Link to="/" className="mx-6 mt-5 inline-flex text-sm text-muted-foreground hover:text-foreground">← Home</Link>
+    <div className="w-full min-w-0 max-w-lg mx-auto pb-10 px-4 sm:px-6">
+      <Link to="/" className="mt-5 inline-flex text-sm text-muted-foreground hover:text-foreground">← Home</Link>
 
-      <div className="px-6 pt-4">
+      <div className="pt-4">
         <h1 className="text-lg font-semibold mb-1">New Research Source</h1>
         <p className="text-sm text-muted-foreground mb-6">Connect a YouTube channel, subreddit, or RSS feed to pull content into your pipelines.</p>
 

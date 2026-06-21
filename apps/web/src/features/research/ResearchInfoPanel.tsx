@@ -119,16 +119,16 @@ export function ResearchInfoPanel({ source }: Props) {
   const itemWord = source.sourceType === 'youtube' ? 'video' : source.sourceType === 'reddit' ? 'digest' : 'article'
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-start justify-between mb-6">
-        <div>
+    <div className="page-shell page-shell--2xl">
+      <div className="page-header mb-6">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">{source.name}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             {source.itemCount ?? 0} {itemWord}{(source.itemCount ?? 0) !== 1 ? 's' : ''} collected
             {source.lastChecked ? ` · Last checked ${new Date(source.lastChecked).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="page-header-actions">
           <Button variant="outline" size="sm" disabled={isChecking} onClick={handleCheck}>
             {isChecking ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
             {isChecking ? 'Checking…' : labels.checkLabel}

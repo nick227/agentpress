@@ -1,6 +1,7 @@
 import { db } from '@project/db'
 import { ResearchService } from './ResearchService'
 import { resolvePipelineSummaryPrompt } from './summaryPromptResolve'
+import { getCommunityWorkspaceId } from './communityWorkspace'
 
 export interface ResearchContext {
   sourceId: string
@@ -38,13 +39,24 @@ export class ResearchContextService {
 
     const referencedSources = this.findReferencedSources(pipeline)
     if (referencedSources.size > 0) {
-      const sources = await db.researchSource.findMany({
+      const communityWorkspaceId = await getCommunityWorkspaceId()
+      const rawSources = await db.researchSource.findMany({
         where: {
           slug: { in: [...referencedSources.keys()] },
-          ...(pipeline.workspaceId ? { workspaceId: pipeline.workspaceId } : {}),
+          OR: [
+            ...(pipeline.workspaceId ? [{ workspaceId: pipeline.workspaceId }] : []),
+            ...(communityWorkspaceId ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const }] : []),
+          ],
         },
       })
-      const sourceBySlug = new Map(sources.map((source) => [source.slug, source]))
+      // Prefer workspace-scoped source; PUBLIC community source is the fallback
+      const sourceBySlug = new Map<string, typeof rawSources[0]>()
+      for (const source of rawSources) {
+        const current = sourceBySlug.get(source.slug)
+        if (!current || (pipeline.workspaceId && source.workspaceId === pipeline.workspaceId)) {
+          sourceBySlug.set(source.slug, source)
+        }
+      }
 
       for (const [slug, itemKeys] of referencedSources) {
         const source = sourceBySlug.get(slug)

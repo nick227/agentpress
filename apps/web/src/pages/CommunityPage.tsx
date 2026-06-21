@@ -104,13 +104,13 @@ export function CommunityPage() {
   const promptGroups = groupBy(filteredPrompts, p => p.kind ?? 'CONTENT', PROMPT_KIND_ORDER)
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-5">
+    <div className="page-shell space-y-5">
       <div>
         <h1 className="text-lg font-semibold">Community</h1>
         <p className="text-sm text-muted-foreground">Public starter resources. Copies and runs stay private in your workspace.</p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button size="sm" variant={tab === 'pipelines' ? 'default' : 'outline'} onClick={() => setTab('pipelines')}><Workflow size={13} /> Pipelines</Button>
         <Button size="sm" variant={tab === 'feeds' ? 'default' : 'outline'} onClick={() => setTab('feeds')}><Rss size={13} /> Feeds</Button>
         <Button size="sm" variant={tab === 'prompts' ? 'default' : 'outline'} onClick={() => setTab('prompts')}><BookOpen size={13} /> Prompts</Button>

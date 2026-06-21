@@ -62,7 +62,7 @@ export function PromptEditorPage() {
 
   if (!isNew && isLoading) {
     return (
-      <div className="p-6 max-w-3xl mx-auto">
+      <div className="page-shell page-shell--3xl">
         <Skeleton className="h-64 w-full" />
       </div>
     )
@@ -85,13 +85,13 @@ export function PromptEditorPage() {
     : promptToFormValues(prompt!)
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="page-shell page-shell--3xl space-y-6">
       <Link to="/prompts" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft size={14} /> Prompts
       </Link>
 
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="page-header gap-4">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">{isNew ? 'New prompt' : prompt?.name}</h1>
           <p className="text-sm text-muted-foreground">
             {isCommunity

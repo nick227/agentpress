@@ -69,7 +69,7 @@ export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="page-shell page-shell--3xl">
       <div className="mb-5">
         <h1 className="text-base font-semibold leading-snug mb-1">{item.title}</h1>
         <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
@@ -102,7 +102,7 @@ export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }
       )}
 
       <div>
-        <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="section-header mb-2">
           <button
             type="button"
             onClick={() => setShowTranscript((v) => !v)}
@@ -174,8 +174,8 @@ function SummaryCard({
 
   return (
     <div className="border rounded-lg p-3.5">
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div>
+      <div className="section-header mb-2">
+        <div className="min-w-0">
           <p className="text-sm font-semibold">{prompt.name}</p>
           {prompt.description && <p className="text-xs text-muted-foreground mt-0.5">{prompt.description}</p>}
         </div>

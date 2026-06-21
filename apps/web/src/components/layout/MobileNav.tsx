@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, Menu, Moon, Sun, X } from 'lucide-react'
+import { BookOpen, LogOut, Menu, Moon, Sun, X } from 'lucide-react'
 import { useLogout } from '@project/sdk'
 import { toggleTheme } from '@/lib/theme'
 import { GlobalExplorerSidebar } from './GlobalExplorerSidebar'
@@ -32,10 +32,10 @@ export function MobileNav() {
   return (
     <>
       {/* Sticky top header — mobile only */}
-      <header className="md:hidden sticky top-0 z-30 flex h-12 shrink-0 items-center justify-between border-b bg-surface px-4">
+      <header className="md:hidden sticky top-0 z-30 flex h-12 min-w-0 shrink-0 items-center justify-between border-b bg-surface px-4">
         <Link
           to="/"
-          className="text-sm font-semibold tracking-tight text-foreground hover:text-foreground/80 transition-colors"
+          className="text-xl font-semibold tracking-tight text-foreground hover:text-foreground/80 transition-colors"
         >
           AgentPress
         </Link>
@@ -71,7 +71,7 @@ export function MobileNav() {
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
           <Link
             to="/"
-            className="text-sm font-semibold tracking-tight text-foreground hover:text-foreground/80 transition-colors"
+            className="text-xl font-semibold tracking-tight text-foreground hover:text-foreground/80 transition-colors"
           >
             AgentPress
           </Link>
@@ -92,6 +92,13 @@ export function MobileNav() {
 
         {/* Footer actions */}
         <div className="mt-auto flex shrink-0 flex-col gap-1 border-t p-3">
+          <Link
+            to="/documentation"
+            className="flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+          >
+            <BookOpen size={15} />
+            Documentation
+          </Link>
           <button
             type="button"
             onClick={handleToggleTheme}

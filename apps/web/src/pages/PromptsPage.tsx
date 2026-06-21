@@ -55,7 +55,7 @@ export function PromptsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="page-shell space-y-4">
         <Skeleton className="h-7 w-44" />
         <Skeleton className="h-4 w-56" />
         <div className="space-y-px mt-4">
@@ -66,17 +66,19 @@ export function PromptsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-start justify-between mb-1">
-        <div>
+    <div className="page-shell">
+      <div className="page-header">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">Prompts</h1>
           <p className="text-sm text-muted-foreground">
             {all.length} reusable prompt{all.length === 1 ? '' : 's'} — transformational for pipelines, content for research
           </p>
         </div>
-        <Button size="sm" onClick={() => navigate('/prompts/new')}>
-          <Plus size={13} /> New prompt
-        </Button>
+        <div className="page-header-actions">
+          <Button size="sm" onClick={() => navigate('/prompts/new')}>
+            <Plus size={13} /> New prompt
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 mb-5 flex flex-wrap items-center gap-3">

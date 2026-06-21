@@ -139,9 +139,9 @@ export function BuilderRun({ runId, pipeline }: Props) {
   }
 
   return (
-    <div className="p-6 max-w-4xl space-y-6">
+    <div className="page-shell space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="page-header gap-3">
         <div className="min-w-0 space-y-1">
           <h1 className="text-lg font-semibold truncate">{runTitle}</h1>
           <div className="flex items-center gap-3 flex-wrap">
@@ -159,16 +159,18 @@ export function BuilderRun({ runId, pipeline }: Props) {
         </div>
 
         {canPublish && (
-          <Button
-            size="sm"
-            className="gap-1.5 shrink-0"
-            loading={isPublishing}
-            disabled={isPublishing}
-            onClick={handlePublish}
-          >
-            <Send size={13} />
-            {isPublishing ? 'Publishing…' : 'Publish to WordPress'}
-          </Button>
+          <div className="page-header-actions">
+            <Button
+              size="sm"
+              className="gap-1.5 shrink-0"
+              loading={isPublishing}
+              disabled={isPublishing}
+              onClick={handlePublish}
+            >
+              <Send size={13} />
+              {isPublishing ? 'Publishing…' : 'Publish to WordPress'}
+            </Button>
+          </div>
         )}
       </div>
 

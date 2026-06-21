@@ -49,7 +49,7 @@ export function BuilderSetup({ pipeline, pipelineId, runs, onRunCreated }: Props
   return (
     <div className="min-h-full flex flex-col">
       <div className="p-6">
-        <div className="max-w-6xl space-y-6">
+        <div className="w-full min-w-0 max-w-6xl space-y-6">
           <PipelineNameField pipeline={pipeline} pipelineId={pipelineId} onRenamed={runDefaults.handlePipelineRenamed} />
           <div className="space-y-6">
             <DestinationSection pipeline={pipeline} pipelineId={pipelineId} />

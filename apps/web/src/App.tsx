@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { LoginPage } from '@/pages/LoginPage'
 import { PipelinesPage } from '@/pages/PipelinesPage'
+import { HomePage } from '@/pages/HomePage'
 import { AuthGuard } from '@/lib/AuthGuard'
 import { Shell } from '@/components/layout/Shell'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -48,6 +49,9 @@ const CommunityPage = lazy(() =>
 const TeamsPage = lazy(() =>
   import('@/pages/TeamsPage').then((m) => ({ default: m.TeamsPage })),
 )
+const DocumentationPage = lazy(() =>
+  import('@/pages/DocumentationPage').then((m) => ({ default: m.DocumentationPage })),
+)
 const PromptsPage = lazy(() =>
   import('@/pages/PromptsPage').then((m) => ({ default: m.PromptsPage })),
 )
@@ -57,7 +61,7 @@ const PromptEditorPage = lazy(() =>
 
 function PageFallback() {
   return (
-    <div className="p-6 space-y-4">
+    <div className="page-shell space-y-4">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-48 w-full" />
     </div>
@@ -85,7 +89,8 @@ export function App() {
 
         <Route element={<AuthGuard />}>
           <Route element={<Shell />}>
-            <Route index element={<PipelinesPage />} />
+            <Route index element={<HomePage />} />
+            <Route path="/pipelines" element={<PipelinesPage />} />
             <Route path="/pipelines/new" element={<LazyPage><PipelinesNewPage /></LazyPage>} />
             <Route
               path="/pipelines/:pipelineSlug"
@@ -110,6 +115,7 @@ export function App() {
             <Route path="/profile" element={<LazyPage><ProfilePage /></LazyPage>} />
             <Route path="/community" element={<LazyPage><CommunityPage /></LazyPage>} />
             <Route path="/teams" element={<LazyPage><TeamsPage /></LazyPage>} />
+            <Route path="/documentation" element={<LazyPage><DocumentationPage /></LazyPage>} />
           </Route>
         </Route>
 

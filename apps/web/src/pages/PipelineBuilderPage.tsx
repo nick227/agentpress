@@ -48,7 +48,7 @@ export function PipelineBuilderPage() {
     )
   } else {
     content = (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-full w-full min-w-0 bg-background">
         <DetailPanel pipeline={pipeline} runs={recentRuns} pipelineId={pipelineSlug!} />
       </div>
     )

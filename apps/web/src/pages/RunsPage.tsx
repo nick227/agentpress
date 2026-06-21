@@ -79,7 +79,7 @@ export function RunsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="page-shell space-y-4">
         <Skeleton className="h-7 w-24" />
         <Skeleton className="h-4 w-48" />
         <div className="space-y-px mt-4">
@@ -90,34 +90,36 @@ export function RunsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-start justify-between mb-1">
-        <div>
+    <div className="page-shell">
+      <div className="page-header">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">Runs</h1>
           <p className="text-sm text-muted-foreground">
             {allRuns.length} run{allRuns.length === 1 ? '' : 's'} · newest first
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void refetch()}
-          disabled={isFetching}
-          title="Refresh"
-          className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40"
-        >
-          <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-        </button>
+        <div className="page-header-actions">
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            title="Refresh"
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40"
+          >
+            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       {/* Filter tabs */}
-      <div className="mt-4 mb-5 flex gap-0 border-b">
+      <div className="mt-4 mb-5 flex gap-0 overflow-x-auto border-b scrollbar-none">
         {FILTERS.map((f) => (
           <button
             key={f}
             type="button"
             onClick={() => setFilter(f)}
             className={cn(
-              'px-3 py-2 text-xs font-medium capitalize border-b-2 -mb-px transition-colors',
+              'shrink-0 px-3 py-2 text-xs font-medium capitalize border-b-2 -mb-px transition-colors',
               filter === f
                 ? 'border-foreground text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -136,7 +138,7 @@ export function RunsPage() {
           icon={Play}
           title="No runs yet"
           description="Start a pipeline run from the builder to see results here."
-          action={{ label: 'Go to Pipelines', onClick: () => navigate('/') }}
+          action={{ label: 'Go to Pipelines', onClick: () => navigate('/pipelines') }}
         />
       ) : runs.length === 0 ? (
         <p className="text-sm text-muted-foreground">No {filter} runs.</p>

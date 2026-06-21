@@ -27,7 +27,7 @@ interface Props {
 
 function PanelFallback() {
   return (
-    <div className="p-6 space-y-4 max-w-2xl">
+    <div className="page-shell space-y-4 max-w-2xl">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-48 w-full" />
     </div>
@@ -102,7 +102,7 @@ export function DetailPanel({ pipeline, runs, pipelineId }: Props) {
 }
 
 function InnerView({ onBack, label, children }: { onBack: () => void; label: string; children: React.ReactNode }) {
-  return <div><button type="button" onClick={onBack} className="mx-6 mt-5 text-sm text-muted-foreground hover:text-foreground">← {label}</button>{children}</div>
+  return <div className="min-w-0"><button type="button" onClick={onBack} className="mx-4 mt-5 text-sm text-muted-foreground hover:text-foreground sm:mx-6">← {label}</button>{children}</div>
 }
 
 function Placeholder({ text }: { text: string }) {

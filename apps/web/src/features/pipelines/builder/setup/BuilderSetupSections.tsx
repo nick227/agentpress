@@ -294,9 +294,9 @@ function DatasetInput({ pipeline, pipelineId }: { pipeline: Pipeline; pipelineId
           </div>
         </>
       ) : (
-        <div className="flex items-center justify-between gap-3">
-          <div><p className="text-sm font-medium">Batch data</p><p className="text-xs text-muted-foreground">Run once per CSV or Google Sheets row.</p></div>
-          <div className="flex gap-2 shrink-0">
+        <div className="section-header">
+          <div className="min-w-0"><p className="text-sm font-medium">Batch data</p><p className="text-xs text-muted-foreground">Run once per CSV or Google Sheets row.</p></div>
+          <div className="page-header-actions">
             <Button variant="outline" size="sm" loading={upsert.isPending} onClick={() => fileInput.current?.click()}><Upload size={13} /> CSV</Button>
             <Button variant="outline" size="sm" onClick={() => setShowSheetInput((value) => !value)}><Link2 size={13} /> Sheet</Button>
           </div>
@@ -501,7 +501,7 @@ function RunRow({ run, fallbackTitle, onClick }: { run: Run; fallbackTitle: stri
 }
 
 function SectionHeader({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
-  return <div className="flex items-end justify-between gap-3"><div><Label>{title}</Label>{description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}</div>{children && <div className="flex items-center gap-1">{children}</div>}</div>
+  return <div className="section-header"><div className="min-w-0"><Label>{title}</Label>{description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}</div>{children && <div className="flex flex-wrap items-center gap-1">{children}</div>}</div>
 }
 
 function EmptyRow({ text }: { text: string }) {

@@ -61,9 +61,9 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <label className="text-sm font-medium">{label}</label>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           <div className="relative">
             <Button
               type="button"
@@ -113,7 +113,7 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
               Research feeds <ChevronDown size={11} />
             </Button>
             {showResearchMenu && (
-              <div className="absolute right-0 top-8 min-w-[420px] bg-surface border rounded shadow-lg z-20 py-1">
+              <div className="absolute right-0 top-8 z-20 w-[min(100vw-2rem,28rem)] min-w-0 bg-surface border rounded shadow-lg py-1">
                 {researchSources.length > 0 ? (
                   researchSources.map((source) => (
                     <div key={source.id} className="px-1 py-1">

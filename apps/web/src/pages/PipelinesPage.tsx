@@ -58,7 +58,7 @@ export function PipelinesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="page-shell space-y-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-64" />
         <div className="space-y-2">
@@ -69,16 +69,16 @@ export function PipelinesPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-start justify-between mb-1">
-        <div>
+    <div className="page-shell">
+      <div className="page-header">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">Pipelines</h1>
           <p className="text-sm text-muted-foreground">
             {all.length} pipeline{all.length === 1 ? '' : 's'}
             {totalActive > 0 && ` · ${totalActive} active`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="page-header-actions">
           <Button variant="outline" size="sm" onClick={() => setShowTemplateBrowser(true)}>
             From Template
           </Button>
@@ -173,11 +173,11 @@ function PipelineRow({
   const lastRun = relativeTime(pipeline.lastRunAt)
 
   return (
-    <div className="group flex items-center hover:bg-muted/30 transition-colors">
+    <div className="group flex min-w-0 flex-col sm:flex-row sm:items-center hover:bg-muted/30 transition-colors">
       <button
         type="button"
         onClick={onClick}
-        className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
+        className="flex min-w-0 flex-1 items-start gap-3 px-4 py-3 text-left sm:items-center"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -197,11 +197,11 @@ function PipelineRow({
             )}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs text-muted-foreground sm:gap-3">
           {lastRun ? (
-            <span className="tabular-nums">ran {lastRun}</span>
+            <span className="hidden tabular-nums sm:inline">ran {lastRun}</span>
           ) : (
-            <span className="text-muted-foreground/50">no runs</span>
+            <span className="hidden text-muted-foreground/50 sm:inline">no runs</span>
           )}
           <PipelineStatusBadge status={pipeline.status} />
         </div>

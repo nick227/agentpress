@@ -82,8 +82,8 @@ export function RunPipelineControls(props: Props) {
 
   return (
     <>
-      <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur px-6 py-3">
-        <div className="max-w-6xl flex items-center justify-end gap-4">
+      <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur px-4 py-3 sm:px-6">
+        <div className="w-full min-w-0 max-w-6xl mx-auto flex flex-wrap items-center justify-end gap-3 sm:gap-4">
           <p className="min-w-0 text-xs text-muted-foreground truncate">{modeLabel}</p>
           <Button
             onClick={handleRunClick}

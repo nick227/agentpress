@@ -40,15 +40,15 @@ export function ResearchSourcePage() {
     )
   } else if (itemId) {
     content = (
-      <div className="max-w-4xl mx-auto">
-        <button type="button" onClick={() => setSearchParams({}, { replace: false })} className="mx-6 mt-5 text-sm text-muted-foreground hover:text-foreground">← Back to Feed</button>
+      <div className="page-shell">
+        <button type="button" onClick={() => setSearchParams({}, { replace: false })} className="mt-5 text-sm text-muted-foreground hover:text-foreground">← Back to Feed</button>
         <ResearchItemPanel itemId={itemId} sourceSlug={source.slug} sourceType={source.sourceType} />
       </div>
     )
   } else {
     content = (
-      <div className="max-w-4xl mx-auto pb-10">
-        <Link to="/" className="mx-6 mt-5 inline-flex text-sm text-muted-foreground hover:text-foreground">← Home</Link>
+      <div className="page-shell pb-10">
+        <Link to="/" className="mt-5 inline-flex text-sm text-muted-foreground hover:text-foreground">← Home</Link>
         <ResearchInfoPanel source={source} />
         <ResearchItemsSection
           sourceType={source.sourceType}
@@ -79,7 +79,7 @@ function ResearchItemsSection({ sourceType, items, total, page, pages, loading, 
   onPageChange: (page: number) => void
 }) {
   return (
-    <section className="px-6 pb-8 max-w-2xl">
+    <section className="page-shell page-shell--2xl pb-8 pt-0">
       <div className="mb-3"><h2 className="text-sm font-semibold">Collected items</h2><p className="text-xs text-muted-foreground">{total} item{total === 1 ? '' : 's'}, newest first.</p></div>
       {loading ? <div className="space-y-2">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-14 w-full" />)}</div> : items.length === 0 ? (
         <div className="rounded border p-4 text-sm text-muted-foreground">No items collected yet.</div>

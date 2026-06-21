@@ -5,10 +5,10 @@ import type { LucideIcon } from 'lucide-react'
 
 const NAV_ITEMS: { to: string; label: string; icon: LucideIcon; match: (p: string) => boolean }[] = [
   {
-    to: '/',
+    to: '/pipelines',
     label: 'Pipelines',
     icon: Workflow,
-    match: (p) => p === '/' || p.startsWith('/pipelines'),
+    match: (p) => p.startsWith('/pipelines'),
   },
   {
     to: '/schedules',
@@ -60,9 +60,9 @@ export function TopNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="shrink-0 border-b bg-surface/80 backdrop-blur-sm"
+      className="w-full min-w-0 shrink-0 border-b bg-surface/80 backdrop-blur-sm"
     >
-      <div className="flex items-center overflow-y-hidden scrollbar-none px-2 gap-5">
+      <div className="flex w-full min-w-0 items-center flex-wrap px-2 sm:gap-3 md:gap-5">
         {NAV_ITEMS.map(({ to, label, icon: Icon, match }) => {
           const active = match(pathname)
           return (
@@ -70,7 +70,7 @@ export function TopNav() {
               key={to}
               to={to}
               className={cn(
-                'group relative flex items-center gap-2 whitespace-nowrap px-3 py-2.5 text-[13px] font-medium transition-colors duration-150',
+                'group relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 py-2.5 text-[13px] font-medium transition-colors duration-150 sm:gap-2 sm:px-3',
                 active
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground',

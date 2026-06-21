@@ -26,7 +26,7 @@ function PipelineSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
     <ResourceGroup
       label="Pipelines"
       icon={Workflow}
-      indexHref="/"
+      indexHref="/pipelines"
       addHref="/pipelines/new"
       onRefetch={explorer.refreshPipelines}
       isRefetching={explorer.pipelinesFetching}

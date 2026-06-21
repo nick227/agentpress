@@ -45,7 +45,7 @@ export function ResearchPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="page-shell space-y-4">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-4 w-64" />
         <div className="space-y-2">
@@ -56,9 +56,9 @@ export function ResearchPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-start justify-between mb-1">
-        <div>
+    <div className="page-shell">
+      <div className="page-header">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">Research</h1>
           <p className="text-sm text-muted-foreground">
             {allSources.length} source{allSources.length === 1 ? '' : 's'}
@@ -66,9 +66,11 @@ export function ResearchPage() {
             {totalItems > 0 && ` · ${totalItems.toLocaleString()} items collected`}
           </p>
         </div>
-        <Button size="sm" onClick={() => navigate('/research/new')}>
-          <Plus size={13} /> Add source
-        </Button>
+        <div className="page-header-actions">
+          <Button size="sm" onClick={() => navigate('/research/new')}>
+            <Plus size={13} /> Add source
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 mb-5">
@@ -121,34 +123,36 @@ function SourceRow({ source, onClick }: { source: ResearchSource; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+      className="list-row hover:bg-muted/40 transition-colors"
     >
-      <span
-        className={`h-2 w-2 shrink-0 rounded-full ${isActive ? 'bg-green-500' : 'bg-muted-foreground/40'}`}
-      />
+      <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+        <span
+          className={`mt-1 h-2 w-2 shrink-0 rounded-full sm:mt-0 ${isActive ? 'bg-green-500' : 'bg-muted-foreground/40'}`}
+        />
 
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
-        <p className="text-xs text-muted-foreground truncate">{source.sourceUrl}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{source.sourceUrl}</p>
+        </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="list-row-meta pl-5 sm:pl-0">
         {source.itemCount != null && (
-          <span className="text-xs tabular-nums text-muted-foreground">
+          <span className="tabular-nums">
             {source.itemCount.toLocaleString()} item{source.itemCount === 1 ? '' : 's'}
           </span>
         )}
         {source.lastChecked && (
-          <span className="text-xs text-muted-foreground/70 tabular-nums">
+          <span className="hidden text-muted-foreground/70 tabular-nums sm:inline">
             checked {compactRelativeTime(source.lastChecked)}
           </span>
         )}
-        <span className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-muted-foreground">
           {SOURCE_ICON[source.sourceType]}
           {SOURCE_LABEL[source.sourceType] ?? source.sourceType}
         </span>
         <span
-          className={`rounded px-2 py-0.5 text-xs ${
+          className={`rounded px-2 py-0.5 ${
             isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'
           }`}
         >

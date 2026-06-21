@@ -106,7 +106,7 @@ export function BuilderVariable({ variable, pipeline, pipelineId, onSaved, onDel
     || form.exampleValue !== String(variable.exampleValue ?? '')
 
   return (
-    <div className="p-6 max-w-lg">
+    <div className="page-shell max-w-lg">
       <h2 className="text-sm font-semibold mb-5">Variables</h2>
 
       <div className="space-y-4">

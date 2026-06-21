@@ -2,6 +2,7 @@ import { db, Prisma } from '@project/db'
 import { parseCategoryIds } from './serviceUtils'
 import { authorization, type AuthContext } from './AuthorizationService'
 import { audit } from './AuditService'
+import { getCommunityWorkspaceId } from './communityWorkspace'
 
 function toSlug(name: string): string {
   return name
@@ -298,8 +299,14 @@ export class PipelineService {
 
     const varKeys = new Set(p.variables.map((v) => v.key))
     const agentUidSet = new Set(uids)
+    const communityWorkspaceId = await getCommunityWorkspaceId()
     const researchSources = await db.researchSource.findMany({
-      where: { workspaceId: context.workspaceId },
+      where: {
+        OR: [
+          { workspaceId: context.workspaceId },
+          ...(communityWorkspaceId ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const }] : []),
+        ],
+      },
       select: { slug: true },
     })
     const researchSourceSlugs = new Set(researchSources.map((source) => source.slug))

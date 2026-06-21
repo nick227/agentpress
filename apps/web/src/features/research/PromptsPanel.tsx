@@ -11,15 +11,15 @@ export function PromptsPanel() {
   const globalDefault = prompts.find((prompt) => prompt.isDefault) ?? prompts[0]
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center justify-between mb-5">
-        <div>
+    <div className="page-shell page-shell--2xl">
+      <div className="section-header mb-5">
+        <div className="min-w-0">
           <h2 className="text-base font-semibold">Content prompts</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Shared catalog for research summaries. {PLACEHOLDER_HINT}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="page-header-actions">
           <Link to="/prompts?kind=CONTENT" className="inline-flex h-7 items-center rounded border px-3 text-xs font-medium hover:bg-muted whitespace-nowrap">Browse all</Link>
           <Link to="/prompts/new?kind=CONTENT" className="inline-flex h-7 items-center gap-2 rounded bg-primary px-3 whitespace-nowrap text-xs font-medium text-primary-foreground hover:bg-primary/90"><Plus size={13} /> New prompt</Link>
         </div>

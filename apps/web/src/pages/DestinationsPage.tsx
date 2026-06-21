@@ -49,7 +49,7 @@ export function DestinationsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="page-shell space-y-4">
         <Skeleton className="h-7 w-44" />
         <Skeleton className="h-4 w-56" />
         <div className="space-y-px mt-4">
@@ -60,17 +60,19 @@ export function DestinationsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-start justify-between mb-1">
-        <div>
+    <div className="page-shell">
+      <div className="page-header">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">Destinations</h1>
           <p className="text-sm text-muted-foreground">
             {all.length} publish target{all.length === 1 ? '' : 's'} configured
           </p>
         </div>
-        <Button size="sm" onClick={() => navigate('/destinations/new')}>
-          <Plus size={13} /> Add destination
-        </Button>
+        <div className="page-header-actions">
+          <Button size="sm" onClick={() => navigate('/destinations/new')}>
+            <Plus size={13} /> Add destination
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 mb-5">

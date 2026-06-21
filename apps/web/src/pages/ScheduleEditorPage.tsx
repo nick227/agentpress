@@ -190,21 +190,21 @@ export function ScheduleEditorPage() {
     navigate('/schedules', { replace: true })
   }
 
-  if (!isNew && scheduleLoading) return <div className="p-6 max-w-4xl mx-auto"><Skeleton className="h-48 w-full" /></div>
-  if (!isNew && !schedule) return <div className="p-6">Schedule not found.</div>
+  if (!isNew && scheduleLoading) return <div className="page-shell"><Skeleton className="h-48 w-full" /></div>
+  if (!isNew && !schedule) return <div className="page-shell">Schedule not found.</div>
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="page-shell space-y-6">
       <Link to="/schedules" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft size={14} /> Schedules
       </Link>
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 max-w-xl">
+      <div className="page-header gap-4">
+        <div className="min-w-0 flex-1 max-w-xl">
           <Input value={form.name} onChange={(event) => patch('name', event.target.value)} placeholder="Schedule name" className="text-base font-medium" />
           {!isNew && schedule?.nextRunAt && <p className="text-xs text-muted-foreground mt-1">Next run {new Date(schedule.nextRunAt).toLocaleString()}</p>}
         </div>
-        <div className="flex gap-2">
+        <div className="page-header-actions">
           {!isNew && <Button variant="outline" size="sm" loading={run.isPending} disabled={dirty || run.isPending} title={dirty ? 'Save changes before running' : undefined} onClick={handleRun}><Play size={13} /> Run now</Button>}
           <Button size="sm" loading={pending} disabled={!canSave} onClick={handleSave}>Save</Button>
         </div>
@@ -237,7 +237,15 @@ export function ScheduleEditorPage() {
       </section>
 
       <section className="rounded border p-4 space-y-3">
-        <div className="flex items-center justify-between"><div><h2 className="text-sm font-semibold">Pipeline actions</h2><p className="text-xs text-muted-foreground">Actions evaluate freshness independently.</p></div><Button variant="outline" size="sm" disabled={form.pipelineActions.length === pipelines.length} onClick={addPipeline}><Plus size={13} /> Add pipeline</Button></div>
+        <div className="section-header">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold">Pipeline actions</h2>
+            <p className="text-xs text-muted-foreground">Actions evaluate freshness independently.</p>
+          </div>
+          <Button variant="outline" size="sm" disabled={form.pipelineActions.length === pipelines.length} onClick={addPipeline}>
+            <Plus size={13} /> Add pipeline
+          </Button>
+        </div>
         {form.pipelineActions.length === 0 && <p className="text-sm text-muted-foreground">This schedule only checks research feeds.</p>}
         {form.pipelineActions.map((action, index) => (
           <PipelineActionCard key={action.id ?? `${action.pipelineId}-${index}`} action={action} index={index} actionCount={form.pipelineActions.length} sourceIds={form.sourceIds} sources={sources} pipelines={pipelines} usedPipelineIds={form.pipelineActions.map((item) => item.pipelineId)} onChange={(next) => updateAction(index, next)} onMove={(direction) => moveAction(index, direction)} onRemove={() => patch('pipelineActions', form.pipelineActions.filter((_, itemIndex) => itemIndex !== index))} />

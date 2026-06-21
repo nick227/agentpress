@@ -59,11 +59,67 @@
     border-color: hsl(var(--border));
   }
 
+  html,
+  body,
+  #root {
+    overflow-x: clip;
+    max-width: 100%;
+  }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     font-size: 14px;
+  }
+}
+
+@layer utilities {
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply w-full min-w-0 max-w-4xl mx-auto p-4 sm:p-6;
+  }
+
+  .page-shell--2xl {
+    @apply max-w-2xl;
+  }
+
+  .page-shell--3xl {
+    @apply max-w-3xl;
+  }
+
+  .page-shell--6xl {
+    @apply max-w-6xl;
+  }
+
+  .page-header {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-1 min-w-0;
+  }
+
+  .page-header-actions {
+    @apply flex flex-wrap items-center gap-2 shrink-0;
+  }
+
+  .section-header {
+    @apply flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0;
+  }
+
+  .list-row {
+    @apply flex w-full min-w-0 flex-col gap-2 px-4 py-3 text-left sm:flex-row sm:items-center sm:gap-3;
+  }
+
+  .list-row-meta {
+    @apply flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:shrink-0 sm:justify-end;
   }
 }

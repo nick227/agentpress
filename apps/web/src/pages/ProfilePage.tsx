@@ -60,7 +60,7 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div className="page-shell page-shell--2xl mx-auto space-y-6">
         <Skeleton className="h-7 w-24" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
@@ -71,9 +71,9 @@ export function ProfilePage() {
   if (!user) return null
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+    <div className="page-shell space-y-6">
+      <div className="page-header gap-4">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">Profile</h1>
           <p className="text-sm text-muted-foreground">Account details and security settings.</p>
         </div>

@@ -61,7 +61,7 @@ export function SchedulesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="page-shell space-y-4">
         <Skeleton className="h-8 w-44" />
         <Skeleton className="h-4 w-56" />
         <div className="space-y-2">
@@ -72,18 +72,20 @@ export function SchedulesPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-start justify-between mb-1">
-        <div>
+    <div className="page-shell">
+      <div className="page-header">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">Schedules</h1>
           <p className="text-sm text-muted-foreground">
             {schedules.length} schedule{schedules.length === 1 ? '' : 's'}
             {enabled.length > 0 && ` · ${enabled.length} enabled`}
           </p>
         </div>
-        <Button size="sm" onClick={() => navigate('/schedules/new')}>
-          <Plus size={13} /> New schedule
-        </Button>
+        <div className="page-header-actions">
+          <Button size="sm" onClick={() => navigate('/schedules/new')}>
+            <Plus size={13} /> New schedule
+          </Button>
+        </div>
       </div>
 
       <p className="mb-5 text-sm text-muted-foreground">
@@ -134,37 +136,40 @@ function ScheduleRow({ schedule, onClick }: { schedule: ScheduleSummary; onClick
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+      className="list-row hover:bg-muted/30 transition-colors"
     >
-      <span className={cn('h-2 w-2 shrink-0 rounded-full', dotClass)} />
+      <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+        <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full sm:mt-0', dotClass)} />
 
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{schedule.name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {cadenceLabel(schedule.cadenceType)}
-          {schedule.sourceCount > 0 && ` · ${schedule.sourceCount} feed${schedule.sourceCount === 1 ? '' : 's'}`}
-          {schedule.pipelineCount > 0 && ` · ${schedule.pipelineCount} pipeline${schedule.pipelineCount === 1 ? '' : 's'}`}
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">{schedule.name}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {cadenceLabel(schedule.cadenceType)}
+            {schedule.sourceCount > 0 && ` · ${schedule.sourceCount} feed${schedule.sourceCount === 1 ? '' : 's'}`}
+            {schedule.pipelineCount > 0 && ` · ${schedule.pipelineCount} pipeline${schedule.pipelineCount === 1 ? '' : 's'}`}
+          </p>
+        </div>
       </div>
 
-      <div className="flex shrink-0 flex-col items-end gap-0.5 text-xs text-muted-foreground">
-        {lastRun && <span>last run {lastRun}</span>}
-        {nextRun && schedule.enabled && (
-          <span className={nextRun === 'overdue' ? 'text-amber-600' : ''}>{nextRun}</span>
-        )}
-        {!lastRun && !nextRun && <span className="text-muted-foreground/50">never run</span>}
+      <div className="list-row-meta pl-5 sm:pl-0">
+        <div className="flex flex-col items-start gap-0.5 sm:items-end">
+          {lastRun && <span>last run {lastRun}</span>}
+          {nextRun && schedule.enabled && (
+            <span className={nextRun === 'overdue' ? 'text-amber-600' : ''}>{nextRun}</span>
+          )}
+          {!lastRun && !nextRun && <span className="text-muted-foreground/50">never run</span>}
+        </div>
+        <span
+          className={cn(
+            'rounded px-2 py-0.5 text-xs font-medium',
+            schedule.enabled
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {schedule.enabled ? 'Enabled' : 'Paused'}
+        </span>
       </div>
-
-      <span
-        className={cn(
-          'shrink-0 rounded px-2 py-0.5 text-xs font-medium',
-          schedule.enabled
-            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-            : 'bg-muted text-muted-foreground',
-        )}
-      >
-        {schedule.enabled ? 'Enabled' : 'Paused'}
-      </span>
     </button>
   )
 }
