@@ -1,4 +1,3 @@
-import { createHash } from 'crypto'
 import { db } from '@project/db'
 import { authorization, type AuthContext } from './AuthorizationService'
 
@@ -33,7 +32,7 @@ export class CommunityService {
       where: { visibility: 'PUBLIC' },
       orderBy: { name: 'asc' },
       select: {
-        id: true, name: true, description: true, kind: true, category: true, updatedAt: true,
+        id: true, key: true, name: true, description: true, kind: true, category: true, updatedAt: true,
         workspace: { select: { id: true, name: true, type: true } },
       },
     })
@@ -152,18 +151,18 @@ export class CommunityService {
     authorization.authorize(context, 'resource:edit')
     const source = await db.prompt.findFirst({ where: { id: promptId, visibility: 'PUBLIC' } })
     if (!source) throw Object.assign(new Error('Community prompt not found'), { statusCode: 404 })
+    const key = source.key ?? source.slug
 
     const existing = await db.prompt.findFirst({
-      where: { workspaceId: context.workspaceId, name: source.name, kind: source.kind },
+      where: { workspaceId: context.workspaceId, key },
     })
     if (existing) return existing
-
-    const promptHash = createHash('sha256').update(`fork:${context.workspaceId}:${source.id}`).digest('hex')
 
     return db.prompt.create({
       data: {
         name: source.name,
-        slug: `${source.slug}-${context.workspaceId.slice(0, 8)}`,
+        slug: source.slug,
+        key,
         description: source.description,
         kind: source.kind,
         category: source.category,
@@ -173,9 +172,10 @@ export class CommunityService {
         uid: source.uid,
         outputTarget: source.outputTarget,
         outputFormat: source.outputFormat,
-        promptHash,
+        promptHash: source.promptHash,
         workspaceId: context.workspaceId,
         visibility: 'PRIVATE',
+        sourcePromptId: source.id,
       },
     })
   }

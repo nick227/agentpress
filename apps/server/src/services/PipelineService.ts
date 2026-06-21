@@ -307,9 +307,14 @@ export class PipelineService {
           ...(communityWorkspaceId ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const }] : []),
         ],
       },
-      select: { slug: true },
+      select: { slug: true, workspaceId: true },
     })
-    const researchSourceSlugs = new Set(researchSources.map((source) => source.slug))
+    const researchSourceSlugs = new Set(
+      researchSources.filter((source) => source.workspaceId === context.workspaceId).map((source) => source.slug),
+    )
+    const communitySourceSlugs = new Set(
+      researchSources.filter((source) => source.workspaceId === communityWorkspaceId).map((source) => source.slug),
+    )
 
     for (const agent of p.agents) {
       const refs = [...agent.systemPrompt.matchAll(/\{([^}]+)\}/g), ...agent.userPrompt.matchAll(/\{([^}]+)\}/g)]
@@ -325,7 +330,13 @@ export class PipelineService {
           warnings.push({ level: 'warning', message: `Agent "${agent.uid}" uses legacy {research} reference which is deprecated. Use the specific feed slug instead, e.g. {feed_slug.summary}`, path: `agents.${agent.uid}` })
         } else if (ref.includes('.')) {
           const [root] = ref.split('.')
-          if (root && root !== 'row' && !varKeys.has(root) && !researchSourceSlugs.has(root)) {
+          if (root && root !== 'row' && !varKeys.has(root) && communitySourceSlugs.has(root) && !researchSourceSlugs.has(root)) {
+            errors.push({
+              level: 'error',
+              message: `Agent "${agent.uid}" references community feed "${root}". Add it to this workspace before running.`,
+              path: `agents.${agent.uid}`,
+            })
+          } else if (root && root !== 'row' && !varKeys.has(root) && !researchSourceSlugs.has(root)) {
             warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown variable or research source "${root}"`, path: `agents.${agent.uid}` })
           }
         } else if (!varKeys.has(ref)) {

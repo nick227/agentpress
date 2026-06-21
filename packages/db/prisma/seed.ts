@@ -1026,12 +1026,19 @@ async function main() {
     if (data.kind === 'CONTENT' && data.isDefault) {
       await db.prompt.updateMany({ where: { kind: 'CONTENT', isDefault: true }, data: { isDefault: false } })
     }
-    const existing = await db.prompt.findUnique({ where: { promptHash: hash } })
+    const key = slug
+    const existing = await db.prompt.findFirst({
+      where: {
+        workspaceId: community.id,
+        OR: [{ key }, { slug }, { promptHash: hash }],
+      },
+    })
     if (existing) {
       await db.prompt.update({
         where: { id: existing.id },
         data: {
           name: data.name,
+          key,
           description: data.description,
           category: data.category,
           tags: data.tags ?? [],
@@ -1050,10 +1057,11 @@ async function main() {
       return
     }
 
-    const slugConflict = await db.prompt.findUnique({ where: { slug } })
+    const slugConflict = await db.prompt.findFirst({ where: { workspaceId: community.id, slug } })
     await db.prompt.create({
       data: {
         slug: slugConflict ? `${slug}-${hash.slice(0, 6)}` : slug,
+        key,
         name: data.name,
         description: data.description,
         kind: data.kind,
@@ -1202,14 +1210,20 @@ async function main() {
   let promptsForked = 0
   for (const prompt of contentPrompts) {
     const exists = await db.prompt.findFirst({
-      where: { workspaceId: personal.id, name: prompt.name, kind: prompt.kind },
+      where: {
+        workspaceId: personal.id,
+        OR: [
+          { key: prompt.key ?? prompt.slug },
+          { name: prompt.name, kind: prompt.kind },
+        ],
+      },
     })
     if (!exists) {
-      const forkHash = createHash('sha256').update(`fork:${personal.id}:${prompt.id}`).digest('hex')
       await db.prompt.create({
         data: {
           name: prompt.name,
           slug: `${prompt.slug}-personal`,
+          key: prompt.key ?? prompt.slug,
           description: prompt.description,
           kind: prompt.kind,
           category: prompt.category,
@@ -1219,14 +1233,20 @@ async function main() {
           uid: prompt.uid,
           outputTarget: prompt.outputTarget,
           outputFormat: prompt.outputFormat,
-          promptHash: forkHash,
+          promptHash: prompt.promptHash,
           workspaceId: personal.id,
           visibility: 'PRIVATE',
+          sourcePromptId: prompt.id,
           isDefault: prompt.isDefault,
           sortOrder: prompt.sortOrder,
         },
       })
       promptsForked++
+    } else if (!exists.key || !exists.sourcePromptId) {
+      await db.prompt.update({
+        where: { id: exists.id },
+        data: { key: prompt.key ?? prompt.slug, sourcePromptId: prompt.id },
+      })
     }
   }
 

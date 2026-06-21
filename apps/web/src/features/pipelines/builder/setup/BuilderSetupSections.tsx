@@ -128,10 +128,10 @@ function WordPressCategoriesSection({ pipeline, pipelineId, destination, onDesti
 
   return (
     <section className="space-y-3">
-      <Label>WordPress categories</Label>
+      <Label>Categories</Label>
       {isLoading ? <p className="text-xs text-muted-foreground">Loading categories from {destination.name}…</p>
-        : error ? <p className="text-xs text-destructive">Could not load WordPress categories. Check destination credentials.</p>
-          : categories.length === 0 ? <p className="text-xs text-muted-foreground">No categories found on this WordPress site.</p>
+        : error ? <p className="text-xs text-destructive">Could not load categories. Check destination credentials.</p>
+          : categories.length === 0 ? <p className="text-xs text-muted-foreground">No categories found.</p>
             : <CategoryPickers categories={categories} destination={destination} pipeline={pipeline} onDestinationChange={updateDestinationCategories} onPipelineChange={updatePipelineCategories} />}
     </section>
   )
@@ -146,8 +146,7 @@ function CategoryPickers({ categories, destination, pipeline, onDestinationChang
 }) {
   return (
     <>
-      <CategoryPicker label="Destination defaults" hint="Used when this pipeline has no category override." categories={categories} selected={destination.defaultCategoryIds ?? []} onChange={onDestinationChange} />
-      <CategoryPicker label="Pipeline override" hint="Optional. Overrides destination defaults for this pipeline only." categories={categories} selected={pipeline.wpCategoryIds ?? []} onChange={onPipelineChange} />
+      <CategoryPicker label="Destination categories" categories={categories} selected={destination.defaultCategoryIds ?? []} onChange={onDestinationChange} />
     </>
   )
 }
@@ -167,7 +166,7 @@ export function PipelineSettingsSection({ pipeline, pipelineId, runTitle, onRunT
   return (
     <section className="space-y-3">
       <Label>Settings</Label>
-      <Row label="Current run title"><Input value={runTitle} onChange={(event) => onRunTitleChange(event.target.value)} placeholder={pipeline.name} className="h-8 text-sm" /></Row>
+      <Row label="Run title"><Input value={runTitle} onChange={(event) => onRunTitleChange(event.target.value)} placeholder={pipeline.name} className="h-8 text-sm" /></Row>
       <Row label="Run mode">
         <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
           <input type="checkbox" checked={pipeline.dryRun} onChange={(event) => { onDryRunChange(event.target.checked); void save({ dryRun: event.target.checked }) }} className="rounded" />
@@ -212,9 +211,9 @@ export function VariablesSection({ pipeline, pipelineId }: { pipeline: Pipeline;
       <SectionHeader title="Variables" description="Static inputs and row-based batch data available to agent prompts.">
         <Button variant="ghost" size="icon-sm" onClick={() => setShowPicker(true)} title="Import variable pack"><Package size={13} /></Button>
         <Button variant="outline" size="sm" loading={update.isPending} onClick={addVariable}><Plus size={13} /> Add variable</Button>
+        <DatasetInput pipeline={pipeline} pipelineId={pipelineId} />
       </SectionHeader>
       {pipeline.variables.length === 0 ? <EmptyRow text="No variables configured." /> : <VariableList pipeline={pipeline} />}
-      <DatasetInput pipeline={pipeline} pipelineId={pipelineId} />
       {showPicker && <VariablePackPicker pipeline={pipeline} pipelineId={pipelineId} onClose={() => setShowPicker(false)} />}
     </section>
   )
@@ -271,7 +270,7 @@ function DatasetInput({ pipeline, pipelineId }: { pipeline: Pipeline; pipelineId
   }
 
   return (
-    <div className="rounded border bg-muted/10 p-3 space-y-3">
+    <div>
       <input ref={fileInput} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => { void importCsv(event.target.files?.[0]) }} />
       {dataset ? (
         <>
@@ -290,24 +289,86 @@ function DatasetInput({ pipeline, pipelineId }: { pipeline: Pipeline; pipelineId
           <p className="text-xs text-muted-foreground">Matching columns populate variables directly; every value is also available as <code className="font-mono">{'{row.column}'}</code>.</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" loading={upsert.isPending} onClick={() => fileInput.current?.click()}><Upload size={13} /> Replace CSV</Button>
-            <Button variant="outline" size="sm" onClick={() => setShowSheetInput((value) => !value)}><Link2 size={13} /> Replace with Sheet</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowSheetInput(true)}><Link2 size={13} /> Replace with Sheet</Button>
           </div>
         </>
       ) : (
-        <div className="section-header">
-          <div className="min-w-0"><p className="text-sm font-medium">Batch data</p><p className="text-xs text-muted-foreground">Run once per CSV or Google Sheets row.</p></div>
           <div className="page-header-actions">
             <Button variant="outline" size="sm" loading={upsert.isPending} onClick={() => fileInput.current?.click()}><Upload size={13} /> CSV</Button>
-            <Button variant="outline" size="sm" onClick={() => setShowSheetInput((value) => !value)}><Link2 size={13} /> Sheet</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowSheetInput(true)}><Link2 size={13} /> Sheet</Button>
           </div>
-        </div>
       )}
       {showSheetInput && (
-        <div className="flex gap-2">
-          <Input value={sheetUrl} onChange={(event) => setSheetUrl(event.target.value)} placeholder="Paste a shareable Google Sheets link" className="h-8 text-sm" />
-          <Button size="sm" loading={upsert.isPending} disabled={!sheetUrl.trim()} onClick={() => { void linkSheet() }}>Link</Button>
-        </div>
+        <SheetLinkModal
+          value={sheetUrl}
+          pending={upsert.isPending}
+          onChange={setSheetUrl}
+          onClose={() => setShowSheetInput(false)}
+          onSubmit={linkSheet}
+        />
       )}
+    </div>
+  )
+}
+
+function SheetLinkModal({ value, pending, onChange, onClose, onSubmit }: {
+  value: string
+  pending: boolean
+  onChange: (value: string) => void
+  onClose: () => void
+  onSubmit: () => Promise<void>
+}) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !pending) onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose, pending])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !pending) onClose()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sheet-link-title"
+        aria-describedby="sheet-link-description"
+        className="w-full max-w-sm rounded-lg border bg-surface shadow-xl"
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!pending && value.trim()) void onSubmit()
+          }}
+        >
+          <div className="space-y-1 border-b px-5 py-4">
+            <h3 id="sheet-link-title" className="text-sm font-semibold">Link Google Sheet</h3>
+            <p id="sheet-link-description" className="text-xs text-muted-foreground">
+              Use a shareable link to import rows as batch data.
+            </p>
+          </div>
+          <div className="p-5">
+            <label htmlFor="sheet-link-url" className="mb-1.5 block text-xs font-medium">Google Sheets URL</label>
+            <Input
+              id="sheet-link-url"
+              type="url"
+              autoFocus
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/…"
+            />
+          </div>
+          <div className="flex justify-end gap-2 px-5 pb-4">
+            <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onClose}>Cancel</Button>
+            <Button type="submit" size="sm" loading={pending} disabled={!value.trim()}>Link sheet</Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
@@ -322,7 +383,10 @@ function VariableList({ pipeline }: { pipeline: Pipeline }) {
     <div className="divide-y rounded border bg-surface">
       {pipeline.variables.map((variable) => (
         <button key={variable.id} type="button" onClick={() => onSelect({ type: 'variable', id: variable.id })} className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40">
-          <div className="min-w-0 flex-1"><p className="text-sm font-medium truncate">{variable.label || variable.key}</p><p className="text-xs text-muted-foreground font-mono truncate">{`{${variable.key}}`}</p></div>
+          <div className="min-w-0 flex-1 flex-row flex items-center gap-2">
+            <p className="font-medium truncate">{`${variable.key}`}:</p>
+            <p className="text-medium truncate">{`${variable.defaultValue}`}</p>
+          </div>
           <span className="text-xs text-muted-foreground">{variable.type.replace('_', ' ')}</span>
           {variable.required && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Required</span>}
           <span className="text-muted-foreground">›</span>
@@ -390,7 +454,7 @@ function AgentSectionHeader({ pending, onBrowse, onAdd }: { pending: boolean; on
       <Button variant="outline" size="sm" onClick={onBrowse} title="Browse agent library"><BookOpen size={13} /> Browse library</Button>
       <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankImage)} title="Add image agent"><Image size={13} />Add image</Button>
       <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.staticImage)} title="Add static agent"><FileText size={13} /> Static text</Button>
-      <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankText)}><Plus size={13} /> Add agent</Button>
+      <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankText)} title="Add AI agent"><Plus size={13} /> AI agent</Button>
     </SectionHeader>
   )
 }

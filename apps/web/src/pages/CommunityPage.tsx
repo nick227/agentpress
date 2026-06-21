@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Check, GitFork, Rss, Workflow, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCommunityFeeds, useCommunityPipelines, useCommunityPrompts, useForkCommunityFeed, useForkCommunityPipeline, useForkCommunityPrompt } from '@project/sdk'
@@ -75,7 +76,9 @@ function SectionHeader({ label, first }: { label: string; first: boolean }) {
 }
 
 export function CommunityPage() {
-  const [tab, setTab] = useState<Tab>('pipelines')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const tab: Tab = requestedTab === 'feeds' || requestedTab === 'prompts' ? requestedTab : 'pipelines'
   const [pipelineCat, setPipelineCat] = useState<string | null>(null)
   const [feedCat, setFeedCat] = useState<string | null>(null)
   const [promptKind, setPromptKind] = useState<string | null>(null)
@@ -102,6 +105,10 @@ export function CommunityPage() {
   const pipelineGroups = groupBy(filteredPipelines, p => p.category ?? 'other', PIPELINE_CATEGORY_ORDER)
   const feedGroups = groupBy(filteredFeeds, f => f.category ?? 'other', FEED_CATEGORY_ORDER)
   const promptGroups = groupBy(filteredPrompts, p => p.kind ?? 'CONTENT', PROMPT_KIND_ORDER)
+
+  function setTab(next: Tab) {
+    setSearchParams(next === 'pipelines' ? {} : { tab: next })
+  }
 
   return (
     <div className="page-shell space-y-5">

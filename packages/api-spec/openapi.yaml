@@ -1073,11 +1073,13 @@ components:
 
     Prompt:
       type: object
-      required: [id, slug, name, kind, category, tags, systemPrompt, userPrompt, visibility, promptHash, usageCount, sortOrder, isDefault, createdAt, updatedAt]
+      required: [id, slug, key, name, kind, category, tags, systemPrompt, userPrompt, visibility, promptHash, usageCount, sortOrder, isDefault, createdAt, updatedAt]
       properties:
         id:
           type: string
         slug:
+          type: string
+        key:
           type: string
         name:
           type: string
@@ -1106,6 +1108,8 @@ components:
           type: string
           enum: [PRIVATE, PUBLIC]
         workspaceId:
+          type: string
+        sourcePromptId:
           type: string
         promptHash:
           type: string
@@ -2949,6 +2953,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: resolved
+          in: query
+          required: false
+          description: Include public community fallbacks, shadowed by workspace prompts with the same key.
+          schema:
+            type: boolean
       responses:
         '200':
           description: Prompts
@@ -2978,6 +2988,8 @@ paths:
               required: [name, systemPrompt, userPrompt]
               properties:
                 name:
+                  type: string
+                key:
                   type: string
                 description:
                   type: string
@@ -3058,6 +3070,8 @@ paths:
               type: object
               properties:
                 name:
+                  type: string
+                key:
                   type: string
                 description:
                   type: string

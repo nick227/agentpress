@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { renderPromptVariableHighlight } from '@/lib/promptVariableHighlight'
 
@@ -11,6 +11,14 @@ export const PromptTextarea = forwardRef<HTMLTextAreaElement, PromptTextareaProp
 
     useImperativeHandle(ref, () => textareaRef.current as HTMLTextAreaElement)
 
+    const resizeToContent = useCallback(() => {
+      const textarea = textareaRef.current
+      if (!textarea) return
+
+      textarea.style.height = 'auto'
+      textarea.style.height = `${textarea.scrollHeight}px`
+    }, [])
+
     function syncScroll(source: HTMLTextAreaElement) {
       if (!backdropRef.current) return
       backdropRef.current.scrollTop = source.scrollTop
@@ -18,6 +26,25 @@ export const PromptTextarea = forwardRef<HTMLTextAreaElement, PromptTextareaProp
     }
 
     const text = String(value)
+
+    useLayoutEffect(() => {
+      resizeToContent()
+    }, [resizeToContent, text])
+
+    useLayoutEffect(() => {
+      const textarea = textareaRef.current
+      if (!textarea || typeof ResizeObserver === 'undefined') return
+
+      let width = textarea.clientWidth
+      const observer = new ResizeObserver(() => {
+        if (textarea.clientWidth === width) return
+        width = textarea.clientWidth
+        resizeToContent()
+      })
+
+      observer.observe(textarea)
+      return () => observer.disconnect()
+    }, [resizeToContent])
 
     return (
       <div className="relative rounded border border-input-border focus-within:ring-2 focus-within:ring-ring">

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bot, CheckCircle2, Clock, FileText, ImageOff, Layers, Loader2, Play, RefreshCw, Send, Zap, XCircle } from 'lucide-react'
+import { Bot, CheckCircle2, Clock, FileText, ImageOff, Layers, Loader2, Play, Plus, RefreshCw, Send, Zap, XCircle } from 'lucide-react'
 import { useAllRuns, usePipelineRun, usePublishRun, useStartPipelineRun } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -193,7 +193,7 @@ function RunRow({
               className="inline-block"
             >
               <Link
-                to={`/pipelines/${run.pipelineSlug}`}
+                to={`/pipelines/${run.pipelineSlug}?run=${run.id}`}
                 className="text-sm font-semibold text-foreground hover:underline"
               >
                 {run.pipelineName}
@@ -281,7 +281,6 @@ function RunDetail({ run }: { run: RunSummary }) {
 
   const publishAttempts = fullData?.publishAttempts ?? []
   const latestAttempt = publishAttempts.at(-1)
-  const canPublish = run.hasPost && Boolean(run.destinationId) && !run.dryRun
 
   async function handlePublish() {
     try {
@@ -309,51 +308,71 @@ function RunDetail({ run }: { run: RunSummary }) {
   return (
     <div className="border-t bg-muted/10 px-4 pb-4 pt-3 space-y-4">
       {/* Publish action */}
-      {canPublish && (
-        <div className="flex items-center justify-between gap-3 rounded border bg-surface px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2 text-xs">
-            {latestAttempt?.status === 'success' ? (
-              <>
-                <CheckCircle2 size={12} className="shrink-0 text-green-600" />
-                <span className="text-muted-foreground">Published</span>
-                {latestAttempt.remoteUrl && (
-                  <a
-                    href={latestAttempt.remoteUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="truncate text-blue-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {latestAttempt.remoteUrl}
-                  </a>
-                )}
-              </>
-            ) : latestAttempt?.status === 'failed' ? (
-              <>
-                <XCircle size={12} className="shrink-0 text-destructive" />
-                <span className="truncate text-destructive">{latestAttempt.error || 'Publish failed'}</span>
-              </>
-            ) : latestAttempt?.status === 'pending' ? (
-              <>
-                <Loader2 size={12} className="shrink-0 animate-spin text-blue-500" />
-                <span className="text-muted-foreground">{latestAttempt.progressMessage || 'Publishing…'}</span>
-              </>
-            ) : (
+      <div className="flex items-center justify-between gap-3 rounded border bg-surface px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2 text-xs">
+          {run.dryRun ? (
+            <>
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                dry run
+              </span>
               <span className="text-muted-foreground">Not published</span>
-            )}
-          </div>
+            </>
+          ) : !run.destinationId ? (
+            <span className="text-muted-foreground">No destination configured</span>
+          ) : !run.hasPost ? (
+            <span className="text-muted-foreground">No content to publish</span>
+          ) : latestAttempt?.status === 'success' ? (
+            <>
+              <CheckCircle2 size={12} className="shrink-0 text-green-600" />
+              <span className="text-muted-foreground">Published</span>
+              {latestAttempt.remoteUrl && (
+                <a
+                  href={latestAttempt.remoteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="truncate text-blue-500 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {latestAttempt.remoteUrl}
+                </a>
+              )}
+            </>
+          ) : latestAttempt?.status === 'failed' ? (
+            <>
+              <XCircle size={12} className="shrink-0 text-destructive" />
+              <span className="truncate text-destructive">{latestAttempt.error || 'Publish failed'}</span>
+            </>
+          ) : latestAttempt?.status === 'pending' ? (
+            <>
+              <Loader2 size={12} className="shrink-0 animate-spin text-blue-500" />
+              <span className="text-muted-foreground">{latestAttempt.progressMessage || 'Publishing…'}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground">Not published</span>
+          )}
+        </div>
+
+        {run.dryRun || !run.hasPost ? null : !run.destinationId ? (
+          <Link
+            to={`/pipelines/${run.pipelineSlug}`}
+            className="flex shrink-0 items-center gap-1 rounded border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Plus size={11} />
+            Add
+          </Link>
+        ) : (
           <Button
             size="sm"
-            variant={latestAttempt?.status === 'success' ? 'outline' : 'default'}
             onClick={handlePublish}
             loading={publishRun.isPending}
             disabled={publishRun.isPending}
           >
             <Send size={12} />
-            {latestAttempt?.status === 'success' ? 'Re-publish' : 'Publish'}
+            Publish
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Timing */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">

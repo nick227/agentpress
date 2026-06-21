@@ -3,8 +3,8 @@ import { PromptService } from '../services/PromptService'
 const svc = new PromptService()
 
 export async function listPrompts(request: any, reply: any) {
-  const { kind, category, search } = request.query ?? {}
-  const data = await svc.list(request.auth, { kind, category, search })
+  const { kind, category, search, resolved } = request.query ?? {}
+  const data = await svc.list(request.auth, { kind, category, search, resolved })
   return reply.send({ data })
 }
 

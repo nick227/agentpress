@@ -49,18 +49,26 @@ export class ResearchContextService {
           ],
         },
       })
-      // Prefer workspace-scoped source; PUBLIC community source is the fallback
+      const communitySourceSlugs = new Set(
+        rawSources
+          .filter((source) => source.workspaceId === communityWorkspaceId)
+          .map((source) => source.slug),
+      )
       const sourceBySlug = new Map<string, typeof rawSources[0]>()
       for (const source of rawSources) {
-        const current = sourceBySlug.get(source.slug)
-        if (!current || (pipeline.workspaceId && source.workspaceId === pipeline.workspaceId)) {
+        if (pipeline.workspaceId && source.workspaceId === pipeline.workspaceId) {
           sourceBySlug.set(source.slug, source)
         }
       }
 
       for (const [slug, itemKeys] of referencedSources) {
         const source = sourceBySlug.get(slug)
-        if (!source) throw new Error(`Research source "${slug}" was not found`)
+        if (!source && communitySourceSlugs.has(slug)) {
+          throw new Error(
+            `Pipeline references community feed "${slug}". Add it to your workspace before running.`,
+          )
+        }
+        if (!source) throw new Error(`Research source "${slug}" was not found in this workspace`)
         const sourceContext = contexts[slug] ?? await this.resolveSource(
           source,
           undefined,

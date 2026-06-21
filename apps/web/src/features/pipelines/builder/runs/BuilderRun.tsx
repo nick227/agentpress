@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useDestinations, usePipelineRun, usePublishRun } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
-import { CheckCircle2, XCircle, Loader2, Clock, FileCode, Image, Send, Download, FolderOpen, ExternalLink } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Clock, FileCode, Image, Send, Download, FolderOpen, ExternalLink, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { downloadRunAsset } from '@/lib/downloadRunAsset'
 import { PublishProgressPanel } from './PublishProgressPanel'
@@ -95,11 +96,7 @@ export function BuilderRun({ runId, pipeline }: Props) {
   const post = run.generatedPost as any
   const isActive = run.status === 'queued' || run.status === 'running'
 
-  const canPublish =
-    run.status === 'completed' &&
-    run.dryRun &&
-    Boolean(pipeline.destinationId) &&
-    Boolean(post)
+  const canPublish = !isActive && Boolean(pipeline.destinationId) && Boolean(post)
 
   async function handlePublish() {
     setPublishing(true)
@@ -159,7 +156,12 @@ export function BuilderRun({ runId, pipeline }: Props) {
         </div>
 
         {canPublish && (
-          <div className="page-header-actions">
+          <div className="page-header-actions flex items-center gap-2">
+            {destination ? (
+              <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[140px]" title={destination.siteUrl}>
+                {destination.name ?? destination.siteUrl}
+              </span>
+            ) : null}
             <Button
               size="sm"
               className="gap-1.5 shrink-0"
@@ -168,8 +170,15 @@ export function BuilderRun({ runId, pipeline }: Props) {
               onClick={handlePublish}
             >
               <Send size={13} />
-              {isPublishing ? 'Publishing…' : 'Publish to WordPress'}
+              {isPublishing ? 'Publishing…' : run.status === 'posted' ? 'Publish again' : 'Publish'}
             </Button>
+            <Link
+              to={`/pipelines/${pipeline.slug}`}
+              title="Change destination in pipeline setup"
+              className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <Settings size={14} />
+            </Link>
           </div>
         )}
       </div>

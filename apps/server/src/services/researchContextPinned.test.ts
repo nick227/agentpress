@@ -21,12 +21,16 @@ vi.mock('@project/db', () => ({
   },
 }))
 
+vi.mock('./communityWorkspace', () => ({
+  getCommunityWorkspaceId: vi.fn().mockResolvedValue('community-1'),
+}))
+
 import { ResearchContextService } from './ResearchContextService'
 
 describe('ResearchContextService pinned schedule input', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    findSources.mockResolvedValue([{ id: 'source-1', slug: 'feed', name: 'Feed', sourceType: 'rss' }])
+    findSources.mockResolvedValue([{ id: 'source-1', slug: 'feed', name: 'Feed', sourceType: 'rss', workspaceId: 'workspace-1' }])
     findPrompt.mockResolvedValue({ id: 'prompt-1', name: 'Brief' })
     findSummary.mockResolvedValue({ status: 'done', text: 'Pinned summary' })
     findItem.mockResolvedValue({
@@ -41,6 +45,7 @@ describe('ResearchContextService pinned schedule input', () => {
 
   it('resolves an ordinary feed reference from the pinned item ID', async () => {
     const result = await new ResearchContextService().resolveForPipeline({
+      workspaceId: 'workspace-1',
       agents: [{ systemPrompt: '', userPrompt: '{feed.summary}' }],
     }, { 'source-1': 'item-pinned' })
 
@@ -51,6 +56,7 @@ describe('ResearchContextService pinned schedule input', () => {
 
   it('keeps explicit date references independent from the pinned item', async () => {
     await new ResearchContextService().resolveForPipeline({
+      workspaceId: 'workspace-1',
       agents: [{ systemPrompt: '', userPrompt: '{feed.2026-06-18.summary}' }],
     }, { 'source-1': 'item-pinned' })
 
@@ -60,5 +66,23 @@ describe('ResearchContextService pinned schedule input', () => {
         publishedAt: expect.objectContaining({ gte: new Date('2026-06-18T00:00:00.000Z') }),
       }),
     }))
+  })
+
+  it('rejects a community feed until it has been added to the workspace', async () => {
+    findSources.mockResolvedValue([{
+      id: 'community-source',
+      slug: 'feed',
+      name: 'Feed',
+      sourceType: 'rss',
+      workspaceId: 'community-1',
+      visibility: 'PUBLIC',
+    }])
+
+    await expect(new ResearchContextService().resolveForPipeline({
+      workspaceId: 'workspace-1',
+      agents: [{ systemPrompt: '', userPrompt: '{feed.summary}' }],
+    })).rejects.toThrow('Add it to your workspace before running')
+
+    expect(findItem).not.toHaveBeenCalled()
   })
 })

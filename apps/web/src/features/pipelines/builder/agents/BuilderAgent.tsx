@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import type { components } from '@project/sdk'
-import { useUpdatePipeline } from '@project/sdk'
+import { useCreatePrompt, useUpdatePipeline } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
@@ -179,7 +179,7 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
     || form.systemPrompt !== agent.systemPrompt
     || form.userPrompt !== agent.userPrompt
 
-  const panelTitle = staticAgent ? 'Static Agent' : imageAgent ? 'Image Agent' : 'Agent'
+  const panelTitle = staticAgent ? 'Static Agent' : imageAgent ? 'Image Agent' : 'AI Agent'
   const formatLabel = staticAgent ? 'static' : imageAgent ? 'image' : null
 
   return (
@@ -338,6 +338,20 @@ function AgentContentSection({
   onGenerated: (asset: ImageAsset) => Promise<void>
   onSelectImage: (asset: ImageAsset) => Promise<void>
 }) {
+  const createPrompt = useCreatePrompt()
+
+  async function saveCurrentPrompt(name: string) {
+    await createPrompt.mutateAsync({
+      name,
+      kind: 'TRANSFORMATIONAL',
+      category: 'pipeline',
+      tags: ['pipeline'],
+      systemPrompt,
+      userPrompt,
+    })
+    toast.success(`"${name}" saved to your prompts`)
+  }
+
   return (
     <>
       {staticAgent ? (
@@ -352,6 +366,9 @@ function AgentContentSection({
               promptKind="system"
               pipeline={pipeline}
               agent={agent}
+              defaultSaveName={agent.name}
+              savingPrompt={createPrompt.isPending}
+              onSavePrompt={saveCurrentPrompt}
               placeholder="You are a research assistant..."
             />
           )}
@@ -362,6 +379,9 @@ function AgentContentSection({
             promptKind="user"
             pipeline={pipeline}
             agent={agent}
+            defaultSaveName={agent.name}
+            savingPrompt={createPrompt.isPending}
+            onSavePrompt={saveCurrentPrompt}
             placeholder={imageAgent ? 'A minimalist hero illustration of {subject}, flat vector style' : 'Research the topic: {subject}'}
           />
         </>

@@ -3,9 +3,9 @@ import { getApiClient, ApiError } from '../client'
 
 type PromptKind = 'TRANSFORMATIONAL' | 'CONTENT'
 
-export function usePrompts(filters?: { kind?: PromptKind; category?: string; search?: string }) {
+export function usePrompts(filters?: { kind?: PromptKind; category?: string; search?: string; resolved?: boolean }) {
   return useQuery({
-    queryKey: ['prompts', filters?.kind, filters?.category, filters?.search],
+    queryKey: ['prompts', filters?.kind, filters?.category, filters?.search, filters?.resolved],
     queryFn: async () => {
       const { data, error, response } = await getApiClient().GET('/api/prompts', {
         params: { query: filters },
@@ -35,6 +35,7 @@ export function useCreatePrompt() {
   return useMutation({
     mutationFn: async (body: {
       name: string
+      key?: string
       description?: string
       kind?: PromptKind
       category?: string
@@ -68,6 +69,7 @@ export function useUpdatePrompt() {
     }: {
       promptId: string
       name?: string
+      key?: string
       description?: string
       kind?: PromptKind
       category?: string

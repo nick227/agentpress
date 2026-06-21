@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import { db } from '@project/db'
 import type { PromptKind, Visibility } from '@project/db'
 import { authorization, type AuthContext } from './AuthorizationService'
+import { getCommunityWorkspaceId } from './communityWorkspace'
 
 function slugify(name: string): string {
   return name
@@ -25,6 +26,7 @@ function promptHash(
 function formatPrompt(p: {
   id: string
   slug: string
+  key: string | null
   name: string
   description: string | null
   kind: PromptKind
@@ -37,6 +39,7 @@ function formatPrompt(p: {
   outputFormat: string | null
   visibility: Visibility
   workspaceId: string | null
+  sourcePromptId: string | null
   promptHash: string
   usageCount: number
   sortOrder: number
@@ -47,6 +50,7 @@ function formatPrompt(p: {
   return {
     id: p.id,
     slug: p.slug,
+    key: p.key ?? p.slug,
     name: p.name,
     description: p.description ?? undefined,
     kind: p.kind,
@@ -59,6 +63,7 @@ function formatPrompt(p: {
     outputFormat: p.outputFormat ?? undefined,
     visibility: p.visibility,
     workspaceId: p.workspaceId ?? undefined,
+    sourcePromptId: p.sourcePromptId ?? undefined,
     promptHash: p.promptHash,
     usageCount: p.usageCount,
     sortOrder: p.sortOrder,
@@ -68,22 +73,23 @@ function formatPrompt(p: {
   }
 }
 
-async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
+async function uniqueSlug(base: string, workspaceId: string, excludeId?: string): Promise<string> {
   let slug = slugify(base)
   let suffix = 0
   while (true) {
     const candidate = suffix === 0 ? slug : `${slug}-${suffix}`
     const existing = await db.prompt.findFirst({
-      where: { slug: candidate, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
+      where: { workspaceId, slug: candidate, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
     })
     if (!existing) return candidate
     suffix += 1
   }
 }
 
-async function clearContentDefaults(excludeId?: string) {
+async function clearContentDefaults(workspaceId: string, excludeId?: string) {
   await db.prompt.updateMany({
     where: {
+      workspaceId,
       kind: 'CONTENT',
       isDefault: true,
       ...(excludeId ? { NOT: { id: excludeId } } : {}),
@@ -97,11 +103,27 @@ export class PromptService {
     return { workspaceId: context.workspaceId }
   }
 
-  async list(context: AuthContext, filters?: { kind?: PromptKind; category?: string; search?: string }) {
+  async list(context: AuthContext, filters?: {
+    kind?: PromptKind
+    category?: string
+    search?: string
+    resolved?: boolean | string
+  }) {
+    const includeCommunity = filters?.resolved === true || filters?.resolved === 'true'
+    const communityWorkspaceId = includeCommunity ? await getCommunityWorkspaceId() : null
     const prompts = await db.prompt.findMany({
       where: {
         AND: [
-          this.listWhere(context),
+          includeCommunity
+            ? {
+                OR: [
+                  this.listWhere(context),
+                  ...(communityWorkspaceId
+                    ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const }]
+                    : []),
+                ],
+              }
+            : this.listWhere(context),
           ...(filters?.kind ? [{ kind: filters.kind }] : []),
           ...(filters?.category ? [{ category: filters.category }] : []),
           ...(filters?.search
@@ -117,7 +139,35 @@ export class PromptService {
       },
       orderBy: [{ sortOrder: 'asc' }, { category: 'asc' }, { name: 'asc' }],
     })
-    return prompts.map(formatPrompt)
+    if (!includeCommunity) return prompts.map(formatPrompt)
+
+    const communityKeysByLegacyIdentity = new Map<string, string>()
+    for (const prompt of prompts) {
+      if (prompt.workspaceId === communityWorkspaceId) {
+        communityKeysByLegacyIdentity.set(`${prompt.kind}:${prompt.name}`, prompt.key ?? prompt.slug)
+      }
+    }
+
+    const resolved = new Map<string, ReturnType<typeof formatPrompt>>()
+    for (const prompt of prompts) {
+      const formatted = formatPrompt(prompt)
+      const key = prompt.key
+        ?? (prompt.workspaceId === context.workspaceId
+          ? communityKeysByLegacyIdentity.get(`${prompt.kind}:${prompt.name}`)
+          : undefined)
+        ?? prompt.slug
+      const current = resolved.get(key)
+      if (!current || prompt.workspaceId === context.workspaceId) {
+        resolved.set(key, { ...formatted, key })
+      }
+    }
+    return [...resolved.values()].sort((a, b) => {
+      const ownershipOrder = Number(b.workspaceId === context.workspaceId) - Number(a.workspaceId === context.workspaceId)
+      return ownershipOrder
+        || a.sortOrder - b.sortOrder
+        || a.category.localeCompare(b.category)
+        || a.name.localeCompare(b.name)
+    })
   }
 
   async get(context: AuthContext, promptIdOrSlug: string) {
@@ -136,6 +186,7 @@ export class PromptService {
     context: AuthContext,
     data: {
       name: string
+      key?: string
       description?: string
       kind?: PromptKind
       category?: string
@@ -151,24 +202,26 @@ export class PromptService {
   ) {
     authorization.authorize(context, 'resource:edit')
     const kind = data.kind ?? 'TRANSFORMATIONAL'
+    const key = slugify(data.key ?? data.name)
     const hash = promptHash(data.systemPrompt, data.userPrompt, data.outputTarget, kind)
-    const existing = await db.prompt.findUnique({ where: { promptHash: hash } })
+    const existing = await db.prompt.findFirst({
+      where: { workspaceId: context.workspaceId, OR: [{ key }, { promptHash: hash }] },
+    })
     if (existing) {
-      authorization.authorize(context, 'resource:read', {
-        workspaceId: existing.workspaceId ?? '',
-        visibility: existing.visibility,
+      throw Object.assign(new Error(`A prompt with the key "${key}" or the same content already exists`), {
+        statusCode: 409,
       })
-      return formatPrompt(existing)
     }
 
     if (kind === 'CONTENT' && data.isDefault) {
-      await clearContentDefaults()
+      await clearContentDefaults(context.workspaceId)
     }
 
-    const slug = await uniqueSlug(data.name)
+    const slug = await uniqueSlug(data.name, context.workspaceId)
     const prompt = await db.prompt.create({
       data: {
         slug,
+        key,
         name: data.name,
         description: data.description,
         kind,
@@ -194,6 +247,7 @@ export class PromptService {
     promptIdOrSlug: string,
     data: Partial<{
       name: string
+      key: string
       description: string
       kind: PromptKind
       category: string
@@ -218,7 +272,7 @@ export class PromptService {
 
     const kind = data.kind ?? existing.kind
     if (kind === 'CONTENT' && data.isDefault) {
-      await clearContentDefaults(existing.id)
+      await clearContentDefaults(context.workspaceId, existing.id)
     }
 
     const systemPrompt = data.systemPrompt ?? existing.systemPrompt
@@ -226,13 +280,15 @@ export class PromptService {
     const outputTarget = data.outputTarget !== undefined ? data.outputTarget : existing.outputTarget
     const hash = promptHash(systemPrompt, userPrompt, outputTarget, kind)
     const name = data.name ?? existing.name
-    const slug = data.name ? await uniqueSlug(name, existing.id) : existing.slug
+    const slug = data.name ? await uniqueSlug(name, context.workspaceId, existing.id) : existing.slug
+    const key = data.key ? slugify(data.key) : (existing.key ?? slugify(name))
 
     const prompt = await db.prompt.update({
       where: { id: existing.id },
       data: {
         ...data,
         slug,
+        key,
         tags: data.tags ?? undefined,
         promptHash: hash,
         ...(kind !== 'CONTENT' ? { isDefault: false } : {}),

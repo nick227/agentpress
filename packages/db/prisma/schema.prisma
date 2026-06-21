@@ -543,7 +543,8 @@ model LibraryAgent {
 
 model Prompt {
   id                        String            @id @default(cuid())
-  slug                      String            @unique
+  slug                      String
+  key                       String?
   name                      String
   description               String?           @db.Text
   kind                      PromptKind        @default(TRANSFORMATIONAL)
@@ -557,7 +558,7 @@ model Prompt {
   visibility                Visibility        @default(PRIVATE)
   workspaceId               String?
   workspace                 Workspace?        @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
-  promptHash                String            @unique
+  promptHash                String
   usageCount                Int               @default(0)
   sortOrder                 Int               @default(0)
   isDefault                 Boolean           @default(false)
@@ -565,9 +566,16 @@ model Prompt {
   updatedAt                 DateTime          @updatedAt
   defaultForResearchSources ResearchSource[]  @relation("ResearchSourceDefaultPrompt")
   researchSummaries         ResearchSummary[]
+  sourcePromptId            String?
+  sourcePrompt              Prompt?           @relation("PromptForks", fields: [sourcePromptId], references: [id], onDelete: SetNull)
+  forks                     Prompt[]           @relation("PromptForks")
 
   @@index([kind])
   @@index([category])
+  @@unique([workspaceId, slug])
+  @@unique([workspaceId, key])
+  @@unique([workspaceId, promptHash])
+  @@index([sourcePromptId])
 }
 
 model PipelineLoop {
