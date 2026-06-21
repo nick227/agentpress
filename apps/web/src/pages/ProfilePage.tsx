@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useChangePassword, useCurrentUser } from '@project/sdk'
+import { useChangePassword, useCurrentUser, useLogout } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
-import { CheckCircle2, KeyRound, User, Users } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { CheckCircle2, KeyRound, LogOut, User, Users } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 
 function initials(email: string) {
   return email.charAt(0).toUpperCase()
@@ -20,6 +20,8 @@ function relativeDate(iso: string) {
 export function ProfilePage() {
   const { data, isLoading } = useCurrentUser()
   const changePassword = useChangePassword()
+  const logout = useLogout()
+  const navigate = useNavigate()
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -47,6 +49,15 @@ export function ProfilePage() {
     }
   }
 
+  async function handleLogout() {
+    try {
+      await logout.mutateAsync()
+      navigate('/login', { replace: true })
+    } catch (err: any) {
+      toast.error(err.message ?? 'Could not log out')
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="p-6 max-w-2xl mx-auto space-y-6">
@@ -61,9 +72,14 @@ export function ProfilePage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold">Profile</h1>
-        <p className="text-sm text-muted-foreground">Account details and security settings.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold">Profile</h1>
+          <p className="text-sm text-muted-foreground">Account details and security settings.</p>
+        </div>
+        <Button variant="outline" size="sm" loading={logout.isPending} onClick={() => { void handleLogout() }}>
+          <LogOut size={13} /> Log out
+        </Button>
       </div>
 
       {/* Account info */}

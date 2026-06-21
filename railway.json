@@ -5,7 +5,7 @@
     "buildCommand": "NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @project/db exec prisma generate && pnpm sdk:generate && pnpm --filter web build && pnpm --filter server build"
   },
   "deploy": {
-    "preDeployCommand": "pnpm --filter @project/db exec prisma db push --force-reset --skip-generate && pnpm --filter @project/db run db:seed",
+    "preDeployCommand": "pnpm --filter @project/db exec prisma db push --accept-data-loss --skip-generate",
     "startCommand": "pnpm --filter server start",
     "healthcheckPath": "/health",
     "restartPolicyType": "ON_FAILURE",
