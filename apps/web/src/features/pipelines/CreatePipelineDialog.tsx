@@ -41,10 +41,14 @@ export function CreatePipelineDialog({ onClose }: Props) {
             fields={fields}
             schema={schema}
             onSubmit={async (data) => {
-              const result = await create.mutateAsync(data)
-              toast.success('Pipeline created')
-              onClose()
-              navigate(`/pipelines/${result.data.slug}`)
+              try {
+                const result = await create.mutateAsync(data)
+                toast.success('Pipeline created')
+                onClose()
+                navigate(`/pipelines/${result.data.slug}`)
+              } catch (err: unknown) {
+                toast.error(err instanceof Error ? err.message : 'Failed to create pipeline')
+              }
             }}
             isLoading={create.isPending}
             submitLabel="Create Pipeline"
