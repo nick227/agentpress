@@ -747,17 +747,11 @@ export class PipelineRunService {
   }
 
   private composeBody(pipeline: any, outputByUid: Record<string, { text: string; target: string; image?: InlineImageMeta }>): { body: string; inlineImages: InlineImageMeta[] } {
-    const composerRows = Array.isArray(pipeline.bodyComposer) && pipeline.bodyComposer.length > 0
-      ? pipeline.bodyComposer
-      : pipeline.agents
-        .filter((agent: any) => agent.outputTarget === 'body' || agent.outputTarget === 'image')
-        .map((agent: any) => ({ id: agent.uid, type: 'agent_output', agentUid: agent.uid, include: true }))
-
     const parts: string[] = []
     const inlineImages: InlineImageMeta[] = []
-    for (const row of composerRows) {
-      if (row.include === false) continue
-      const entry = outputByUid[row.agentUid]
+    for (const agent of pipeline.agents) {
+      if (agent.outputTarget !== 'body' && agent.outputTarget !== 'image') continue
+      const entry = outputByUid[agent.uid]
       if (!entry) continue
       if (entry.target === 'image' && entry.image?.relativePath) {
         parts.push(this.renderImageFigure(entry.image))

@@ -25,13 +25,19 @@ export function useUpsertPipelineLoop() {
   return useMutation({
     mutationFn: async ({ pipelineId, ...body }: {
       pipelineId: string
-      loopType: 'research_feed'
+      loopType: 'research_feed' | 'dataset'
       sourceId?: string
       cursorMode: 'all_stored' | 'new_since_cursor' | 'date_range'
       cursorAt?: string
       dateRangeStart?: string
       dateRangeEnd?: string
       variableMap?: Record<string, string>
+      dataset?: {
+        sourceType: 'csv' | 'google_sheets'
+        name?: string
+        csvText?: string
+        url?: string
+      }
       maxBatchSize?: number
     }): Promise<{ data: PipelineLoop }> => {
       const { data, error, response } = await getApiClient().PUT('/api/pipelines/{pipelineId}/loop', {

@@ -78,6 +78,13 @@ function formatPipeline(p: any) {
       dateRangeStart: p.loop.dateRangeStart ?? undefined,
       dateRangeEnd: p.loop.dateRangeEnd ?? undefined,
       variableMap: p.loop.variableMap ?? undefined,
+      dataset: p.loop.datasetConfig ? {
+        sourceType: (p.loop.datasetConfig as any).sourceType,
+        name: (p.loop.datasetConfig as any).name,
+        url: (p.loop.datasetConfig as any).url ?? undefined,
+        headers: (p.loop.datasetConfig as any).headers ?? [],
+        rowCount: Array.isArray((p.loop.datasetConfig as any).rows) ? (p.loop.datasetConfig as any).rows.length : 0,
+      } : undefined,
       maxBatchSize: p.loop.maxBatchSize,
       createdAt: p.loop.createdAt,
       updatedAt: p.loop.updatedAt,
@@ -292,12 +299,7 @@ export class PipelineService {
     const varKeys = new Set(p.variables.map((v) => v.key))
     const agentUidSet = new Set(uids)
     const researchSources = await db.researchSource.findMany({
-      where: {
-        OR: [
-          { workspaceId: context.workspaceId },
-          { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } },
-        ],
-      },
+      where: { workspaceId: context.workspaceId },
       select: { slug: true },
     })
     const researchSourceSlugs = new Set(researchSources.map((source) => source.slug))
@@ -316,7 +318,7 @@ export class PipelineService {
           warnings.push({ level: 'warning', message: `Agent "${agent.uid}" uses legacy {research} reference which is deprecated. Use the specific feed slug instead, e.g. {feed_slug.summary}`, path: `agents.${agent.uid}` })
         } else if (ref.includes('.')) {
           const [root] = ref.split('.')
-          if (root && !varKeys.has(root) && !researchSourceSlugs.has(root)) {
+          if (root && root !== 'row' && !varKeys.has(root) && !researchSourceSlugs.has(root)) {
             warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown variable or research source "${root}"`, path: `agents.${agent.uid}` })
           }
         } else if (!varKeys.has(ref)) {

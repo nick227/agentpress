@@ -1,6 +1,7 @@
 import { db, Prisma } from '@project/db'
 import { PipelineRunService } from './PipelineRunService'
 import { authorization, type AuthContext } from './AuthorizationService'
+import { importDataset, type DatasetConfig, type DatasetImportInput } from './DatasetImportService'
 
 const runService = new PipelineRunService()
 
@@ -11,7 +12,16 @@ export interface BatchOptions {
   dateRangeEnd?: string
 }
 
+interface BatchItem {
+  id: string
+  title: string
+  publishedAt: Date | null
+  researchItemId?: string
+  row?: Record<string, string>
+}
+
 function formatLoop(loop: any) {
+  const dataset = loop.datasetConfig as DatasetConfig | null
   return {
     id: loop.id,
     pipelineId: loop.pipelineId,
@@ -23,6 +33,13 @@ function formatLoop(loop: any) {
     dateRangeStart: loop.dateRangeStart ?? undefined,
     dateRangeEnd: loop.dateRangeEnd ?? undefined,
     variableMap: loop.variableMap ?? undefined,
+    dataset: dataset ? {
+      sourceType: dataset.sourceType,
+      name: dataset.name,
+      url: dataset.url,
+      headers: dataset.headers,
+      rowCount: dataset.rows.length,
+    } : undefined,
     maxBatchSize: loop.maxBatchSize,
     createdAt: loop.createdAt,
     updatedAt: loop.updatedAt,
@@ -47,16 +64,21 @@ export class PipelineBatchService {
     dateRangeStart?: string
     dateRangeEnd?: string
     variableMap?: Record<string, string>
+    dataset?: DatasetImportInput
     maxBatchSize?: number
   }) {
     authorization.authorize(context, 'resource:edit')
     const id = await this.resolvePipelineId(context, pipelineId)
     if (data.sourceId) {
       const source = await db.researchSource.findFirst({
-        where: { id: data.sourceId, OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] },
+        where: { id: data.sourceId, workspaceId: context.workspaceId },
       })
       if (!source) throw Object.assign(new Error('Research source not found'), { statusCode: 404 })
     }
+    const datasetConfig = data.loopType === 'dataset'
+      ? await importDataset(data.dataset ?? { sourceType: 'csv' })
+      : null
+    const maxBatchSize = datasetConfig?.rows.length ?? data.maxBatchSize ?? 50
     const loop = await db.pipelineLoop.upsert({
       where: { pipelineId: id },
       create: {
@@ -68,7 +90,8 @@ export class PipelineBatchService {
         dateRangeStart: data.dateRangeStart ? new Date(data.dateRangeStart) : null,
         dateRangeEnd: data.dateRangeEnd ? new Date(data.dateRangeEnd) : null,
         variableMap: data.variableMap ?? Prisma.JsonNull,
-        maxBatchSize: data.maxBatchSize ?? 50,
+        datasetConfig: datasetConfig ? datasetConfig as unknown as Prisma.InputJsonValue : Prisma.JsonNull,
+        maxBatchSize,
       },
       update: {
         loopType: data.loopType,
@@ -78,7 +101,8 @@ export class PipelineBatchService {
         dateRangeStart: data.dateRangeStart ? new Date(data.dateRangeStart) : null,
         dateRangeEnd: data.dateRangeEnd ? new Date(data.dateRangeEnd) : null,
         variableMap: data.variableMap ?? Prisma.JsonNull,
-        maxBatchSize: data.maxBatchSize ?? 50,
+        datasetConfig: datasetConfig ? datasetConfig as unknown as Prisma.InputJsonValue : Prisma.JsonNull,
+        maxBatchSize,
       },
       include: { source: { select: { name: true } } },
     })
@@ -98,13 +122,15 @@ export class PipelineBatchService {
       include: { source: true },
     })
     if (!loop) throw Object.assign(new Error('No loop configured for this pipeline'), { statusCode: 400 })
-    if (!loop.sourceId) throw Object.assign(new Error('Loop has no research source configured'), { statusCode: 400 })
+    if (loop.loopType === 'research_feed' && !loop.sourceId) throw Object.assign(new Error('Loop has no research source configured'), { statusCode: 400 })
 
     const items = await this.resolveItems(loop, options)
     const pipeline = await db.pipeline.findFirst({
       where: { id },
-      include: { agents: { where: { enabled: true } } },
+      include: { agents: { where: { enabled: true } }, variables: { orderBy: { sortOrder: 'asc' } } },
     })
+    if (!pipeline) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
+    if (loop.loopType === 'dataset') this.validateDataset(loop, pipeline.variables)
     const agentCount = pipeline?.agents.length ?? 0
     // Server-side cap — preview reflects the same cap applied at startBatch
     const capped = items.length > loop.maxBatchSize
@@ -119,7 +145,7 @@ export class PipelineBatchService {
       items: cappedItems.map((item) => ({
         itemId: item.id,
         title: item.title,
-        publishedAt: item.publishedAt,
+        publishedAt: item.publishedAt ?? undefined,
       })),
     }
   }
@@ -132,7 +158,14 @@ export class PipelineBatchService {
       include: { source: true },
     })
     if (!loop) throw Object.assign(new Error('No loop configured for this pipeline'), { statusCode: 400 })
-    if (!loop.sourceId || !loop.source) throw Object.assign(new Error('Loop has no research source configured'), { statusCode: 400 })
+    if (loop.loopType === 'research_feed' && (!loop.sourceId || !loop.source)) throw Object.assign(new Error('Loop has no research source configured'), { statusCode: 400 })
+
+    const pipeline = await db.pipeline.findFirst({
+      where: { id },
+      include: { variables: { orderBy: { sortOrder: 'asc' } } },
+    })
+    if (!pipeline) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
+    if (loop.loopType === 'dataset') this.validateDataset(loop, pipeline.variables)
 
     // Idempotency guard: reject if a batch is already active for this pipeline
     const activeBatch = await db.pipelineRunBatch.findFirst({
@@ -160,7 +193,9 @@ export class PipelineBatchService {
         pipelineId: id,
         loopType: loop.loopType,
         sourceId: loop.sourceId,
-        sourceName: loop.source.name,
+        sourceName: loop.loopType === 'dataset'
+          ? ((loop.datasetConfig as unknown as DatasetConfig)?.name ?? 'Dataset')
+          : loop.source?.name,
         cursorMode: batchCursorMode,
         dryRun,
         status: 'running',
@@ -177,6 +212,7 @@ export class PipelineBatchService {
       workspaceId: context.workspaceId,
       userId: context.userId,
       dryRun,
+      pipelineVariables: pipeline.variables,
     }).catch(async () => {
       await db.pipelineRunBatch.update({
         where: { id: batch.id },
@@ -239,14 +275,15 @@ export class PipelineBatchService {
 
   private async _executeBatch(input: {
     batchId: string
-    items: Array<{ id: string; title: string; publishedAt: Date | null }>
+    items: BatchItem[]
     loop: any
     batchCursorMode: string
     workspaceId: string
     userId: string
     dryRun: boolean
+    pipelineVariables: Array<{ key: string; type: string; defaultValue: string | null }>
   }) {
-    const { batchId, items, loop, batchCursorMode, workspaceId, userId, dryRun } = input
+    const { batchId, items, loop, batchCursorMode, workspaceId, userId, dryRun, pipelineVariables } = input
     let completed = 0
     let failed = 0
     // Track the latest publishedAt of items whose run DB records were durably created.
@@ -265,8 +302,10 @@ export class PipelineBatchService {
       const item = items[i]
       if (!item) continue
 
-      const extraVariables: Record<string, string> = {}
-      if (Object.keys(variableMap).length > 0) {
+      const extraVariables: Record<string, unknown> = {}
+      if (loop.loopType === 'dataset' && item.row) {
+        Object.assign(extraVariables, this.datasetVariables(item.row, pipelineVariables, i))
+      } else if (Object.keys(variableMap).length > 0) {
         const fullItem = await db.researchItem.findUnique({ where: { id: item.id } })
         if (fullItem) {
           for (const [varKey, fieldName] of Object.entries(variableMap)) {
@@ -288,7 +327,7 @@ export class PipelineBatchService {
             dryRun,
             title: item.title,
             // Pin this specific research item so {source.field} variables resolve to it
-            researchItemOverrides: { [loop.sourceId]: item.id },
+            researchItemOverrides: loop.sourceId && item.researchItemId ? { [loop.sourceId]: item.researchItemId } : undefined,
             workspaceId,
             createdByUserId: userId,
             batchId,
@@ -339,13 +378,24 @@ export class PipelineBatchService {
   }
 
   private async resolveItems(loop: any, options: BatchOptions) {
+    if (loop.loopType === 'dataset') {
+      const dataset = loop.datasetConfig as DatasetConfig | null
+      if (!dataset?.rows?.length) throw Object.assign(new Error('Loop has no dataset configured'), { statusCode: 400 })
+      return dataset.rows.map((row, index): BatchItem => ({
+        id: `row-${index + 1}`,
+        title: row.title?.trim() || row.name?.trim() || `Row ${index + 1}`,
+        publishedAt: null,
+        row,
+      }))
+    }
+
     const cursorMode = options.cursorMode ?? loop.cursorMode
 
     if (cursorMode === 'date_range') {
       const start = options.dateRangeStart ?? loop.dateRangeStart
       const end = options.dateRangeEnd ?? loop.dateRangeEnd
       if (!start || !end) throw Object.assign(new Error('date_range mode requires dateRangeStart and dateRangeEnd'), { statusCode: 400 })
-      return db.researchItem.findMany({
+      const items = await db.researchItem.findMany({
         where: {
           sourceId: loop.sourceId,
           publishedAt: { gte: new Date(start), lte: new Date(end) },
@@ -353,29 +403,88 @@ export class PipelineBatchService {
         orderBy: { publishedAt: 'asc' },
         select: { id: true, title: true, publishedAt: true },
       })
+      return items.map((item) => ({ ...item, researchItemId: item.id }))
     }
 
     if (cursorMode === 'new_since_cursor') {
       const cursor = loop.cursorAt
       if (!cursor) {
-        return db.researchItem.findMany({
+        const items = await db.researchItem.findMany({
           where: { sourceId: loop.sourceId },
           orderBy: { publishedAt: 'asc' },
           select: { id: true, title: true, publishedAt: true },
         })
+        return items.map((item) => ({ ...item, researchItemId: item.id }))
       }
-      return db.researchItem.findMany({
+      const items = await db.researchItem.findMany({
         where: { sourceId: loop.sourceId, publishedAt: { gt: cursor } },
         orderBy: { publishedAt: 'asc' },
         select: { id: true, title: true, publishedAt: true },
       })
+      return items.map((item) => ({ ...item, researchItemId: item.id }))
     }
 
-    return db.researchItem.findMany({
+    const items = await db.researchItem.findMany({
       where: { sourceId: loop.sourceId },
       orderBy: { publishedAt: 'asc' },
       select: { id: true, title: true, publishedAt: true },
     })
+    return items.map((item) => ({ ...item, researchItemId: item.id }))
+  }
+
+  private validateDataset(loop: any, variables: Array<{ key: string; required: boolean; defaultValue: string | null; type: string }>) {
+    const dataset = loop.datasetConfig as DatasetConfig | null
+    if (!dataset?.rows?.length) throw Object.assign(new Error('No dataset rows are configured'), { statusCode: 400 })
+    const headerSet = new Set(dataset.headers)
+    const conflicts = variables.filter((variable) => headerSet.has(variable.key) && variable.defaultValue !== null)
+    if (conflicts.length > 0) {
+      throw Object.assign(new Error(`Dataset columns conflict with static variable values: ${conflicts.map((variable) => variable.key).join(', ')}`), { statusCode: 400 })
+    }
+    const missing = variables.filter((variable) => variable.required && variable.defaultValue === null && !headerSet.has(variable.key))
+    if (missing.length > 0) {
+      throw Object.assign(new Error(`Dataset is missing required variables: ${missing.map((variable) => variable.key).join(', ')}`), { statusCode: 400 })
+    }
+    for (let index = 0; index < dataset.rows.length; index++) {
+      for (const variable of variables) {
+        if (!headerSet.has(variable.key)) continue
+        const value = dataset.rows[index]?.[variable.key] ?? ''
+        if (variable.required && !value.trim()) {
+          throw Object.assign(new Error(`Row ${index + 1} has no value for required variable "${variable.key}"`), { statusCode: 400 })
+        }
+        if (value.trim()) this.coerceDatasetValue(value, variable.type, variable.key, index)
+      }
+    }
+  }
+
+  private datasetVariables(row: Record<string, string>, variables: Array<{ key: string; type: string; defaultValue: string | null }>, rowIndex: number) {
+    const values: Record<string, unknown> = { row }
+    for (const variable of variables) {
+      const rowValue = row[variable.key]
+      if (rowValue !== undefined) {
+        values[variable.key] = rowValue.trim() ? this.coerceDatasetValue(rowValue, variable.type, variable.key, rowIndex) : ''
+      } else if (variable.defaultValue !== null) {
+        values[variable.key] = variable.defaultValue
+      }
+    }
+    return values
+  }
+
+  private coerceDatasetValue(value: string, type: string, key: string, rowIndex: number): unknown {
+    if (type === 'number') {
+      const number = Number(value)
+      if (!Number.isFinite(number)) throw Object.assign(new Error(`Row ${rowIndex + 1} has an invalid number for "${key}"`), { statusCode: 400 })
+      return number
+    }
+    if (type === 'boolean') {
+      const normalized = value.trim().toLowerCase()
+      if (['true', 'yes', '1'].includes(normalized)) return true
+      if (['false', 'no', '0'].includes(normalized)) return false
+      throw Object.assign(new Error(`Row ${rowIndex + 1} has an invalid boolean for "${key}"`), { statusCode: 400 })
+    }
+    if (type === 'json') {
+      try { return JSON.parse(value) } catch { throw Object.assign(new Error(`Row ${rowIndex + 1} has invalid JSON for "${key}"`), { statusCode: 400 }) }
+    }
+    return value
   }
 
   private formatBatch(batch: any, runs: any[]) {

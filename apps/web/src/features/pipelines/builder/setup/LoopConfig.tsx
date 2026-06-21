@@ -43,6 +43,8 @@ export function LoopConfig({ pipeline, pipelineId }: Props) {
     setDirty(false)
   }, [pipeline.id])
 
+  if (loop?.loopType === 'dataset') return null
+
   async function handleEnable() {
     await upsert.mutateAsync({
       pipelineId,

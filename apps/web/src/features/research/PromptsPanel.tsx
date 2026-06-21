@@ -20,8 +20,8 @@ export function PromptsPanel() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/prompts?kind=CONTENT" className="inline-flex h-7 items-center rounded border px-3 text-xs font-medium hover:bg-muted">Browse all</Link>
-          <Link to="/prompts/new?kind=CONTENT" className="inline-flex h-7 items-center gap-2 rounded bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"><Plus size={13} /> New prompt</Link>
+          <Link to="/prompts?kind=CONTENT" className="inline-flex h-7 items-center rounded border px-3 text-xs font-medium hover:bg-muted whitespace-nowrap">Browse all</Link>
+          <Link to="/prompts/new?kind=CONTENT" className="inline-flex h-7 items-center gap-2 rounded bg-primary px-3 whitespace-nowrap text-xs font-medium text-primary-foreground hover:bg-primary/90"><Plus size={13} /> New prompt</Link>
         </div>
       </div>
 

@@ -493,7 +493,7 @@ components:
           type: string
         loopType:
           type: string
-          enum: [research_feed]
+          enum: [research_feed, dataset]
         sourceId:
           type: string
         sourceName:
@@ -514,6 +514,23 @@ components:
           type: object
           additionalProperties:
             type: string
+        dataset:
+          type: object
+          required: [sourceType, name, headers, rowCount]
+          properties:
+            sourceType:
+              type: string
+              enum: [csv, google_sheets]
+            name:
+              type: string
+            url:
+              type: string
+            headers:
+              type: array
+              items:
+                type: string
+            rowCount:
+              type: integer
         maxBatchSize:
           type: integer
         createdAt:
@@ -541,7 +558,7 @@ components:
           type: array
           items:
             type: object
-            required: [itemId, title, publishedAt]
+            required: [itemId, title]
             properties:
               itemId:
                 type: string
@@ -563,7 +580,7 @@ components:
           type: string
         loopType:
           type: string
-          enum: [research_feed]
+          enum: [research_feed, dataset]
         sourceId:
           type: string
         sourceName:
@@ -1722,18 +1739,18 @@ paths:
       responses:
         '200': { description: Public feed catalog }
 
-  /api/community/feeds/{sourceId}/subscribe:
+  /api/community/feeds/{sourceId}/fork:
     parameters:
       - in: path
         name: sourceId
         required: true
         schema: { type: string }
     post:
-      operationId: subscribeCommunityFeed
+      operationId: forkCommunityFeed
       security:
         - bearerAuth: []
       responses:
-        '201': { description: Feed subscribed to the active workspace }
+        '201': { description: Feed forked into the active workspace }
 
   /api/community/feeds/{sourceId}:
     parameters:
@@ -1746,6 +1763,38 @@ paths:
       security: []
       responses:
         '200': { description: Public feed metadata and recent item metadata }
+
+  /api/community/prompts:
+    get:
+      operationId: listCommunityPrompts
+      security: []
+      responses:
+        '200': { description: Public prompt catalog }
+
+  /api/community/prompts/{promptId}:
+    parameters:
+      - in: path
+        name: promptId
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getCommunityPrompt
+      security: []
+      responses:
+        '200': { description: Public prompt definition }
+
+  /api/community/prompts/{promptId}/fork:
+    parameters:
+      - in: path
+        name: promptId
+        required: true
+        schema: { type: string }
+    post:
+      operationId: forkCommunityPrompt
+      security:
+        - bearerAuth: []
+      responses:
+        '201': { description: Prompt forked into the active workspace }
 
   /api/accounts/navigation:
     get:
@@ -2008,13 +2057,21 @@ paths:
               type: object
               required: [loopType, cursorMode]
               properties:
-                loopType: { type: string, enum: [research_feed] }
+                loopType: { type: string, enum: [research_feed, dataset] }
                 sourceId: { type: string }
                 cursorMode: { type: string, enum: [all_stored, new_since_cursor, date_range] }
                 cursorAt: { type: string, format: date-time }
                 dateRangeStart: { type: string, format: date-time }
                 dateRangeEnd: { type: string, format: date-time }
                 variableMap: { type: object, additionalProperties: { type: string } }
+                dataset:
+                  type: object
+                  required: [sourceType]
+                  properties:
+                    sourceType: { type: string, enum: [csv, google_sheets] }
+                    name: { type: string }
+                    csvText: { type: string }
+                    url: { type: string }
                 maxBatchSize: { type: integer }
       responses:
         '200':

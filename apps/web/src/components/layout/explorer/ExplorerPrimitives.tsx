@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { activityTooltip, compactRelativeTime } from './explorerTime'
+import { Children } from 'react'
 
 type ResourceGroupProps = {
   label: string
@@ -29,16 +30,19 @@ export function ResourceGroup({
   children,
 }: ResourceGroupProps) {
   return (
-    <div className="mt-2">
-      <div className="group flex items-center gap-1 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground bg-gray-100">
+    <div>
+      <div className="group flex items-center gap-1 p-2 font-semibold uppercase tracking-wide text-muted-foreground bg-gray-100">
         <Icon size={11} />
         {indexHref ? (
           <Link
             to={indexHref}
-            className="ml-0.5 flex-1 hover:text-foreground transition-colors"
+            className="ml-0.5 flex-1 hover:text-foreground transition-colors flex items-center"
             title={`View all ${label.toLowerCase()}`}
           >
             {label}
+            <span className="text-xs font-normal text-muted-foreground ml-2">
+              ({Children.count(children)})
+            </span>
           </Link>
         ) : (
           <span className="ml-0.5 flex-1">{label}</span>
@@ -49,7 +53,7 @@ export function ResourceGroup({
             onClick={onRefetch}
             disabled={isRefetching || isRefreshDisabled}
             title={refreshTitle ?? `Reload ${label.toLowerCase()}`}
-            className="rounded px-1 py-0.5 leading-none opacity-0 hover:bg-muted hover:text-foreground group-hover:opacity-100 disabled:opacity-30"
+            className="rounded flex items-center p-1 py-0.5 leading-none opacity-0 hover:bg-muted hover:text-foreground group-hover:opacity-100 disabled:opacity-30"
           >
             <RefreshCw size={10} className={isRefetching ? 'animate-spin' : ''} />
           </button>
@@ -57,14 +61,14 @@ export function ResourceGroup({
         {addHref && (
           <Link
             to={addHref}
-            className="rounded px-1 text-sm leading-none opacity-0 hover:bg-muted hover:text-foreground group-hover:opacity-100"
+            className="rounded flex items-center px-1 text-sm leading-none opacity-0 hover:bg-muted hover:text-foreground group-hover:opacity-100"
             title={`Add ${label.toLowerCase()}`}
           >
             +
           </Link>
         )}
       </div>
-      <div className="max-h-64 overflow-auto">{children}</div>
+      <div className="max-h-[30vh] overflow-auto">{children}</div>
     </div>
   )
 }

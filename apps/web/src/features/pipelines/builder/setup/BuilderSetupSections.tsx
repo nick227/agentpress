@@ -1,10 +1,10 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { AlertCircle, ArrowDown, ArrowUp, BookOpen, CheckCircle2, FileText, Image, Layers, Loader2, Package, Plus, Type, XCircle } from 'lucide-react'
+import { AlertCircle, ArrowDown, ArrowUp, BookOpen, CheckCircle2, FileSpreadsheet, FileText, Image, Layers, Link2, Loader2, Package, Plus, Trash2, Upload, XCircle } from 'lucide-react'
 import { BUILTIN_AGENT_DEFINITIONS, appendAgentDefinitionToPipelineInputs, type AgentDefinition } from '@project/content'
 import type { components } from '@project/sdk'
-import { useDestinations, usePipelineBatches, useUpdateDestination, useUpdatePipeline, useWordPressCategories } from '@project/sdk'
+import { useDeletePipelineLoop, useDestinations, usePipelineBatches, useUpdateDestination, useUpdatePipeline, useUpsertPipelineLoop, useWordPressCategories } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { VariablePackPicker } from '@/features/content/VariablePackPicker'
@@ -18,13 +18,6 @@ const AgentLibraryBrowser = lazy(() =>
 type Pipeline = components['schemas']['Pipeline']
 type Run = components['schemas']['PipelineRun']
 type Destination = components['schemas']['Destination']
-
-interface ComposerRow {
-  id: string
-  type: 'agent_output'
-  agentUid: string
-  include: boolean
-}
 
 export function PipelineNameField({ pipeline, pipelineId, onRenamed }: {
   pipeline: Pipeline
@@ -216,14 +209,111 @@ export function VariablesSection({ pipeline, pipelineId }: { pipeline: Pipeline;
 
   return (
     <section id="variables" className="space-y-3 scroll-mt-6">
-      <SectionHeader title="Variables" description="Runtime inputs available to agent prompts.">
+      <SectionHeader title="Variables" description="Static inputs and row-based batch data available to agent prompts.">
         <Button variant="ghost" size="icon-sm" onClick={() => setShowPicker(true)} title="Import variable pack"><Package size={13} /></Button>
         <Button variant="outline" size="sm" loading={update.isPending} onClick={addVariable}><Plus size={13} /> Add variable</Button>
       </SectionHeader>
       {pipeline.variables.length === 0 ? <EmptyRow text="No variables configured." /> : <VariableList pipeline={pipeline} />}
+      <DatasetInput pipeline={pipeline} pipelineId={pipelineId} />
       {showPicker && <VariablePackPicker pipeline={pipeline} pipelineId={pipelineId} onClose={() => setShowPicker(false)} />}
     </section>
   )
+}
+
+function DatasetInput({ pipeline, pipelineId }: { pipeline: Pipeline; pipelineId: string }) {
+  const upsert = useUpsertPipelineLoop()
+  const remove = useDeletePipelineLoop()
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [showSheetInput, setShowSheetInput] = useState(false)
+  const [sheetUrl, setSheetUrl] = useState('')
+  const dataset = pipeline.loop?.loopType === 'dataset' ? pipeline.loop.dataset : undefined
+  const headers = dataset?.headers ?? []
+  const conflicts = pipeline.variables.filter((variable) => headers.includes(variable.key) && variable.defaultValue !== undefined)
+  const missing = pipeline.variables.filter((variable) => variable.required && variable.defaultValue === undefined && !headers.includes(variable.key))
+
+  async function importCsv(file?: File) {
+    if (!file) return
+    try {
+      await upsert.mutateAsync({
+        pipelineId,
+        loopType: 'dataset',
+        cursorMode: 'all_stored',
+        dataset: { sourceType: 'csv', name: file.name, csvText: await file.text() },
+      })
+      toast.success('CSV ready for batch runs')
+    } catch (error: any) {
+      toast.error(error.message ?? 'Could not import CSV')
+    } finally {
+      if (fileInput.current) fileInput.current.value = ''
+    }
+  }
+
+  async function linkSheet() {
+    if (!sheetUrl.trim()) return
+    try {
+      await upsert.mutateAsync({
+        pipelineId,
+        loopType: 'dataset',
+        cursorMode: 'all_stored',
+        dataset: { sourceType: 'google_sheets', url: sheetUrl.trim() },
+      })
+      toast.success('Google Sheet ready for batch runs')
+      setSheetUrl('')
+      setShowSheetInput(false)
+    } catch (error: any) {
+      toast.error(error.message ?? 'Could not link Google Sheet')
+    }
+  }
+
+  async function removeDataset() {
+    await remove.mutateAsync(pipelineId)
+    toast.success('Batch data removed')
+  }
+
+  return (
+    <div className="rounded border bg-muted/10 p-3 space-y-3">
+      <input ref={fileInput} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => { void importCsv(event.target.files?.[0]) }} />
+      {dataset ? (
+        <>
+          <div className="flex items-start gap-2">
+            <FileSpreadsheet size={15} className="mt-0.5 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{dataset.name}</p>
+              <p className="text-xs text-muted-foreground">{dataset.rowCount} rows · {headers.length} columns · {dataset.sourceType === 'csv' ? 'CSV' : 'Google Sheets'}</p>
+              <p className="mt-1 text-xs text-muted-foreground truncate">{headers.join(', ')}</p>
+            </div>
+            <Button variant="ghost" size="icon-sm" disabled={remove.isPending} onClick={() => { void removeDataset() }} aria-label="Remove batch data"><Trash2 size={13} /></Button>
+          </div>
+          {conflicts.length > 0 && <DatasetIssue>Remove the static value or rename the matching column: {conflicts.map((variable) => variable.key).join(', ')}</DatasetIssue>}
+          {missing.length > 0 && <DatasetIssue>Missing required columns or static values: {missing.map((variable) => variable.key).join(', ')}</DatasetIssue>}
+          {conflicts.length === 0 && missing.length === 0 && <p className="text-xs text-green-600">Mapped · row values will be validated before the batch starts.</p>}
+          <p className="text-xs text-muted-foreground">Matching columns populate variables directly; every value is also available as <code className="font-mono">{'{row.column}'}</code>.</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" loading={upsert.isPending} onClick={() => fileInput.current?.click()}><Upload size={13} /> Replace CSV</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowSheetInput((value) => !value)}><Link2 size={13} /> Replace with Sheet</Button>
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <div><p className="text-sm font-medium">Batch data</p><p className="text-xs text-muted-foreground">Run once per CSV or Google Sheets row.</p></div>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" loading={upsert.isPending} onClick={() => fileInput.current?.click()}><Upload size={13} /> CSV</Button>
+            <Button variant="outline" size="sm" onClick={() => setShowSheetInput((value) => !value)}><Link2 size={13} /> Sheet</Button>
+          </div>
+        </div>
+      )}
+      {showSheetInput && (
+        <div className="flex gap-2">
+          <Input value={sheetUrl} onChange={(event) => setSheetUrl(event.target.value)} placeholder="Paste a shareable Google Sheets link" className="h-8 text-sm" />
+          <Button size="sm" loading={upsert.isPending} disabled={!sheetUrl.trim()} onClick={() => { void linkSheet() }}>Link</Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DatasetIssue({ children }: { children: ReactNode }) {
+  return <p className="flex items-start gap-1.5 rounded border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-destructive"><AlertCircle size={13} className="mt-0.5 shrink-0" />{children}</p>
 }
 
 function VariableList({ pipeline }: { pipeline: Pipeline }) {
@@ -253,11 +343,7 @@ export function AgentsSection({ pipeline, pipelineId }: { pipeline: Pipeline; pi
     if (added) onSelect({ type: 'agent', id: added.id })
   }
 
-  async function moveAgent(index: number, direction: -1 | 1) {
-    const target = index + direction
-    if (target < 0 || target >= pipeline.agents.length) return
-    const agents = [...pipeline.agents]
-    ;[agents[index], agents[target]] = [agents[target]!, agents[index]!]
+  async function saveAgents(agents: Pipeline['agents']) {
     await update.mutateAsync({
       pipelineId,
       agents: agents.map((agent, sortOrder) => ({
@@ -276,10 +362,23 @@ export function AgentsSection({ pipeline, pipelineId }: { pipeline: Pipeline; pi
     })
   }
 
+  async function moveAgent(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= pipeline.agents.length) return
+    const agents = [...pipeline.agents]
+    ;[agents[index], agents[target]] = [agents[target]!, agents[index]!]
+    await saveAgents(agents)
+  }
+
+  async function toggleAgent(index: number) {
+    const agents = pipeline.agents.map((agent, agentIndex) => agentIndex === index ? { ...agent, enabled: !agent.enabled } : agent)
+    await saveAgents(agents)
+  }
+
   return (
     <section id="agents" className="space-y-3 scroll-mt-6">
       <AgentSectionHeader pending={update.isPending} onBrowse={() => setShowLibrary(true)} onAdd={addDefinition} />
-      {pipeline.agents.length === 0 ? <EmptyRow text="No agents configured." /> : <AgentList pipeline={pipeline} pending={update.isPending} onMove={moveAgent} />}
+      {pipeline.agents.length === 0 ? <EmptyRow text="No agents configured." /> : <AgentList pipeline={pipeline} pending={update.isPending} onMove={moveAgent} onToggle={toggleAgent} />}
       {showLibrary && <Suspense fallback={null}><AgentLibraryBrowser pipeline={pipeline} pipelineId={pipelineId} onClose={() => setShowLibrary(false)} onAgentAdded={(id) => onSelect({ type: 'agent', id })} /></Suspense>}
     </section>
   )
@@ -287,7 +386,7 @@ export function AgentsSection({ pipeline, pipelineId }: { pipeline: Pipeline; pi
 
 function AgentSectionHeader({ pending, onBrowse, onAdd }: { pending: boolean; onBrowse: () => void; onAdd: (definition: AgentDefinition) => void }) {
   return (
-    <SectionHeader title="Agents" description="Ordered steps executed by this pipeline.">
+    <SectionHeader title="Agents" description="Set the execution and final-body order. Disable any step you want to skip.">
       <Button variant="ghost" size="icon-sm" onClick={onBrowse} title="Browse agent library"><BookOpen size={13} /></Button>
       <Button variant="ghost" size="icon-sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankImage)} title="Add image agent"><Image size={13} /></Button>
       <Button variant="ghost" size="icon-sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.staticImage)} title="Add static agent"><FileText size={13} /></Button>
@@ -296,12 +395,20 @@ function AgentSectionHeader({ pending, onBrowse, onAdd }: { pending: boolean; on
   )
 }
 
-function AgentList({ pipeline, pending, onMove }: { pipeline: Pipeline; pending: boolean; onMove: (index: number, direction: -1 | 1) => void }) {
+function AgentList({ pipeline, pending, onMove, onToggle }: { pipeline: Pipeline; pending: boolean; onMove: (index: number, direction: -1 | 1) => void; onToggle: (index: number) => void }) {
   const { onSelect } = usePipelineSelection()
   return (
     <div className="divide-y rounded border bg-surface">
       {pipeline.agents.map((agent, index) => (
         <div key={agent.id} className="flex items-center gap-2 px-3 py-2.5 hover:bg-muted/40">
+          <input
+            type="checkbox"
+            checked={agent.enabled}
+            disabled={pending}
+            onChange={() => onToggle(index)}
+            className="rounded shrink-0"
+            aria-label={`${agent.enabled ? 'Disable' : 'Enable'} ${agent.name}`}
+          />
           <button type="button" onClick={() => onSelect({ type: 'agent', id: agent.id })} className="flex min-w-0 flex-1 items-center gap-3 text-left">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted text-xs text-muted-foreground">{index + 1}</span>
             <div className="min-w-0 flex-1"><p className="text-sm font-medium truncate">{agent.name}</p><p className="text-xs text-muted-foreground truncate">{agentSublabel(agent)}</p></div>
@@ -312,51 +419,6 @@ function AgentList({ pipeline, pending, onMove }: { pipeline: Pipeline; pending:
           <span className="text-muted-foreground">›</span>
         </div>
       ))}
-    </div>
-  )
-}
-
-export function BodyComposerSection({ pipeline, pipelineId }: { pipeline: Pipeline; pipelineId: string }) {
-  const update = useUpdatePipeline()
-  const rows = getComposerRows(pipeline)
-  function save(nextRows: ComposerRow[]) { void update.mutateAsync({ pipelineId, bodyComposer: nextRows.map((row) => ({ ...row })) }) }
-  function move(index: number, direction: -1 | 1) {
-    const next = [...rows]
-    const target = index + direction
-    if (target < 0 || target >= next.length) return
-    const [row] = next.splice(index, 1)
-    if (!row) return
-    next.splice(target, 0, row)
-    save(next)
-  }
-  function toggle(row: ComposerRow) { save(rows.map((item) => item.id === row.id ? { ...item, include: !item.include } : item)) }
-
-  return (
-    <section className="space-y-3 mt-8">
-      <SectionHeader title="Body Composer" description="Arrange existing text and image outputs. Reordering or excluding rows does not run AI." />
-      {rows.length === 0 ? <EmptyRow text="Add body or inline image agents to compose the final document body." /> : <ComposerRows pipeline={pipeline} rows={rows} onMove={move} onToggle={toggle} />}
-    </section>
-  )
-}
-
-function ComposerRows({ pipeline, rows, onMove, onToggle }: { pipeline: Pipeline; rows: ComposerRow[]; onMove: (index: number, direction: -1 | 1) => void; onToggle: (row: ComposerRow) => void }) {
-  return (
-    <div className="space-y-2">
-      {rows.map((row, index) => {
-        const agent = pipeline.agents.find((item) => item.uid === row.agentUid)
-        if (!agent) return null
-        return (
-          <div key={row.id} className={`border rounded px-3 py-2 flex items-center gap-3 transition-colors ${row.include ? 'bg-surface' : 'bg-muted/30 opacity-60'}`}>
-            <input type="checkbox" checked={row.include} onChange={() => onToggle(row)} className="rounded shrink-0" aria-label={`Include ${agent.name} in final body`} />
-            <span className="text-muted-foreground shrink-0">{agent.outputTarget === 'image' ? <Image size={14} /> : <Type size={14} />}</span>
-            <div className="text-left min-w-0 flex-1"><span className="block text-sm font-medium truncate">{agent.name}</span><span className="block text-xs text-muted-foreground font-mono truncate">{row.include ? 'Included' : 'Excluded'} · {agent.uid}</span></div>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon-sm" onClick={() => onMove(index, -1)} disabled={index === 0}><ArrowUp size={13} /></Button>
-              <Button variant="ghost" size="icon-sm" onClick={() => onMove(index, 1)} disabled={index === rows.length - 1}><ArrowDown size={13} /></Button>
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -472,16 +534,4 @@ function CategoryPicker({ label, hint, categories, selected, onChange }: {
       <div className="flex flex-wrap gap-1.5">{categories.map((category) => <Chip key={category.id} active={selected.includes(category.id)} onClick={() => toggle(category.id)}>{category.name}{category.count > 0 ? ` (${category.count})` : ''}</Chip>)}</div>
     </div>
   )
-}
-
-function getComposerRows(pipeline: Pipeline): ComposerRow[] {
-  const eligibleAgents = pipeline.agents.filter((agent) => agent.outputTarget === 'body' || agent.outputTarget === 'image')
-  const existingRows = Array.isArray(pipeline.bodyComposer) ? pipeline.bodyComposer as unknown as ComposerRow[] : []
-  const rows = existingRows
-    .filter((row) => eligibleAgents.some((agent) => agent.uid === row.agentUid))
-    .map((row) => ({ ...row, type: 'agent_output' as const, include: row.include !== false }))
-  for (const agent of eligibleAgents) {
-    if (!rows.some((row) => row.agentUid === agent.uid)) rows.push({ id: agent.uid, type: 'agent_output', agentUid: agent.uid, include: true })
-  }
-  return rows
 }

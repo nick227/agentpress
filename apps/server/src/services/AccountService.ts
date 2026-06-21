@@ -23,7 +23,7 @@ export class AccountService {
         orderBy: { name: 'asc' },
         include: { executions: { orderBy: { createdAt: 'desc' }, take: 1, select: { status: true, createdAt: true } } },
       }),
-      db.researchSource.findMany({ where: { OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] }, orderBy: { name: 'asc' }, select: { id: true, name: true, slug: true, status: true, lastChecked: true } }),
+      db.researchSource.findMany({ where: { workspaceId: context.workspaceId }, orderBy: { name: 'asc' }, select: { id: true, name: true, slug: true, status: true, lastChecked: true } }),
       db.destination.findMany({ where: { workspaceId: context.workspaceId }, orderBy: { name: 'asc' }, select: { id: true, name: true, type: true } }),
     ])
     return {

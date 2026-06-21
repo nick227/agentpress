@@ -124,3 +124,7 @@ Each batch spawns N normal PipelineRuns (one per item), executed sequentially. P
 - Add OpenAI API key to `.env` and do a live test run
 - Verify `pnpm dev` starts both apps and full auth flow works in browser
 - Phase 6: Documentation generation
+
+## Architectural Invariants & Rules
+
+- **Provider Caching**: Provider fetch cache keys must never include `workspaceId`, `userId`, or `ResearchSource.id`. They must use `sourceType` + canonical `externalId` (e.g., `reddit:stocks`, `youtube:UC...`) so forked copies share upstream protection against API spam while keeping local items private.

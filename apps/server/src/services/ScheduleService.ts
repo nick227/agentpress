@@ -307,10 +307,7 @@ export class ScheduleService {
       db.researchSource.findMany({
         where: {
           id: { in: sourceIds },
-          OR: [
-            { workspaceId: context.workspaceId },
-            { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } },
-          ],
+          workspaceId: context.workspaceId,
         },
       }),
       db.pipeline.findMany({

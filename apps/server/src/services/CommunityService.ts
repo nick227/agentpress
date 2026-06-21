@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { db } from '@project/db'
 import { authorization, type AuthContext } from './AuthorizationService'
 
@@ -22,7 +23,18 @@ export class CommunityService {
         id: true, name: true, slug: true, category: true, sourceType: true, sourceUrl: true,
         status: true, lastChecked: true, updatedAt: true,
         workspace: { select: { id: true, name: true, type: true } },
-        _count: { select: { items: true, subscriptions: true } },
+        _count: { select: { items: true } },
+      },
+    })
+  }
+
+  async listPrompts() {
+    return db.prompt.findMany({
+      where: { visibility: 'PUBLIC' },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, name: true, description: true, kind: true, category: true, updatedAt: true,
+        workspace: { select: { id: true, name: true, type: true } },
       },
     })
   }
@@ -54,6 +66,14 @@ export class CommunityService {
     return feed
   }
 
+  async getPrompt(promptId: string) {
+    const prompt = await db.prompt.findFirst({
+      where: { id: promptId, visibility: 'PUBLIC' },
+    })
+    if (!prompt) throw Object.assign(new Error('Community prompt not found'), { statusCode: 404 })
+    return prompt
+  }
+
   async forkPipeline(context: AuthContext, pipelineId: string, name?: string) {
     authorization.authorize(context, 'resource:edit')
     const source = await db.pipeline.findFirst({
@@ -61,7 +81,6 @@ export class CommunityService {
       include: {
         variables: { orderBy: { sortOrder: 'asc' } },
         agents: { orderBy: { sortOrder: 'asc' } },
-        feedLinks: true,
       },
     })
     if (!source) throw Object.assign(new Error('Community pipeline not found'), { statusCode: 404 })
@@ -71,56 +90,93 @@ export class CommunityService {
     let suffix = 2
     while (await db.pipeline.findFirst({ where: { workspaceId: context.workspaceId, slug } })) slug = `${base}-${suffix++}`
 
-    return db.$transaction(async (tx) => {
-      const pipeline = await tx.pipeline.create({
-        data: {
-          name: name?.trim() || `${source.name} Copy`,
-          slug,
-          description: source.description,
-          category: source.category,
-          status: 'draft',
-          dryRun: true,
-          bodyComposer: source.bodyComposer ?? undefined,
-          workspaceId: context.workspaceId,
-          createdByUserId: context.userId,
-          visibility: 'PRIVATE',
-          sourcePipelineId: source.id,
-          sourceVersionAt: source.updatedAt,
-          forkedAt: new Date(),
-          variables: {
-            create: source.variables.map(({ key, label, type, required, defaultValue, exampleValue, sortOrder }) => ({
-              key, label, type, required, defaultValue, exampleValue, sortOrder,
-            })),
-          },
-          agents: {
-            create: source.agents.map(({ uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder }) => ({
-              uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder,
-            })),
-          },
+    return db.pipeline.create({
+      data: {
+        name: name?.trim() || `${source.name} Copy`,
+        slug,
+        description: source.description,
+        category: source.category,
+        status: 'draft',
+        dryRun: true,
+        bodyComposer: source.bodyComposer ?? undefined,
+        workspaceId: context.workspaceId,
+        createdByUserId: context.userId,
+        visibility: 'PRIVATE',
+        sourcePipelineId: source.id,
+        sourceVersionAt: source.updatedAt,
+        forkedAt: new Date(),
+        variables: {
+          create: source.variables.map(({ key, label, type, required, defaultValue, exampleValue, sortOrder }) => ({
+            key, label, type, required, defaultValue, exampleValue, sortOrder,
+          })),
         },
-      })
-      const subscribed = await tx.workspaceFeedSubscription.findMany({
-        where: { workspaceId: context.workspaceId, sourceId: { in: source.feedLinks.map((link) => link.sourceId) } },
-      })
-      if (subscribed.length > 0) {
-        await tx.pipelineFeed.createMany({
-          data: source.feedLinks
-            .filter((link) => subscribed.some((item) => item.sourceId === link.sourceId))
-            .map((link) => ({ pipelineId: pipeline.id, sourceId: link.sourceId, alias: link.alias })),
-        })
-      }
-      return pipeline
+        agents: {
+          create: source.agents.map(({ uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder }) => ({
+            uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder,
+          })),
+        },
+      },
     })
   }
 
-  async subscribeFeed(context: AuthContext, sourceId: string) {
+  async forkFeed(context: AuthContext, sourceId: string) {
     authorization.authorize(context, 'resource:edit')
     const source = await db.researchSource.findFirst({ where: { id: sourceId, visibility: 'PUBLIC' } })
     if (!source) throw Object.assign(new Error('Community feed not found'), { statusCode: 404 })
-    return db.workspaceFeedSubscription.upsert({
-      where: { workspaceId_sourceId: { workspaceId: context.workspaceId, sourceId } },
-      update: {},
-      create: { workspaceId: context.workspaceId, sourceId, createdByUserId: context.userId },
+
+    const existing = await db.researchSource.findFirst({
+      where: { workspaceId: context.workspaceId, sourceUrl: source.sourceUrl },
+    })
+    if (existing) return existing
+
+    let slug = source.slug
+    let suffix = 2
+    while (await db.researchSource.findFirst({ where: { workspaceId: context.workspaceId, slug } })) slug = `${source.slug}-${suffix++}`
+
+    return db.researchSource.create({
+      data: {
+        name: source.name,
+        slug,
+        category: source.category,
+        sourceType: source.sourceType,
+        sourceUrl: source.sourceUrl,
+        externalId: source.externalId,
+        workspaceId: context.workspaceId,
+        createdByUserId: context.userId,
+        visibility: 'PRIVATE',
+      },
+    })
+  }
+
+  async forkPrompt(context: AuthContext, promptId: string) {
+    authorization.authorize(context, 'resource:edit')
+    const source = await db.prompt.findFirst({ where: { id: promptId, visibility: 'PUBLIC' } })
+    if (!source) throw Object.assign(new Error('Community prompt not found'), { statusCode: 404 })
+
+    const existing = await db.prompt.findFirst({
+      where: { workspaceId: context.workspaceId, name: source.name, kind: source.kind },
+    })
+    if (existing) return existing
+
+    const promptHash = createHash('sha256').update(`fork:${context.workspaceId}:${source.id}`).digest('hex')
+
+    return db.prompt.create({
+      data: {
+        name: source.name,
+        slug: `${source.slug}-${context.workspaceId.slice(0, 8)}`,
+        description: source.description,
+        kind: source.kind,
+        category: source.category,
+        tags: source.tags ?? [],
+        systemPrompt: source.systemPrompt,
+        userPrompt: source.userPrompt,
+        uid: source.uid,
+        outputTarget: source.outputTarget,
+        outputFormat: source.outputFormat,
+        promptHash,
+        workspaceId: context.workspaceId,
+        visibility: 'PRIVATE',
+      },
     })
   }
 }

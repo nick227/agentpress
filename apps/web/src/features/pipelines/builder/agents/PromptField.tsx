@@ -3,6 +3,7 @@ import { Sparkles, ChevronDown } from 'lucide-react'
 import type { components } from '@project/sdk'
 import { usePromptAssist, useResearchSources } from '@project/sdk'
 import { Textarea } from '@/components/ui/Textarea'
+import { PromptTextarea } from '@/components/ui/PromptTextarea'
 import { Button } from '@/components/ui/Button'
 import { researchSummaryRefHint } from '@/features/research/researchSummaryRef'
 
@@ -164,7 +165,7 @@ export function PromptField({ label, value, onChange, promptKind, pipeline, agen
         </div>
       </div>
 
-      <Textarea
+      <PromptTextarea
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}

@@ -12,7 +12,7 @@ import * as handlers from './handlers'
 import * as security from './plugins/security'
 import { SchedulePoller } from './services/SchedulePoller'
 
-const server = Fastify({ logger: true })
+const server = Fastify({ logger: true, bodyLimit: 2_000_000 })
 const schedulePoller = new SchedulePoller()
 
 const specPath = resolve(__dirname, '../../../packages/api-spec/openapi.yaml')

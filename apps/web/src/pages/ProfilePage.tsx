@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/Input'
 import { Field } from '@/components/ui/Field'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { toast } from 'sonner'
-import { CheckCircle2, KeyRound, User } from 'lucide-react'
+import { CheckCircle2, KeyRound, User, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 function initials(email: string) {
   return email.charAt(0).toUpperCase()
@@ -95,6 +96,25 @@ export function ProfilePage() {
             <dd className="font-mono text-xs text-muted-foreground">{user.id}</dd>
           </div>
         </dl>
+      </section>
+
+      {/* Teams */}
+      <section className="rounded border bg-surface">
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div className="flex items-center gap-2">
+            <Users size={14} className="text-muted-foreground shrink-0" />
+            <h2 className="text-sm font-semibold">Teams</h2>
+          </div>
+          <Link
+            to="/teams"
+            className="inline-flex h-7 items-center justify-center rounded border border-input-border bg-transparent px-3 text-xs font-medium transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Manage teams
+          </Link>
+        </div>
+        <div className="px-5 py-4 text-sm text-muted-foreground">
+          View and manage your shared workspaces and role-based access.
+        </div>
       </section>
 
       {/* Change password */}

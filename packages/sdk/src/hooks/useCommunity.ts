@@ -23,6 +23,17 @@ export function useCommunityFeeds() {
   })
 }
 
+export function useCommunityPrompts() {
+  return useQuery({
+    queryKey: ['community-prompts'],
+    queryFn: async () => {
+      const { data, error } = await getApiClient().GET('/api/community/prompts')
+      if (error) throw error
+      return ((data as any)?.data ?? []) as any[]
+    },
+  })
+}
+
 export function useForkCommunityPipeline() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -37,14 +48,30 @@ export function useForkCommunityPipeline() {
   })
 }
 
-export function useSubscribeCommunityFeed() {
+export function useForkCommunityFeed() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (sourceId: string) => {
-      const { data, error } = await getApiClient().POST('/api/community/feeds/{sourceId}/subscribe', {
+      const { data, error } = await getApiClient().POST('/api/community/feeds/{sourceId}/fork', {
         params: { path: { sourceId } },
       })
       if (error) throw error
       return (data as any)?.data
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['research-sources'] }),
+  })
+}
+
+export function useForkCommunityPrompt() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (promptId: string) => {
+      const { data, error } = await getApiClient().POST('/api/community/prompts/{promptId}/fork', {
+        params: { path: { promptId } },
+      })
+      if (error) throw error
+      return (data as any)?.data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['prompts'] }),
   })
 }

@@ -582,6 +582,7 @@ model PipelineLoop {
   dateRangeStart DateTime?
   dateRangeEnd   DateTime?
   variableMap    Json?
+  datasetConfig  Json?
   maxBatchSize   Int             @default(50)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt

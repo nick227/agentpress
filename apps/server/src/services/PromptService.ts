@@ -94,9 +94,7 @@ async function clearContentDefaults(excludeId?: string) {
 
 export class PromptService {
   private listWhere(context: AuthContext) {
-    return {
-      OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC' as const }],
-    }
+    return { workspaceId: context.workspaceId }
   }
 
   async list(context: AuthContext, filters?: { kind?: PromptKind; category?: string; search?: string }) {

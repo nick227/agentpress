@@ -19,6 +19,7 @@ export function BatchPreviewModal({ preview, loop, dryRun, pending, onConfirm, o
     new_since_cursor: 'New items since last batch',
     date_range: 'Date range',
   }
+  const selectionLabel = loop.loopType === 'dataset' ? 'Dataset rows' : (cursorLabel[loop.cursorMode] ?? loop.cursorMode)
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -33,7 +34,7 @@ export function BatchPreviewModal({ preview, loop, dryRun, pending, onConfirm, o
             <StatRow label="Runs to create" value={String(preview.itemCount)} />
             <StatRow label="Agents per run" value={String(preview.agentCount)} />
             <StatRow label="Estimated AI calls" value={String(preview.estimatedCalls)} />
-            <StatRow label="Selection mode" value={cursorLabel[loop.cursorMode] ?? loop.cursorMode} />
+            <StatRow label="Selection mode" value={selectionLabel} />
             <StatRow label="Mode" value={dryRun ? 'Dry run (preview only)' : 'Live (will publish)'} />
           </div>
 
@@ -51,7 +52,7 @@ export function BatchPreviewModal({ preview, loop, dryRun, pending, onConfirm, o
               <div className="space-y-0.5">
                 {(preview.items ?? []).slice(0, 5).map((item) => (
                   <div key={item.itemId} className="text-xs text-muted-foreground truncate">
-                    {new Date(item.publishedAt).toLocaleDateString()} — {item.title}
+                    {item.publishedAt ? `${new Date(item.publishedAt).toLocaleDateString()} — ` : ''}{item.title}
                   </div>
                 ))}
               </div>

@@ -149,16 +149,14 @@ export class ResearchService {
     const cacheKey = `research:fetch:${sourceType}:${externalId}`
     const cached = await this.getCached<
       | { ok: true; items: Array<Omit<FeedItem, 'publishedAt'> & { publishedAt: string }> }
-      | { ok: false; error: string }
+      | { ok: false; error: string; rateLimited?: boolean; retryAfterSeconds?: number; statusCode?: number }
     >(cacheKey)
     if (cached) {
       if (cached.ok) {
         return cached.items.map((item) => ({ ...item, publishedAt: new Date(item.publishedAt) }))
       }
 
-      // Older versions cached upstream failures for an hour. Discard those rows so a
-      // temporary outage or rate limit cannot poison every subsequent manual retry.
-      await db.researchFetchCache.deleteMany({ where: { id: this.cacheId(cacheKey) } })
+      throw new ResearchFetchError(cached.error, cached.statusCode ?? 502, cached.retryAfterSeconds)
     }
 
     const adapter = getAdapter(sourceType)
@@ -174,16 +172,34 @@ export class ResearchService {
       )
       return items
     } catch (err: any) {
-      const provider = sourceType === 'reddit' ? 'Reddit' : sourceType === 'youtube' ? 'YouTube' : 'RSS feed'
       const upstreamMessage = err instanceof Error ? err.message : 'The upstream service did not respond'
       const rateLimited = /\b429\b|rate[ -]?limit/i.test(upstreamMessage)
-      const retryAfterSeconds = rateLimited ? 60 : undefined
-      const message = rateLimited
-        ? `${provider} is rate limiting requests for ${externalId}. Try again in about a minute.`
-        : `${provider} check failed: ${upstreamMessage}`
+      const notFound = /\b404\b|not[ -]?found/i.test(upstreamMessage)
+      const transcriptUnavailable = /transcript/i.test(upstreamMessage)
 
-      // Successful responses are worth caching; failures are not. In particular, a
-      // provider's brief 429 window should not become a one-hour local outage.
+      let message = 'Provider error. Cached for one hour.'
+      if (rateLimited) {
+        message = 'Provider rate limited. Try again later.'
+      } else if (notFound) {
+        message = 'Source could not be found.'
+      } else if (transcriptUnavailable) {
+        message = 'Video found, but transcript unavailable.'
+      }
+
+      const retryAfterSeconds = rateLimited ? 3600 : undefined
+
+      await this.setCached(
+        cacheKey,
+        {
+          ok: false,
+          error: message,
+          rateLimited,
+          statusCode: rateLimited ? 429 : 502,
+          retryAfterSeconds
+        },
+        REMOTE_CACHE_TTL_MS
+      )
+
       throw new ResearchFetchError(message, rateLimited ? 429 : 502, retryAfterSeconds, { cause: err })
     }
   }
@@ -218,12 +234,7 @@ export class ResearchService {
   async list(context: AuthContext) {
     const [sources, globalDefault] = await Promise.all([
       db.researchSource.findMany({
-        where: {
-          OR: [
-            { workspaceId: context.workspaceId },
-            { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } },
-          ],
-        },
+        where: { workspaceId: context.workspaceId },
         orderBy: { name: 'asc' },
         include: this.sourceInclude(),
       }),
@@ -238,10 +249,7 @@ export class ResearchService {
         where: {
           AND: [
             { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-            { OR: [
-              { workspaceId: context.workspaceId },
-              { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } },
-            ] },
+            { workspaceId: context.workspaceId },
           ],
         },
         include: this.sourceInclude(),
@@ -594,7 +602,7 @@ export class ResearchService {
 
   async listItems(context: AuthContext, sourceId: string, page = 1, limit = 15) {
     const source = await db.researchSource.findFirst({
-      where: { id: sourceId, OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] },
+      where: { id: sourceId, workspaceId: context.workspaceId },
     })
     if (!source) throw Object.assign(new Error('Research source not found'), { statusCode: 404 })
     const skip = (page - 1) * limit
@@ -626,7 +634,7 @@ export class ResearchService {
 
   async getItem(context: AuthContext, itemId: string) {
     const item = await db.researchItem.findFirstOrThrow({
-      where: { id: itemId, source: { OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] } },
+      where: { id: itemId, source: { workspaceId: context.workspaceId } },
       include: { _count: { select: { summaries: true } } },
     })
     return this.formatItem(item)
@@ -659,7 +667,7 @@ export class ResearchService {
 
   async listSummaries(context: AuthContext, itemId: string) {
     await db.researchItem.findFirstOrThrow({
-      where: { id: itemId, source: { OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] } },
+      where: { id: itemId, source: { workspaceId: context.workspaceId } },
     })
     const rows = await db.researchSummary.findMany({
       where: { itemId },

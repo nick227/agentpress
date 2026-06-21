@@ -41,12 +41,7 @@ export class ResearchContextService {
       const sources = await db.researchSource.findMany({
         where: {
           slug: { in: [...referencedSources.keys()] },
-          ...(pipeline.workspaceId ? {
-            OR: [
-              { workspaceId: pipeline.workspaceId },
-              { visibility: 'PUBLIC' as const, subscriptions: { some: { workspaceId: pipeline.workspaceId } } },
-            ],
-          } : {}),
+          ...(pipeline.workspaceId ? { workspaceId: pipeline.workspaceId } : {}),
         },
       })
       const sourceBySlug = new Map(sources.map((source) => [source.slug, source]))

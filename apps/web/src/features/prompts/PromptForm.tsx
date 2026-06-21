@@ -3,7 +3,7 @@ import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
+import { PromptTextarea } from '@/components/ui/PromptTextarea'
 
 type Prompt = components['schemas']['Prompt']
 type PromptKind = Prompt['kind']
@@ -163,20 +163,20 @@ export function PromptForm({
       <section className="rounded border p-4 space-y-4">
         <h2 className="text-sm font-semibold">Prompt text</h2>
         <Field label="System prompt">
-          <Textarea
+          <PromptTextarea
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
             rows={5}
-            className="font-mono text-sm resize-y"
+            className="font-mono text-sm resize-y min-h-[120px]"
             placeholder="You are a senior content strategist…"
           />
         </Field>
         <Field label="User prompt">
-          <Textarea
+          <PromptTextarea
             value={userPrompt}
             onChange={(e) => setUserPrompt(e.target.value)}
             rows={8}
-            className="font-mono text-sm resize-y"
+            className="font-mono text-sm resize-y min-h-[180px]"
             placeholder={kind === 'CONTENT' ? 'Summarize:\n\n{transcript}' : 'Topic: {topic}\nAudience: {audience}'}
           />
         </Field>

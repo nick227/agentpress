@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import type { components } from '@project/sdk'
 import {
   AgentsSection,
-  BodyComposerSection,
   DestinationSection,
   PipelineNameField,
   PipelineSettingsSection,
@@ -63,7 +62,6 @@ export function BuilderSetup({ pipeline, pipelineId, runs, onRunCreated }: Props
             />
             <VariablesSection pipeline={pipeline} pipelineId={pipelineId} />
             <AgentsSection pipeline={pipeline} pipelineId={pipelineId} />
-            <BodyComposerSection pipeline={pipeline} pipelineId={pipelineId} />
             <LoopConfig pipeline={pipeline} pipelineId={pipelineId} />
             <RunsSection pipeline={pipeline} runs={runs} />
           </div>
