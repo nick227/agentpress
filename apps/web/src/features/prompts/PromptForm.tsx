@@ -22,11 +22,8 @@ export type PromptFormValues = {
   isDefault?: boolean
 }
 
-const OUTPUT_TARGETS = ['body', 'title', 'excerpt', 'image', 'thumbnail', 'none'] as const
-const OUTPUT_FORMATS = ['text', 'markdown', 'json', 'static', 'image'] as const
-
 const KIND_HINT: Record<PromptKind, string> = {
-  TRANSFORMATIONAL: 'Uses {variables} and {agents.uid.output} references — ideal for pipeline agents.',
+  TRANSFORMATIONAL: 'Reusable system and user text that can be inserted into an Agent.',
   CONTENT: 'Uses content placeholders like {transcript} — ideal for research summaries.',
 }
 
@@ -66,9 +63,6 @@ export function PromptForm({
   const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(', '))
   const [systemPrompt, setSystemPrompt] = useState(initial?.systemPrompt ?? '')
   const [userPrompt, setUserPrompt] = useState(initial?.userPrompt ?? '')
-  const [uid, setUid] = useState(initial?.uid ?? '')
-  const [outputTarget, setOutputTarget] = useState(initial?.outputTarget ?? 'body')
-  const [outputFormat, setOutputFormat] = useState(initial?.outputFormat ?? 'text')
   const [isDefault, setIsDefault] = useState(initial?.isDefault ?? false)
 
   const valid = Boolean(name.trim() && systemPrompt.trim() && userPrompt.trim())
@@ -88,9 +82,9 @@ export function PromptForm({
       tags,
       systemPrompt: systemPrompt.trim(),
       userPrompt: userPrompt.trim(),
-      uid: uid.trim() || undefined,
-      outputTarget: kind === 'TRANSFORMATIONAL' ? outputTarget : undefined,
-      outputFormat: kind === 'TRANSFORMATIONAL' ? outputFormat : undefined,
+      uid: undefined,
+      outputTarget: undefined,
+      outputFormat: undefined,
       isDefault: kind === 'CONTENT' ? isDefault : undefined,
     })
   }
@@ -125,40 +119,6 @@ export function PromptForm({
           </Field>
         </div>
       </section>
-
-      {kind === 'TRANSFORMATIONAL' && (
-        <section className="rounded border p-4 space-y-4">
-          <h2 className="text-sm font-semibold">Pipeline agent defaults</h2>
-          <p className="text-xs text-muted-foreground -mt-2">Applied when adding this prompt to a pipeline.</p>
-          <Field label="Agent UID">
-            <Input value={uid} onChange={(e) => setUid(e.target.value)} placeholder="outline_strategist" />
-          </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Output target">
-              <select
-                value={outputTarget}
-                onChange={(e) => setOutputTarget(e.target.value)}
-                className="h-9 w-full rounded border bg-background px-3 text-sm"
-              >
-                {OUTPUT_TARGETS.map((target) => (
-                  <option key={target} value={target}>{target}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Output format">
-              <select
-                value={outputFormat}
-                onChange={(e) => setOutputFormat(e.target.value)}
-                className="h-9 w-full rounded border bg-background px-3 text-sm"
-              >
-                {OUTPUT_FORMATS.map((format) => (
-                  <option key={format} value={format}>{format}</option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        </section>
-      )}
 
       <section className="rounded border p-4 space-y-4">
         <h2 className="text-sm font-semibold">Prompt text</h2>

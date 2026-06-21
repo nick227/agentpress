@@ -1,6 +1,5 @@
 import { readFileSync } from 'fs'
 import { basename, join } from 'path'
-import { LibraryAgentService } from './LibraryAgentService'
 import type { PublishProgressReporter } from './publishProgress'
 import { db, Prisma } from '@project/db'
 import { OpenAIService } from './OpenAIService'
@@ -143,12 +142,12 @@ function computeAgentInputHash(input: {
   return createHash('sha256').update(stableStringify(input)).digest('hex')
 }
 
-function isImageAgent(agent: { outputFormat: string }): boolean {
-  return agent.outputFormat === 'image'
+function isImageAgent(agent: { kind?: string; outputFormat: string }): boolean {
+  return agent.kind ? agent.kind === 'AI_IMAGE' : agent.outputFormat === 'image'
 }
 
-function isStaticAgent(agent: { outputFormat: string }): boolean {
-  return agent.outputFormat === 'static'
+function isStaticAgent(agent: { kind?: string; outputFormat: string }): boolean {
+  return agent.kind ? agent.kind === 'STATIC_TEXT' || agent.kind === 'STATIC_IMAGE' : agent.outputFormat === 'static'
 }
 
 function isImageOutputTarget(target: string): boolean {
@@ -236,6 +235,14 @@ export class PipelineRunService {
     })
 
     if (!pipeline) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
+
+    const missingStaticImage = pipeline.agents.find((agent) => agent.kind === 'STATIC_IMAGE' && !agent.selectedImageAssetId)
+    if (missingStaticImage) {
+      throw Object.assign(
+        new Error(`Static image Agent "${missingStaticImage.uid}" requires an image selected in this pipeline.`),
+        { statusCode: 400 },
+      )
+    }
 
     if (options.schedulePipelineExecutionId) {
       const existing = await db.pipelineRun.findUnique({
@@ -369,7 +376,6 @@ export class PipelineRunService {
       },
     })
 
-    new LibraryAgentService().promoteFromRun(pipeline).catch(() => {})
   }
 
   private async executeAgents(input: {
@@ -442,8 +448,11 @@ export class PipelineRunService {
     const agentRun = await db.agentRun.create({
       data: {
         pipelineRunId: input.runId,
+        pipelineAgentId: agent.id,
         agentUid: agent.uid,
         agentName: agent.name,
+        agentKind: agent.kind,
+        outputFormat: agent.outputFormat,
         outputTarget: agent.outputTarget,
         renderedSystemPrompt,
         renderedUserPrompt,

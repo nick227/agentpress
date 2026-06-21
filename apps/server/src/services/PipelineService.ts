@@ -58,6 +58,8 @@ function formatPipeline(p: any) {
       id: a.id,
       pipelineId: a.pipelineId,
       uid: a.uid,
+      kind: a.kind,
+      sourceAgentId: a.sourceAgentId ?? undefined,
       name: a.name,
       systemPrompt: a.systemPrompt,
       userPrompt: a.userPrompt,
@@ -236,6 +238,8 @@ export class PipelineService {
             data: agents.map((a: any) => ({
               pipelineId,
               uid: a.uid,
+              kind: a.kind,
+              sourceAgentId: a.sourceAgentId ?? null,
               name: a.name,
               systemPrompt: a.systemPrompt,
               userPrompt: a.userPrompt,
@@ -291,6 +295,15 @@ export class PipelineService {
 
     if (p.agents.length === 0) {
       errors.push({ level: 'error', message: 'Pipeline has no agents' })
+    }
+    for (const agent of p.agents) {
+      if (agent.kind === 'STATIC_IMAGE' && !agent.selectedImageAssetId) {
+        errors.push({
+          level: 'error',
+          message: `Static image Agent "${agent.uid}" requires an image selected in this pipeline.`,
+          path: `agents.${agent.uid}`,
+        })
+      }
     }
 
     const uids = p.agents.map((a) => a.uid)

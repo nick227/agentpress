@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Check, GitFork, Rss, Workflow, BookOpen } from 'lucide-react'
+import { Bot, Check, GitFork, Rss, Workflow, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
-import { useCommunityFeeds, useCommunityPipelines, useCommunityPrompts, useForkCommunityFeed, useForkCommunityPipeline, useForkCommunityPrompt } from '@project/sdk'
+import { useCommunityAgents, useCommunityFeeds, useCommunityPipelines, useCommunityPrompts, useForkCommunityAgent, useForkCommunityFeed, useForkCommunityPipeline, useForkCommunityPrompt } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
-type Tab = 'pipelines' | 'feeds' | 'prompts'
+type Tab = 'pipelines' | 'agents' | 'feeds' | 'prompts'
 
 const PIPELINE_CATEGORY_LABELS: Record<string, string> = {
   financial: 'Financial',
@@ -27,7 +27,7 @@ const FEED_CATEGORY_ORDER = ['ai', 'financial', 'tech', 'politics', 'culture']
 
 const PROMPT_KIND_LABELS: Record<string, string> = {
   CONTENT: 'Research Summaries',
-  TRANSFORMATIONAL: 'Pipeline Templates',
+  TRANSFORMATIONAL: 'Reusable Prompts',
 }
 const PROMPT_KIND_ORDER = ['CONTENT', 'TRANSFORMATIONAL']
 
@@ -78,19 +78,22 @@ function SectionHeader({ label, first }: { label: string; first: boolean }) {
 export function CommunityPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab')
-  const tab: Tab = requestedTab === 'feeds' || requestedTab === 'prompts' ? requestedTab : 'pipelines'
+  const tab: Tab = requestedTab === 'agents' || requestedTab === 'feeds' || requestedTab === 'prompts' ? requestedTab : 'pipelines'
   const [pipelineCat, setPipelineCat] = useState<string | null>(null)
   const [feedCat, setFeedCat] = useState<string | null>(null)
   const [promptKind, setPromptKind] = useState<string | null>(null)
 
   const pipelines = useCommunityPipelines()
+  const agents = useCommunityAgents()
   const feeds = useCommunityFeeds()
   const prompts = useCommunityPrompts()
   const forkPipeline = useForkCommunityPipeline()
+  const forkAgent = useForkCommunityAgent()
   const forkFeed = useForkCommunityFeed()
   const forkPrompt = useForkCommunityPrompt()
 
   const allPipelines = pipelines.data ?? []
+  const allAgents = agents.data ?? []
   const allFeeds = feeds.data ?? []
   const allPrompts = prompts.data ?? []
 
@@ -119,6 +122,7 @@ export function CommunityPage() {
 
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant={tab === 'pipelines' ? 'default' : 'outline'} onClick={() => setTab('pipelines')}><Workflow size={13} /> Pipelines</Button>
+        <Button size="sm" variant={tab === 'agents' ? 'default' : 'outline'} onClick={() => setTab('agents')}><Bot size={13} /> Agents</Button>
         <Button size="sm" variant={tab === 'feeds' ? 'default' : 'outline'} onClick={() => setTab('feeds')}><Rss size={13} /> Feeds</Button>
         <Button size="sm" variant={tab === 'prompts' ? 'default' : 'outline'} onClick={() => setTab('prompts')}><BookOpen size={13} /> Prompts</Button>
       </div>
@@ -177,6 +181,17 @@ export function CommunityPage() {
         </>
       )}
 
+      {tab === 'agents' && (
+        <div className="rounded border bg-surface overflow-hidden">
+          {allAgents.map((agent) => (
+            <AgentRow key={agent.id} agent={agent} loading={forkAgent.isPending} onFork={async () => {
+              await forkAgent.mutateAsync(agent.id)
+              toast.success('Agent added to your library')
+            }} />
+          ))}
+        </div>
+      )}
+
       {tab === 'prompts' && (
         <>
           {promptKinds.length > 1 && (
@@ -215,6 +230,16 @@ function PipelineRow({ pipeline, loading, onFork }: { pipeline: any; loading: bo
         <p className="text-xs text-muted-foreground truncate">{pipeline.description || `${pipeline._count?.agents ?? 0} agents`}</p>
       </div>
       <Button size="sm" variant="outline" loading={loading} onClick={onFork}><GitFork size={13} /> Use pipeline</Button>
+    </div>
+  )
+}
+
+function AgentRow({ agent, loading, onFork }: { agent: any; loading: boolean; onFork: () => void }) {
+  return (
+    <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
+      <Bot size={14} className="text-accent" />
+      <div className="min-w-0 flex-1"><p className="text-sm font-medium">{agent.name}</p><p className="text-xs text-muted-foreground truncate">{agent.description ?? agent.kind}</p></div>
+      <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add Agent</Button>
     </div>
   )
 }

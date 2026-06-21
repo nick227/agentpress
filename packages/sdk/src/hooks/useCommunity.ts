@@ -12,6 +12,31 @@ export function useCommunityPipelines() {
   })
 }
 
+export function useCommunityAgents() {
+  return useQuery({
+    queryKey: ['community-agents'],
+    queryFn: async () => {
+      const { data, error } = await getApiClient().GET('/api/community/agents')
+      if (error) throw error
+      return (data?.data ?? [])
+    },
+  })
+}
+
+export function useForkCommunityAgent() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (agentId: string) => {
+      const { data, error } = await getApiClient().POST('/api/community/agents/{agentId}/fork', {
+        params: { path: { agentId } }, body: {},
+      })
+      if (error) throw error
+      return (data as any)?.data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents'] }),
+  })
+}
+
 export function useCommunityFeeds() {
   return useQuery({
     queryKey: ['community-feeds'],

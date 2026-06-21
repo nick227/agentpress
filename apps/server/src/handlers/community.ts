@@ -2,6 +2,10 @@ import { CommunityService } from '../services/CommunityService'
 
 const service = new CommunityService()
 
+export async function listCommunityAgents(_request: any, reply: any) {
+  return reply.send({ data: await service.listAgents() })
+}
+
 export async function listCommunityPipelines(_request: any, reply: any) {
   return reply.send({ data: await service.listPipelines() })
 }

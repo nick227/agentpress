@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'react-router-dom'
-import { CalendarClock, Database, FlaskConical, Globe2, MessageSquareText, Play, Workflow, User } from 'lucide-react'
+import { Bot, CalendarClock, Database, FlaskConical, Globe2, MessageSquareText, Play, Workflow } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 
@@ -9,6 +9,12 @@ const NAV_ITEMS: { to: string; label: string; icon: LucideIcon; match: (p: strin
     label: 'Pipelines',
     icon: Workflow,
     match: (p) => p.startsWith('/pipelines'),
+  },
+  {
+    to: '/agents',
+    label: 'Agents',
+    icon: Bot,
+    match: (p) => p.startsWith('/agents'),
   },
   {
     to: '/schedules',
@@ -45,12 +51,6 @@ const NAV_ITEMS: { to: string; label: string; icon: LucideIcon; match: (p: strin
     label: 'Community',
     icon: Globe2,
     match: (p) => p.startsWith('/community'),
-  },
-  {
-    to: '/profile',
-    label: 'Profile',
-    icon: User,
-    match: (p) => p.startsWith('/profile'),
   },
 ]
 

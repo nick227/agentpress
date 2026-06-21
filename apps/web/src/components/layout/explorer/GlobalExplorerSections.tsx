@@ -1,4 +1,4 @@
-import { CalendarClock, Database, FlaskConical, MessageSquareText, Play, Workflow } from 'lucide-react'
+import { Bot, CalendarClock, Database, FlaskConical, MessageSquareText, Play, Workflow } from 'lucide-react'
 import { ResourceGroup, ResourceLink } from './ExplorerPrimitives'
 import { isInProgress } from './explorerTime'
 import type { GlobalExplorerSidebarModel } from './useGlobalExplorerSidebar'
@@ -7,6 +7,7 @@ export function GlobalExplorerSections({ explorer }: { explorer: GlobalExplorerS
   return (
     <>
       <PipelineSection explorer={explorer} />
+      <AgentSection explorer={explorer} />
       <ScheduleSection explorer={explorer} />
       <ResearchSection explorer={explorer} />
       <PromptSection explorer={explorer} />
@@ -16,6 +17,17 @@ export function GlobalExplorerSections({ explorer }: { explorer: GlobalExplorerS
         <p className="px-4 py-3 text-xs text-muted-foreground">No matching resources.</p>
       )}
     </>
+  )
+}
+
+function AgentSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
+  if (explorer.agents.length === 0 && explorer.needle) return null
+  return (
+    <ResourceGroup label="Agents" icon={Bot} indexHref="/agents" addHref="/agents/new" onRefetch={explorer.refreshAgents} isRefetching={explorer.agentsFetching}>
+      {explorer.agents.map((agent) => (
+        <ResourceLink key={agent.id} href={`/agents/${agent.slug}`} label={agent.name} active={explorer.pathname.includes(`/agents/${agent.slug}`)} status="configured" />
+      ))}
+    </ResourceGroup>
   )
 }
 

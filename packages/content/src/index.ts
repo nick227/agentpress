@@ -70,12 +70,14 @@ export type { ContentTemplate, VariablePack, TemplateVariable, TemplateAgent, Pa
 export type {
   AgentDefinition,
   AgentImageMode,
+  AgentKind,
   AgentOutputFormat,
   AgentOutputTarget,
   PipelineAgentInputLike,
 } from './agents/types'
 export {
   appendAgentDefinitionToPipelineInputs,
+  inferAgentKind,
   agentDefinitionToPipelineInput,
   libraryAgentToDefinition,
   promptToDefinition,

@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { BookOpen, LogOut, Menu, Moon, Sun, X } from 'lucide-react'
-import { useLogout } from '@project/sdk'
-import { toggleTheme } from '@/lib/theme'
+import { Link, useLocation } from 'react-router-dom'
+import { BookOpen, User, Menu, X } from 'lucide-react'
 import { GlobalExplorerSidebar } from './GlobalExplorerSidebar'
 
 export function MobileNav() {
   const [open, setOpen] = useState(false)
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'))
-  const logout = useLogout()
-  const navigate = useNavigate()
   const { pathname } = useLocation()
 
   useEffect(() => { setOpen(false) }, [pathname])
@@ -18,16 +13,6 @@ export function MobileNav() {
     document.body.style.overflow = open ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [open])
-
-  async function handleLogout() {
-    await logout.mutateAsync()
-    navigate('/login', { replace: true })
-  }
-
-  function handleToggleTheme() {
-    toggleTheme()
-    setIsDark(document.documentElement.classList.contains('dark'))
-  }
 
   return (
     <>
@@ -99,22 +84,13 @@ export function MobileNav() {
             <BookOpen size={15} />
             Documentation
           </Link>
-          <button
-            type="button"
-            onClick={handleToggleTheme}
+          <Link
+            to="/profile"
             className="flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
           >
-            {isDark ? <Sun size={15} /> : <Moon size={15} />}
-            {isDark ? 'Light mode' : 'Dark mode'}
-          </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
-          >
-            <LogOut size={15} />
-            Log out
-          </button>
+            <User size={15} />
+            Profile
+          </Link>
         </div>
       </div>
     </>

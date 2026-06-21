@@ -44,6 +44,8 @@ must never target shared community state.
 
 - Pipelines are forked before editing or running.
 - Feeds are added to the workspace before checking or pipeline execution.
+- Agents are reusable definitions. Inserting one copies an executable snapshot
+  into a `PipelineAgent`; edits to the source Agent never sync implicitly.
 - Prompts are forked/saved privately; applying one copies its text into agent
   state and does not create a live runtime dependency.
 - Schedules may eventually be catalog templates, but executable schedules are
@@ -71,3 +73,18 @@ Reusable resource models should converge on:
 
 Fork provenance should be retained for attribution and updates, but execution
 must use a workspace-owned snapshot rather than mutable community state.
+
+## Agent lifecycle
+
+- `Agent` is a reusable workspace/community definition with a suggested
+  `defaultUid`.
+- `PipelineAgent` is an executable snapshot with its own pipeline-local `uid`
+  and optional `sourceAgentId` provenance.
+- `AgentRun` records the rendered prompts, kind, format, and result for one
+  snapshot execution.
+
+Resolved Agent catalogs prefer workspace Agents over Community Agents with the
+same key. Insertion assigns a unique local UID (`writer`, `writer_2`, …) and
+does not create a live runtime dependency. Static-image Agent definitions do
+not contain `selectedImageAssetId`; the pipeline must bind an owned image before
+validation or execution succeeds.

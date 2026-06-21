@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import type { components } from '@project/sdk'
-import { useCreatePrompt, useUpdatePipeline } from '@project/sdk'
+import { useAgents, useCommunityAgents, useCreateAgent, useCreatePrompt, useUpdateAgent, useUpdatePipeline } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
@@ -48,6 +48,10 @@ const TEXT_OUTPUT_FORMATS = ['text', 'markdown', 'json'] as const
 
 export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }: Props) {
   const update = useUpdatePipeline()
+  const createAgent = useCreateAgent()
+  const updateAgent = useUpdateAgent()
+  const ownedAgents = useAgents()
+  const communityAgents = useCommunityAgents()
   const imageAgent = isImageAgent(agent)
   const staticAgent = isStaticAgent(agent)
   const [form, setForm] = useState({
@@ -61,6 +65,8 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
     systemPrompt: agent.systemPrompt,
     userPrompt: agent.userPrompt,
   })
+  const [showSaveAgent, setShowSaveAgent] = useState(false)
+  const [agentLibraryName, setAgentLibraryName] = useState(agent.name)
 
   useEffect(() => {
     setForm({
@@ -87,6 +93,8 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
     return {
       id: a.id,
       uid: next.uid,
+      kind: a.kind,
+      sourceAgentId: a.sourceAgentId,
       name: next.name,
       systemPrompt: skipSystemPrompt ? '' : next.systemPrompt,
       userPrompt: next.userPrompt,
@@ -151,6 +159,47 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
     })
     toast.success('Agent deleted')
     onDeleted()
+  }
+
+  const ownedSource = (ownedAgents.data?.data ?? []).find((item) => item.id === agent.sourceAgentId)
+  const communitySource = (communityAgents.data ?? []).find((item) => item.id === agent.sourceAgentId)
+  const privateOverride = communitySource
+    ? (ownedAgents.data?.data ?? []).find((item) => item.key === communitySource.key)
+    : undefined
+
+  function agentDefinitionInput(name: string) {
+    return {
+      name,
+      kind: agent.kind,
+      defaultUid: form.uid,
+      systemPrompt: form.systemPrompt,
+      userPrompt: form.userPrompt,
+      outputTarget: form.outputTarget,
+      outputFormat: form.outputFormat,
+      category: ownedSource?.category ?? communitySource?.category ?? 'pipeline',
+      tags: ownedSource?.tags ?? communitySource?.tags ?? ['pipeline'],
+    }
+  }
+
+  async function saveToAgents(mode: 'auto' | 'new') {
+    const name = agentLibraryName.trim()
+    if (!name) return
+    if (mode === 'auto' && ownedSource) {
+      await updateAgent.mutateAsync({ agentId: ownedSource.id, ...agentDefinitionInput(name) })
+      toast.success('Agent library definition updated')
+    } else if (mode === 'auto' && privateOverride) {
+      await updateAgent.mutateAsync({ agentId: privateOverride.id, ...agentDefinitionInput(name) })
+      toast.success('Private Agent override updated')
+    } else {
+      await createAgent.mutateAsync({
+        ...agentDefinitionInput(name),
+        ...(mode === 'new' ? { key: name } : {}),
+        ...(mode === 'auto' && communitySource ? { key: communitySource.key } : {}),
+        ...(agent.sourceAgentId ? { sourceAgentId: agent.sourceAgentId } : {}),
+      })
+      toast.success(communitySource && mode === 'auto' ? 'Private Agent override created' : 'Agent saved to your library')
+    }
+    setShowSaveAgent(false)
   }
 
   async function handleGenerated(asset: ImageAsset) {
@@ -299,8 +348,20 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={handleDelete}>Delete</Button>
+        <Button variant="outline" size="sm" onClick={() => { setAgentLibraryName(form.name); setShowSaveAgent((value) => !value) }}>Save to Agents</Button>
         <Button size="sm" loading={update.isPending} disabled={!isDirty || update.isPending} onClick={handleSave}>Save</Button>
       </div>
+      {showSaveAgent && (
+        <div className="rounded border bg-muted/20 p-3 space-y-2">
+          <p className="text-xs font-medium">{ownedSource ? 'Update this Agent or save a new definition' : communitySource ? 'Create a private override of this Community Agent' : 'Save this pipeline snapshot as a reusable Agent'}</p>
+          <Input value={agentLibraryName} onChange={(event) => setAgentLibraryName(event.target.value)} placeholder="Agent name" />
+          <div className="flex gap-2">
+            <Button size="sm" loading={createAgent.isPending || updateAgent.isPending} onClick={() => void saveToAgents('auto')}>{ownedSource ? 'Update Agent' : communitySource ? 'Create override' : 'Save Agent'}</Button>
+            {ownedSource && <Button size="sm" variant="outline" onClick={() => void saveToAgents('new')}>Save as new</Button>}
+            <Button size="sm" variant="ghost" onClick={() => setShowSaveAgent(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

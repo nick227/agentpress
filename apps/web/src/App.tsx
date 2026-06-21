@@ -58,6 +58,8 @@ const PromptsPage = lazy(() =>
 const PromptEditorPage = lazy(() =>
   import('@/pages/PromptEditorPage').then((m) => ({ default: m.PromptEditorPage })),
 )
+const AgentsPage = lazy(() => import('@/pages/AgentsPage').then((m) => ({ default: m.AgentsPage })))
+const AgentEditorPage = lazy(() => import('@/pages/AgentEditorPage').then((m) => ({ default: m.AgentEditorPage })))
 
 function PageFallback() {
   return (
@@ -92,6 +94,9 @@ export function App() {
             <Route index element={<HomePage />} />
             <Route path="/pipelines" element={<PipelinesPage />} />
             <Route path="/pipelines/new" element={<LazyPage><PipelinesNewPage /></LazyPage>} />
+            <Route path="/agents" element={<LazyPage><AgentsPage /></LazyPage>} />
+            <Route path="/agents/new" element={<LazyPage><AgentEditorPage /></LazyPage>} />
+            <Route path="/agents/:agentId" element={<LazyPage><AgentEditorPage /></LazyPage>} />
             <Route
               path="/pipelines/:pipelineSlug"
               element={

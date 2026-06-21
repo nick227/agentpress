@@ -413,6 +413,8 @@ export function AgentsSection({ pipeline, pipelineId }: { pipeline: Pipeline; pi
       agents: agents.map((agent, sortOrder) => ({
         id: agent.id,
         uid: agent.uid,
+        kind: agent.kind,
+        sourceAgentId: agent.sourceAgentId,
         name: agent.name,
         systemPrompt: agent.systemPrompt,
         userPrompt: agent.userPrompt,
@@ -453,7 +455,8 @@ function AgentSectionHeader({ pending, onBrowse, onAdd }: { pending: boolean; on
     <SectionHeader title="Workflow" description="Set the execution and final-body order. Disable any step you want to skip.">
       <Button variant="outline" size="sm" onClick={onBrowse} title="Browse agent library"><BookOpen size={13} /> Browse library</Button>
       <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankImage)} title="Add image agent"><Image size={13} />Add image</Button>
-      <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.staticImage)} title="Add static agent"><FileText size={13} /> Static text</Button>
+      <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankStatic)} title="Add static text Agent"><FileText size={13} /> Static text</Button>
+      <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.staticImage)} title="Add static image Agent"><Image size={13} /> Static image</Button>
       <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankText)} title="Add AI agent"><Plus size={13} /> AI agent</Button>
     </SectionHeader>
   )

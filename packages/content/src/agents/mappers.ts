@@ -1,6 +1,7 @@
 import type {
   AgentDefinition,
   AgentImageMode,
+  AgentKind,
   AgentOutputFormat,
   AgentOutputTarget,
   PipelineAgentInputLike,
@@ -8,6 +9,8 @@ import type {
 
 interface DefinitionSource {
   uid?: string
+  defaultUid?: string
+  sourceAgentId?: string
   name: string
   description?: string
   category?: string
@@ -17,6 +20,7 @@ interface DefinitionSource {
   outputTarget: AgentOutputTarget | string
   outputFormat?: AgentOutputFormat | string
   imageMode?: AgentImageMode | string
+  kind?: AgentKind | string
 }
 
 interface PipelineAgentSource extends DefinitionSource {
@@ -65,7 +69,9 @@ export function agentDefinitionToPipelineInput(
   const outputFormat = normalizeOutputFormat(definition.outputFormat)
 
   return {
-    uid: options.uid ?? definition.uid ?? options.fallbackUid ?? 'agent',
+    uid: options.uid ?? definition.defaultUid ?? options.fallbackUid ?? 'agent',
+    sourceAgentId: definition.sourceAgentId,
+    kind: definition.kind ?? inferAgentKind(outputFormat, definition.outputTarget),
     name: definition.name,
     systemPrompt: definition.systemPrompt,
     userPrompt: definition.userPrompt,
@@ -94,7 +100,7 @@ export function appendAgentDefinitionToPipelineInputs(
   agents: PipelineAgentSource[],
   definition: AgentDefinition,
 ): PipelineAgentInputLike[] {
-  const uid = resolveAgentUid(definition.uid, agents.map((agent) => agent.uid))
+  const uid = resolveAgentUid(definition.defaultUid, agents.map((agent) => agent.uid))
 
   return [
     ...agents.map(pipelineAgentToPipelineInput),
@@ -128,7 +134,8 @@ function toDefinition(source: DefinitionSource): AgentDefinition {
   const outputFormat = normalizeOutputFormat(source.outputFormat)
 
   return {
-    uid: source.uid,
+    defaultUid: source.defaultUid ?? source.uid,
+    sourceAgentId: source.sourceAgentId,
     name: source.name,
     description: source.description,
     category: source.category,
@@ -138,7 +145,21 @@ function toDefinition(source: DefinitionSource): AgentDefinition {
     outputTarget: normalizeOutputTarget(source.outputTarget),
     outputFormat,
     imageMode: normalizeImageMode(source.imageMode, outputFormat),
+    kind: normalizeAgentKind(source.kind, outputFormat, source.outputTarget),
   }
+}
+
+export function inferAgentKind(outputFormat: string, outputTarget: string): AgentKind {
+  if (outputFormat === 'image') return 'AI_IMAGE'
+  if (outputFormat === 'static' && (outputTarget === 'image' || outputTarget === 'thumbnail')) return 'STATIC_IMAGE'
+  if (outputFormat === 'static') return 'STATIC_TEXT'
+  return 'AI_TEXT'
+}
+
+function normalizeAgentKind(value: string | undefined, outputFormat: string, outputTarget: string): AgentKind {
+  return value === 'AI_TEXT' || value === 'AI_IMAGE' || value === 'STATIC_TEXT' || value === 'STATIC_IMAGE'
+    ? value
+    : inferAgentKind(outputFormat, outputTarget)
 }
 
 function normalizeOutputTarget(value: string): AgentOutputTarget {

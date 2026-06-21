@@ -19,6 +19,17 @@ function catalogPromptHash(
     .digest('hex')
 }
 
+function agentKind(outputFormat: string, outputTarget: string) {
+  if (outputFormat === 'image') return 'AI_IMAGE' as const
+  if (outputFormat === 'static' && (outputTarget === 'image' || outputTarget === 'thumbnail')) return 'STATIC_IMAGE' as const
+  if (outputFormat === 'static') return 'STATIC_TEXT' as const
+  return 'AI_TEXT' as const
+}
+
+function catalogAgentHash(kind: string, systemPrompt: string, userPrompt: string, outputTarget: string, outputFormat: string) {
+  return createHash('sha256').update([kind, systemPrompt, userPrompt, outputTarget, outputFormat].join('|||')).digest('hex')
+}
+
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80) || 'prompt'
 }
@@ -1082,21 +1093,6 @@ async function main() {
     promptsCreated++
   }
 
-  for (const agent of LIBRARY_AGENTS) {
-    await upsertCommunityPrompt({
-      name: agent.name,
-      description: agent.description,
-      kind: 'TRANSFORMATIONAL',
-      category: agent.category,
-      tags: agent.tags,
-      systemPrompt: agent.systemPrompt,
-      userPrompt: agent.userPrompt,
-      uid: agent.uid,
-      outputTarget: agent.outputTarget,
-      outputFormat: agent.outputFormat,
-    })
-  }
-
   for (const [index, summary] of SUMMARY_PROMPTS.entries()) {
     await upsertCommunityPrompt({
       name: summary.name,
@@ -1111,26 +1107,102 @@ async function main() {
     })
   }
 
-  const pipelineAgents = await db.pipelineAgent.findMany({
-    where: { pipeline: { visibility: 'PUBLIC' } },
-    include: { pipeline: { select: { name: true, slug: true } } },
-  })
-  for (const agent of pipelineAgents) {
-    await upsertCommunityPrompt({
-      name: `${agent.name} (${agent.pipeline.name})`,
-      description: `From community pipeline "${agent.pipeline.name}"`,
-      kind: 'TRANSFORMATIONAL',
-      category: 'pipeline',
-      tags: ['pipeline', agent.pipeline.slug],
-      systemPrompt: agent.systemPrompt,
-      userPrompt: agent.userPrompt,
-      uid: agent.uid,
-      outputTarget: agent.outputTarget,
-      outputFormat: agent.outputFormat,
+  console.log(`  ${promptsCreated} created, ${promptsUpdated} updated`)
+
+  // ── First-class Agents ─────────────────────────────────────────────────
+  console.log('\nSeeding first-class Agents...')
+  let agentsCreated = 0
+  let agentsUpdated = 0
+
+  async function upsertAgent(data: {
+    workspaceId: string
+    visibility: 'PRIVATE' | 'PUBLIC'
+    key: string
+    name: string
+    description?: string | null
+    category: string
+    tags?: string[]
+    kind: 'AI_TEXT' | 'AI_IMAGE' | 'STATIC_TEXT' | 'STATIC_IMAGE'
+    defaultUid: string
+    systemPrompt: string
+    userPrompt: string
+    outputTarget: string
+    outputFormat: string
+    sourceAgentId?: string
+  }) {
+    const slug = slugify(data.name)
+    const agentHash = catalogAgentHash(data.kind, data.systemPrompt, data.userPrompt, data.outputTarget, data.outputFormat)
+    const existing = await db.agent.findFirst({
+      where: { workspaceId: data.workspaceId, OR: [{ key: data.key }, { agentHash }] },
+    })
+    if (existing) {
+      await db.agent.update({
+        where: { id: existing.id },
+        data: { ...data, key: existing.key, tags: data.tags ?? [], agentHash },
+      })
+      agentsUpdated++
+      return existing.id
+    }
+    let uniqueSlug = slug
+    let suffix = 2
+    while (await db.agent.findFirst({ where: { workspaceId: data.workspaceId, slug: uniqueSlug } })) uniqueSlug = `${slug}-${suffix++}`
+    const created = await db.agent.create({
+      data: { ...data, slug: uniqueSlug, tags: data.tags ?? [], agentHash },
+    })
+    agentsCreated++
+    return created.id
+  }
+
+  for (const definition of LIBRARY_AGENTS) {
+    await upsertAgent({
+      workspaceId: community.id,
+      visibility: 'PUBLIC',
+      key: slugify(definition.name),
+      name: definition.name,
+      description: definition.description,
+      category: definition.category,
+      tags: definition.tags,
+      kind: agentKind(definition.outputFormat, definition.outputTarget),
+      defaultUid: definition.uid,
+      systemPrompt: definition.systemPrompt,
+      userPrompt: definition.userPrompt,
+      outputTarget: definition.outputTarget,
+      outputFormat: definition.outputFormat,
     })
   }
 
-  console.log(`  ${promptsCreated} created, ${promptsUpdated} updated`)
+  const agentPrompts = await db.prompt.findMany({
+    where: {
+      kind: 'TRANSFORMATIONAL',
+      workspaceId: { not: null },
+      OR: [{ uid: { not: null } }, { outputTarget: { not: null } }],
+    },
+  })
+  for (const prompt of agentPrompts) {
+    const outputTarget = prompt.outputTarget ?? 'body'
+    const outputFormat = prompt.outputFormat ?? 'text'
+    await upsertAgent({
+      workspaceId: prompt.workspaceId!,
+      visibility: prompt.visibility,
+      key: prompt.key ?? prompt.slug,
+      name: prompt.name,
+      description: prompt.description,
+      category: prompt.category,
+      tags: prompt.tags as string[],
+      kind: agentKind(outputFormat, outputTarget),
+      defaultUid: prompt.uid ?? slugify(prompt.name),
+      systemPrompt: prompt.systemPrompt,
+      userPrompt: prompt.userPrompt,
+      outputTarget,
+      outputFormat,
+    })
+  }
+
+  await db.pipelineAgent.updateMany({ where: { outputFormat: 'image' }, data: { kind: 'AI_IMAGE' } })
+  await db.pipelineAgent.updateMany({ where: { outputFormat: 'static', outputTarget: { in: ['image', 'thumbnail'] } }, data: { kind: 'STATIC_IMAGE' } })
+  await db.pipelineAgent.updateMany({ where: { outputFormat: 'static', outputTarget: { notIn: ['image', 'thumbnail'] } }, data: { kind: 'STATIC_TEXT' } })
+  await db.pipelineAgent.updateMany({ where: { outputFormat: { notIn: ['image', 'static'] } }, data: { kind: 'AI_TEXT' } })
+  console.log(`  ${agentsCreated} Agents created, ${agentsUpdated} updated`)
 
   // ── Wire AI sources to AI Industry Brief as default summary prompt ─────
   console.log('\nWiring AI sources to AI Industry Brief prompt...')

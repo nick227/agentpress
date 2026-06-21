@@ -158,13 +158,18 @@ components:
 
     PipelineAgent:
       type: object
-      required: [id, pipelineId, uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, enabled, sortOrder]
+      required: [id, pipelineId, uid, kind, name, systemPrompt, userPrompt, outputTarget, outputFormat, enabled, sortOrder]
       properties:
         id:
           type: string
         pipelineId:
           type: string
         uid:
+          type: string
+        kind:
+          type: string
+          enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+        sourceAgentId:
           type: string
         name:
           type: string
@@ -190,11 +195,16 @@ components:
 
     PipelineAgentInput:
       type: object
-      required: [uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, enabled, sortOrder]
+      required: [uid, kind, name, systemPrompt, userPrompt, outputTarget, outputFormat, enabled, sortOrder]
       properties:
         id:
           type: string
         uid:
+          type: string
+        kind:
+          type: string
+          enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+        sourceAgentId:
           type: string
         name:
           type: string
@@ -357,15 +367,22 @@ components:
 
     AgentRun:
       type: object
-      required: [id, pipelineRunId, agentUid, agentName, outputTarget, renderedSystemPrompt, renderedUserPrompt, status, sortOrder]
+      required: [id, pipelineRunId, agentUid, agentName, agentKind, outputFormat, outputTarget, renderedSystemPrompt, renderedUserPrompt, status, sortOrder]
       properties:
         id:
           type: string
         pipelineRunId:
           type: string
+        pipelineAgentId:
+          type: string
         agentUid:
           type: string
         agentName:
+          type: string
+        agentKind:
+          type: string
+          enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+        outputFormat:
           type: string
         outputTarget:
           type: string
@@ -776,6 +793,87 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    Agent:
+      type: object
+      required: [id, workspaceId, visibility, key, slug, name, category, tags, kind, defaultUid, systemPrompt, userPrompt, outputTarget, outputFormat, usageCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        visibility:
+          type: string
+          enum: [PRIVATE, PUBLIC]
+        key:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        kind:
+          type: string
+          enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+        defaultUid:
+          type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        outputTarget:
+          type: string
+        outputFormat:
+          type: string
+        sourceAgentId:
+          type: string
+        usageCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AgentInput:
+      type: object
+      required: [name, kind, defaultUid, systemPrompt, userPrompt, outputTarget, outputFormat]
+      properties:
+        name:
+          type: string
+        key:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        kind:
+          type: string
+          enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+        defaultUid:
+          type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        outputTarget:
+          type: string
+        outputFormat:
+          type: string
+        sourceAgentId:
+          type: string
 
     TemplateVariable:
       type: object
@@ -2760,8 +2858,183 @@ paths:
                     items:
                       $ref: '#/components/schemas/VariablePack'
 
+  /api/agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: List workspace Agents, optionally with resolved community fallbacks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Agents
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agent'
+    post:
+      operationId: createAgent
+      tags: [agents]
+      summary: Create a private workspace Agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentInput'
+      responses:
+        '201':
+          description: Created Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Agent'
+
+  /api/agents/{agentId}:
+    parameters:
+      - name: agentId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getAgent
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Agent'
+        '404':
+          description: Not found
+    patch:
+      operationId: updateAgent
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                key: { type: string }
+                description: { type: string }
+                category: { type: string }
+                tags:
+                  type: array
+                  items: { type: string }
+                kind:
+                  type: string
+                  enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+                defaultUid: { type: string }
+                systemPrompt: { type: string }
+                userPrompt: { type: string }
+                outputTarget: { type: string }
+                outputFormat: { type: string }
+      responses:
+        '200':
+          description: Updated Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Agent'
+    delete:
+      operationId: deleteAgent
+      tags: [agents]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+
+  /api/community/agents:
+    get:
+      operationId: listCommunityAgents
+      tags: [community]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Community Agents
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Agent'
+
+  /api/community/agents/{agentId}/fork:
+    post:
+      operationId: forkCommunityAgent
+      tags: [community]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '201':
+          description: Forked Agent
+
   /api/library/agents:
     get:
+      deprecated: true
       operationId: listLibraryAgents
       tags: [library]
       summary: List shared library agents
@@ -2793,6 +3066,7 @@ paths:
                       $ref: '#/components/schemas/LibraryAgent'
 
     post:
+      deprecated: true
       operationId: createLibraryAgent
       tags: [library]
       summary: Create a library agent
@@ -2847,6 +3121,7 @@ paths:
           type: string
 
     get:
+      deprecated: true
       operationId: getLibraryAgent
       tags: [library]
       summary: Get a library agent
@@ -2867,6 +3142,7 @@ paths:
           description: Not found
 
     patch:
+      deprecated: true
       operationId: updateLibraryAgent
       tags: [library]
       summary: Update a library agent
@@ -2912,6 +3188,7 @@ paths:
                     $ref: '#/components/schemas/LibraryAgent'
 
     delete:
+      deprecated: true
       operationId: deleteLibraryAgent
       tags: [library]
       summary: Delete a library agent

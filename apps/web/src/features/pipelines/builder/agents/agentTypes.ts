@@ -1,9 +1,9 @@
-export function isImageAgent(agent: { outputFormat: string }) {
-  return agent.outputFormat === 'image'
+export function isImageAgent(agent: { kind?: string; outputFormat: string }) {
+  return agent.kind ? agent.kind === 'AI_IMAGE' : agent.outputFormat === 'image'
 }
 
-export function isStaticAgent(agent: { outputFormat: string }) {
-  return agent.outputFormat === 'static'
+export function isStaticAgent(agent: { kind?: string; outputFormat: string }) {
+  return agent.kind ? agent.kind === 'STATIC_TEXT' || agent.kind === 'STATIC_IMAGE' : agent.outputFormat === 'static'
 }
 
 export function isImageOutputTarget(target: string) {

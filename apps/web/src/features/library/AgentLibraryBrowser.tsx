@@ -3,15 +3,15 @@ import { toast } from 'sonner'
 import { X, Search, FlaskConical, PenLine, BarChart2, Pencil, ArrowUpRight, BookOpen } from 'lucide-react'
 import {
   appendAgentDefinitionToPipelineInputs,
-  promptToDefinition,
+  libraryAgentToDefinition,
 } from '@project/content'
-import { usePrompts, useUpdatePipeline } from '@project/sdk'
+import { useAgents, useUpdatePipeline } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Skeleton } from '@/components/ui/Skeleton'
 
-type Prompt = components['schemas']['Prompt']
+type Agent = components['schemas']['Agent']
 type Pipeline = components['schemas']['Pipeline']
 
 interface Props {
@@ -46,25 +46,27 @@ export function AgentLibraryBrowser({ pipeline, pipelineId, onClose, onAgentAdde
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState<string | null>(null)
 
-  const { data, isLoading } = usePrompts({
-    kind: 'TRANSFORMATIONAL',
+  const { data, isLoading } = useAgents({
     category: category === 'all' ? undefined : category,
     search: search || undefined,
+    resolved: true,
   })
   const update = useUpdatePipeline()
 
   const agents = data?.data ?? []
+  const ownedAgents = agents.filter((agent) => agent.visibility === 'PRIVATE')
+  const communityAgents = agents.filter((agent) => agent.visibility === 'PUBLIC')
 
-  async function handleAdd(prompt: Prompt) {
-    setAdding(prompt.id)
+  async function handleAdd(agent: Agent) {
+    setAdding(agent.id)
     try {
-      const definition = promptToDefinition(prompt)
+      const definition = { ...libraryAgentToDefinition(agent), sourceAgentId: agent.id }
       const result = await update.mutateAsync({
         pipelineId,
         agents: appendAgentDefinitionToPipelineInputs(pipeline.agents, definition),
       })
       const added = result.data.agents[result.data.agents.length - 1]
-      toast.success(`"${prompt.name}" added to pipeline`)
+      toast.success(`"${agent.name}" added to pipeline`)
       if (added) onAgentAdded(added.id)
       onClose()
     } catch (err: any) {
@@ -84,7 +86,7 @@ export function AgentLibraryBrowser({ pipeline, pipelineId, onClose, onAgentAdde
             <div>
               <h2 className="text-sm font-semibold">Agent Library</h2>
               <p className="text-xs text-muted-foreground">
-                {agents.length} agent{agents.length !== 1 ? 's' : ''} · prompts copy on add, no live link
+                {agents.length} Agent{agents.length !== 1 ? 's' : ''} · definitions copy on insert, no live link
               </p>
             </div>
           </div>
@@ -132,18 +134,23 @@ export function AgentLibraryBrowser({ pipeline, pipelineId, onClose, onAgentAdde
               {search ? `No agents match "${search}"` : 'No agents in this category yet'}
             </div>
           ) : (
-            agents.map((agent) => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                isAdding={adding === agent.id}
-                onAdd={() => handleAdd(agent)}
-              />
-            ))
+            <>
+              {ownedAgents.length > 0 && <AgentGroup label="Your Agents" agents={ownedAgents} adding={adding} onAdd={handleAdd} />}
+              {communityAgents.length > 0 && <AgentGroup label="Community Agents" agents={communityAgents} adding={adding} onAdd={handleAdd} />}
+            </>
           )}
         </div>
       </div>
     </div>
+  )
+}
+
+function AgentGroup({ label, agents, adding, onAdd }: { label: string; agents: Agent[]; adding: string | null; onAdd: (agent: Agent) => void }) {
+  return (
+    <section className="space-y-2">
+      <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      {agents.map((agent) => <AgentCard key={agent.id} agent={agent} isAdding={adding === agent.id} onAdd={() => onAdd(agent)} />)}
+    </section>
   )
 }
 
@@ -152,7 +159,7 @@ function AgentCard({
   isAdding,
   onAdd,
 }: {
-  agent: Prompt
+  agent: Agent
   isAdding: boolean
   onAdd: () => void
 }) {

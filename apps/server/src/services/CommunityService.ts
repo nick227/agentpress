@@ -2,6 +2,13 @@ import { db } from '@project/db'
 import { authorization, type AuthContext } from './AuthorizationService'
 
 export class CommunityService {
+  async listAgents() {
+    return db.agent.findMany({
+      where: { visibility: 'PUBLIC' },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    })
+  }
+
   async listPipelines() {
     return db.pipeline.findMany({
       where: { visibility: 'PUBLIC' },
@@ -45,7 +52,7 @@ export class CommunityService {
         id: true, name: true, slug: true, description: true, category: true, updatedAt: true,
         workspace: { select: { id: true, name: true, type: true } },
         variables: { orderBy: { sortOrder: 'asc' }, select: { key: true, label: true, type: true, required: true, defaultValue: true, exampleValue: true, sortOrder: true } },
-        agents: { orderBy: { sortOrder: 'asc' }, select: { uid: true, name: true, systemPrompt: true, userPrompt: true, outputTarget: true, outputFormat: true, enabled: true, sortOrder: true } },
+        agents: { orderBy: { sortOrder: 'asc' }, select: { uid: true, kind: true, sourceAgentId: true, name: true, systemPrompt: true, userPrompt: true, outputTarget: true, outputFormat: true, imageMode: true, enabled: true, sortOrder: true } },
       },
     })
     if (!pipeline) throw Object.assign(new Error('Community pipeline not found'), { statusCode: 404 })
@@ -110,8 +117,8 @@ export class CommunityService {
           })),
         },
         agents: {
-          create: source.agents.map(({ uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder }) => ({
-            uid, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder,
+          create: source.agents.map(({ uid, kind, sourceAgentId, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder }) => ({
+            uid, kind, sourceAgentId, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder,
           })),
         },
       },

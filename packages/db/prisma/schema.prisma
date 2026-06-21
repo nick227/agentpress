@@ -21,6 +21,7 @@ model User {
   createdDestinations    Destination[]               @relation("DestinationCreator")
   createdPipelineRuns    PipelineRun[]               @relation("PipelineRunCreator")
   createdSchedules       Schedule[]                  @relation("ScheduleCreator")
+  createdAgents          Agent[]                     @relation("AgentCreator")
   feedSubscriptions      WorkspaceFeedSubscription[] @relation("FeedSubscriptionCreator")
   auditEvents            AuditEvent[]                @relation("AuditActor")
 }
@@ -48,6 +49,13 @@ enum PromptKind {
   CONTENT
 }
 
+enum AgentKind {
+  AI_TEXT
+  AI_IMAGE
+  STATIC_TEXT
+  STATIC_IMAGE
+}
+
 model Workspace {
   id                String                      @id @default(cuid())
   type              WorkspaceType
@@ -63,6 +71,7 @@ model Workspace {
   schedules         Schedule[]
   feedSubscriptions WorkspaceFeedSubscription[]
   prompts           Prompt[]
+  agents            Agent[]
   auditEvents       AuditEvent[]
 }
 
@@ -164,6 +173,9 @@ model PipelineAgent {
   pipelineId           String
   pipeline             Pipeline     @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   uid                  String
+  kind                 AgentKind    @default(AI_TEXT)
+  sourceAgentId        String?
+  sourceAgent          Agent?       @relation(fields: [sourceAgentId], references: [id], onDelete: SetNull)
   name                 String
   systemPrompt         String       @db.Text
   userPrompt           String       @db.Text
@@ -177,8 +189,10 @@ model PipelineAgent {
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
   imageAssets          ImageAsset[] @relation("AgentImageAssets")
+  agentRuns            AgentRun[]   @relation("PipelineAgentRuns")
 
   @@unique([pipelineId, uid])
+  @@index([sourceAgentId])
 }
 
 model ImageAsset {
@@ -236,8 +250,12 @@ model AgentRun {
   id                   String      @id @default(cuid())
   pipelineRunId        String
   pipelineRun          PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  pipelineAgentId      String?
+  pipelineAgent        PipelineAgent? @relation("PipelineAgentRuns", fields: [pipelineAgentId], references: [id], onDelete: SetNull)
   agentUid             String
   agentName            String
+  agentKind            AgentKind   @default(AI_TEXT)
+  outputFormat         String      @default("text")
   outputTarget         String
   renderedSystemPrompt String      @db.Text
   renderedUserPrompt   String      @db.Text
@@ -253,6 +271,7 @@ model AgentRun {
   completedAt          DateTime?
 
   @@index([agentUid, inputHash])
+  @@index([pipelineAgentId])
 }
 
 model RunAsset {
@@ -539,6 +558,41 @@ model LibraryAgent {
   sourceRunId  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Agent {
+  id                String          @id @default(cuid())
+  workspaceId       String
+  workspace         Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  visibility        Visibility      @default(PRIVATE)
+  key               String
+  slug              String
+  name              String
+  description       String?         @db.Text
+  category          String          @default("general")
+  tags              Json            @default("[]")
+  kind              AgentKind       @default(AI_TEXT)
+  defaultUid        String           @default("agent")
+  systemPrompt      String           @db.Text
+  userPrompt        String           @db.Text
+  outputTarget      String           @default("body")
+  outputFormat      String           @default("text")
+  sourceAgentId     String?
+  sourceAgent       Agent?           @relation("AgentForks", fields: [sourceAgentId], references: [id], onDelete: SetNull)
+  forks             Agent[]          @relation("AgentForks")
+  createdByUserId   String?
+  createdBy         User?            @relation("AgentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  usageCount        Int              @default(0)
+  agentHash         String
+  pipelineSnapshots PipelineAgent[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([workspaceId, key])
+  @@unique([workspaceId, slug])
+  @@unique([workspaceId, agentHash])
+  @@index([workspaceId, visibility, updatedAt])
+  @@index([sourceAgentId])
 }
 
 model Prompt {

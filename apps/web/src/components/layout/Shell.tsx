@@ -1,26 +1,10 @@
-import { useState } from 'react'
-import { Link, Outlet, useNavigate } from 'react-router-dom'
-import { BookOpen, LogOut, Moon, Sun } from 'lucide-react'
-import { useLogout } from '@project/sdk'
-import { toggleTheme } from '@/lib/theme'
+import { Link, Outlet } from 'react-router-dom'
+import { BookOpen, User } from 'lucide-react'
 import { GlobalExplorerSidebar } from './GlobalExplorerSidebar'
 import { MobileNav } from './MobileNav'
 import { TopNav } from './TopNav'
 
 export function Shell() {
-  const logout = useLogout()
-  const navigate = useNavigate()
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'))
-
-  async function handleLogout() {
-    await logout.mutateAsync()
-    navigate('/login', { replace: true })
-  }
-
-  function handleToggleTheme() {
-    toggleTheme()
-    setIsDark(document.documentElement.classList.contains('dark'))
-  }
 
   return (
     <div className="flex min-h-screen w-full min-w-0 max-w-7xl mx-auto overflow-x-clip bg-background">
@@ -47,22 +31,13 @@ export function Shell() {
             <BookOpen size={15} />
             Documentation
           </Link>
-          <button
-            type="button"
-            onClick={handleToggleTheme}
+          <Link
+            to="/profile"
             className="flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
           >
-            {isDark ? <Sun size={15} /> : <Moon size={15} />}
-            {isDark ? 'Light mode' : 'Dark mode'}
-          </button>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-          >
-            <LogOut size={15} />
-            Log out
-          </button>
+            <User size={15} />
+            Profile
+          </Link>
         </div>
       </aside>
 

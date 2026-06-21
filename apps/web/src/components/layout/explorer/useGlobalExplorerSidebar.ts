@@ -24,6 +24,10 @@ export function useGlobalExplorerSidebar() {
     () => needle ? resources.schedules.filter((schedule) => schedule.name.toLowerCase().includes(needle)) : resources.schedules,
     [resources.schedules, needle],
   )
+  const visibleAgents = useMemo(
+    () => needle ? resources.agents.filter((agent) => `${agent.name} ${agent.category}`.toLowerCase().includes(needle)) : resources.agents,
+    [resources.agents, needle],
+  )
   const visibleSources = useMemo(
     () => needle
       ? resources.researchSources.filter((source) => `${source.name} ${researchCategoryLabel(source.category)}`.toLowerCase().includes(needle))
@@ -52,23 +56,27 @@ export function useGlobalExplorerSidebar() {
     setQuery,
     needle,
     pipelines: visiblePipelines,
+    agents: visibleAgents,
     schedules: visibleSchedules,
     destinations: visibleDestinations,
     prompts: visiblePrompts,
     runs: visibleRuns,
     researchSources: visibleSources,
     hasResults: visiblePipelines.length > 0
+      || visibleAgents.length > 0
       || visibleSchedules.length > 0
       || visibleSources.length > 0
       || visiblePrompts.length > 0
       || visibleDestinations.length > 0
       || visibleRuns.length > 0,
     pipelinesFetching: resources.pipelinesFetching,
+    agentsFetching: resources.agentsFetching,
     schedulesFetching: resources.schedulesFetching,
     destinationsFetching: resources.destinationsFetching,
     promptsFetching: resources.promptsFetching,
     runsFetching: resources.runsFetching,
     refreshPipelines: resources.refreshPipelines,
+    refreshAgents: resources.refreshAgents,
     refreshSchedules: resources.refreshSchedules,
     refreshDestinations: resources.refreshDestinations,
     refreshPrompts: resources.refreshPrompts,
