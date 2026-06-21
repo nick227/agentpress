@@ -1,62 +1,6 @@
-import { createHash } from 'crypto'
 import { db } from '@project/db'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
-
-const STARTER_FEED_SLUGS = [
-  'ziptrader', 'vaush', 'fireship', 'wes-roth',
-  'hacker-news', 'techcrunch', 'npr-politics', 'wallstreetbets',
-]
-
-async function forkStarterPack(workspaceId: string, userId: string) {
-  const [communityFeeds, communityPrompts] = await Promise.all([
-    db.researchSource.findMany({
-      where: { visibility: 'PUBLIC', slug: { in: STARTER_FEED_SLUGS } },
-    }),
-    db.prompt.findMany({
-      where: { visibility: 'PUBLIC', kind: 'CONTENT' },
-    }),
-  ])
-
-  await Promise.all([
-    ...communityFeeds.map((source) =>
-      db.researchSource.create({
-        data: {
-          name: source.name,
-          slug: source.slug,
-          category: source.category,
-          sourceType: source.sourceType,
-          sourceUrl: source.sourceUrl,
-          externalId: source.externalId,
-          workspaceId,
-          createdByUserId: userId,
-          visibility: 'PRIVATE',
-        },
-      }).catch(() => {})
-    ),
-    ...communityPrompts.map((prompt) => {
-      const promptHash = createHash('sha256').update(`fork:${workspaceId}:${prompt.id}`).digest('hex')
-      return db.prompt.create({
-        data: {
-          name: prompt.name,
-          slug: `${prompt.slug}-${workspaceId.slice(0, 8)}`,
-          description: prompt.description,
-          kind: prompt.kind,
-          category: prompt.category,
-          tags: prompt.tags ?? [],
-          systemPrompt: prompt.systemPrompt,
-          userPrompt: prompt.userPrompt,
-          uid: prompt.uid,
-          outputTarget: prompt.outputTarget,
-          outputFormat: prompt.outputFormat,
-          promptHash,
-          workspaceId,
-          visibility: 'PRIVATE',
-        },
-      }).catch(() => {})
-    }),
-  ])
-}
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
@@ -84,10 +28,6 @@ export class AuthService {
         },
       },
     })
-    const membership = await db.workspaceMember.findFirst({ where: { userId: user.id } })
-    if (membership) {
-      forkStarterPack(membership.workspaceId, user.id).catch(() => {})
-    }
     const session = await this._createSession(user.id)
     return { user, token: session.token }
   }
