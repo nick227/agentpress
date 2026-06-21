@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { groupResearchSources, researchCategoryLabel } from './researchCategories'
+import { researchCategoryLabel } from './researchCategories'
 import { useExplorerResources } from './useExplorerResources'
 import { useResearchRefresh } from './useResearchRefresh'
 
@@ -9,7 +9,6 @@ export function useGlobalExplorerSidebar() {
 
   // Local navigation state.
   const [query, setQuery] = useState('')
-  const [collapsedResearchCategories, setCollapsedResearchCategories] = useState<Set<string>>(() => new Set())
 
   // Isolated hooks own server queries and mutation feedback.
   const resources = useExplorerResources()
@@ -47,18 +46,6 @@ export function useGlobalExplorerSidebar() {
       : resources.runs,
     [resources.runs, needle],
   )
-  const researchGroups = useMemo(() => groupResearchSources(visibleSources), [visibleSources])
-
-  // Category interaction.
-  function toggleResearchCategory(category: string) {
-    setCollapsedResearchCategories((current) => {
-      const next = new Set(current)
-      if (next.has(category)) next.delete(category)
-      else next.add(category)
-      return next
-    })
-  }
-
   return {
     pathname,
     query,
@@ -69,11 +56,7 @@ export function useGlobalExplorerSidebar() {
     destinations: visibleDestinations,
     prompts: visiblePrompts,
     runs: visibleRuns,
-    researchGroups: researchGroups.map((group) => ({
-      ...group,
-      collapsed: !needle && collapsedResearchCategories.has(group.category),
-      isRefetching: researchRefresh.checkingCategory === group.category,
-    })),
+    researchSources: visibleSources,
     hasResults: visiblePipelines.length > 0
       || visibleSchedules.length > 0
       || visibleSources.length > 0
@@ -90,7 +73,6 @@ export function useGlobalExplorerSidebar() {
     refreshDestinations: resources.refreshDestinations,
     refreshPrompts: resources.refreshPrompts,
     refreshRuns: resources.refreshRuns,
-    toggleResearchCategory,
     checkResearch: researchRefresh.checkResearch,
     checkSource: researchRefresh.checkSource,
     checkingAllResearch: researchRefresh.checkingAll,

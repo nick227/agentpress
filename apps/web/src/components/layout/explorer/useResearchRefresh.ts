@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { useCheckResearchSource, useCheckResearchSources } from '@project/sdk'
 import type { components } from '@project/sdk'
-import { canonicalResearchCategory, researchCategoryLabel } from './researchCategories'
+import { researchCategoryLabel } from './researchCategories'
 
 type ResearchSource = components['schemas']['ResearchSource']
 
@@ -53,15 +53,10 @@ export function useResearchRefresh() {
     }
   }
 
-  const category = checkResearchSources.variables?.category
-
   return {
     checkResearch: (requestedCategory?: string) => void checkResearch(requestedCategory),
     checkSource: (source: ResearchSource) => void checkSource(source),
     checkingAll: checkResearchSources.isPending,
-    checkingCategory: checkResearchSources.isPending && category
-      ? canonicalResearchCategory(category)
-      : null,
     checkingSourceId,
     pending: checkResearchSources.isPending || checkResearchSource.isPending,
   }

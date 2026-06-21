@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bot, CheckCircle2, Clock, FileText, ImageOff, Layers, Loader2, Play, RefreshCw, Zap, XCircle } from 'lucide-react'
-import { useAllRuns, usePipelineRun, useStartPipelineRun } from '@project/sdk'
+import { Bot, CheckCircle2, Clock, FileText, ImageOff, Layers, Loader2, Play, RefreshCw, Send, Zap, XCircle } from 'lucide-react'
+import { useAllRuns, usePipelineRun, usePublishRun, useStartPipelineRun } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -275,7 +275,22 @@ function RunRow({
 function RunDetail({ run }: { run: RunSummary }) {
   const [dryRun, setDryRun] = useState(run.dryRun)
   const startRun = useStartPipelineRun()
+  const publishRun = usePublishRun()
+  const { data: fullData } = usePipelineRun(run.id)
   const ms = durationMs(run)
+
+  const publishAttempts = fullData?.publishAttempts ?? []
+  const latestAttempt = publishAttempts.at(-1)
+  const canPublish = run.hasPost && Boolean(run.destinationId) && !run.dryRun
+
+  async function handlePublish() {
+    try {
+      await publishRun.mutateAsync(run.id)
+      toast.success('Published successfully')
+    } catch {
+      toast.error('Failed to publish')
+    }
+  }
 
   async function handleRerun() {
     try {
@@ -293,6 +308,53 @@ function RunDetail({ run }: { run: RunSummary }) {
 
   return (
     <div className="border-t bg-muted/10 px-4 pb-4 pt-3 space-y-4">
+      {/* Publish action */}
+      {canPublish && (
+        <div className="flex items-center justify-between gap-3 rounded border bg-surface px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2 text-xs">
+            {latestAttempt?.status === 'success' ? (
+              <>
+                <CheckCircle2 size={12} className="shrink-0 text-green-600" />
+                <span className="text-muted-foreground">Published</span>
+                {latestAttempt.remoteUrl && (
+                  <a
+                    href={latestAttempt.remoteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate text-blue-500 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {latestAttempt.remoteUrl}
+                  </a>
+                )}
+              </>
+            ) : latestAttempt?.status === 'failed' ? (
+              <>
+                <XCircle size={12} className="shrink-0 text-destructive" />
+                <span className="truncate text-destructive">{latestAttempt.error || 'Publish failed'}</span>
+              </>
+            ) : latestAttempt?.status === 'pending' ? (
+              <>
+                <Loader2 size={12} className="shrink-0 animate-spin text-blue-500" />
+                <span className="text-muted-foreground">{latestAttempt.progressMessage || 'Publishing…'}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Not published</span>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant={latestAttempt?.status === 'success' ? 'outline' : 'default'}
+            onClick={handlePublish}
+            loading={publishRun.isPending}
+            disabled={publishRun.isPending}
+          >
+            <Send size={12} />
+            {latestAttempt?.status === 'success' ? 'Re-publish' : 'Publish'}
+          </Button>
+        </div>
+      )}
+
       {/* Timing */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <MetaField label="Started" value={new Date(run.startedAt).toLocaleString()} />

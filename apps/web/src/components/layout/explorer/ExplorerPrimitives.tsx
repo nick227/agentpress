@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { activityTooltip, compactRelativeTime } from './explorerTime'
@@ -31,7 +31,7 @@ export function ResourceGroup({
 }: ResourceGroupProps) {
   return (
     <div>
-      <div className="group flex items-center gap-1 p-2 font-semibold uppercase tracking-wide text-muted-foreground bg-gray-100">
+      <div className="group text-sm flex items-center gap-1 p-2 font-semibold uppercase tracking-wide text-muted-foreground bg-gray-100">
         <Icon size={11} />
         {indexHref ? (
           <Link
@@ -40,9 +40,6 @@ export function ResourceGroup({
             title={`View all ${label.toLowerCase()}`}
           >
             {label}
-            <span className="text-xs font-normal text-muted-foreground ml-2">
-              ({Children.count(children)})
-            </span>
           </Link>
         ) : (
           <span className="ml-0.5 flex-1">{label}</span>
@@ -68,57 +65,7 @@ export function ResourceGroup({
           </Link>
         )}
       </div>
-      <div className="max-h-[30vh] overflow-auto">{children}</div>
-    </div>
-  )
-}
-
-type ResearchCategoryGroupProps = {
-  label: string
-  count: number
-  collapsed: boolean
-  onToggle: () => void
-  onRefetch: () => void
-  isRefetching: boolean
-  disabled: boolean
-  children: React.ReactNode
-}
-
-// Research-only subheading with collapse and category-scoped refresh behavior.
-export function ResearchCategoryGroup({
-  label,
-  count,
-  collapsed,
-  onToggle,
-  onRefetch,
-  isRefetching,
-  disabled,
-  children,
-}: ResearchCategoryGroupProps) {
-  return (
-    <div>
-      <div className="group/category flex items-center gap-1 py-1 pl-4 pr-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex min-w-0 flex-1 items-center gap-1 text-left hover:text-foreground"
-          title={`${collapsed ? 'Expand' : 'Collapse'} ${label}`}
-        >
-          {collapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
-          <span className="truncate">{label}</span>
-          <span className="font-normal tabular-nums">{count}</span>
-        </button>
-        <button
-          type="button"
-          onClick={onRefetch}
-          disabled={disabled}
-          title={`Check active ${label} feeds`}
-          className="rounded p-0.5 opacity-0 hover:bg-muted hover:text-foreground group-hover/category:opacity-100 disabled:opacity-30"
-        >
-          <RefreshCw size={9} className={isRefetching ? 'animate-spin' : ''} />
-        </button>
-      </div>
-      {!collapsed && children}
+      <div className="max-h-[30vh] overflow-auto p-2">{children}</div>
     </div>
   )
 }
@@ -161,16 +108,12 @@ export function ResourceLink({
 
   return (
     <div className={cn('group/resource flex items-center rounded-l text-muted-foreground hover:bg-muted/60 hover:text-foreground', active && 'bg-accent/10 text-foreground')}>
-      <Link to={href} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-1.5 text-xs" title={label}>
+
+      <Link to={href} className="flex min-w-0 flex-1 items-center gap-2 text-xs" title={label}>
         <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', statusClass)} />
         <span className="min-w-0 flex-1 truncate">{label}</span>
-        {activityLabel && (
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/70" title={activityTooltip(activityLabel, activityAt)}>
-            {activityState ?? compactRelativeTime(activityAt)}
-          </span>
-        )}
       </Link>
-      {onRefetch && (
+            {onRefetch && (
         <button
           type="button"
           onClick={onRefetch}
@@ -181,6 +124,11 @@ export function ResourceLink({
           <RefreshCw size={9} className={isRefetching ? 'animate-spin' : ''} />
         </button>
       )}
+        {activityLabel && (
+          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/70" title={activityTooltip(activityLabel, activityAt)}>
+            {activityState ?? compactRelativeTime(activityAt)}
+          </span>
+        )}
     </div>
   )
 }

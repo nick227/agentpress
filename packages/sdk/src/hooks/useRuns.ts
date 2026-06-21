@@ -55,6 +55,7 @@ export function usePublishRun() {
     },
     onSuccess: (_data, runId) => {
       queryClient.invalidateQueries({ queryKey: ['run', runId] })
+      queryClient.invalidateQueries({ queryKey: ['all-runs'] })
     },
   })
 }

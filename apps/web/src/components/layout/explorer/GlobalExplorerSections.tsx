@@ -1,5 +1,5 @@
 import { CalendarClock, Database, FlaskConical, MessageSquareText, Play, Workflow } from 'lucide-react'
-import { ResearchCategoryGroup, ResourceGroup, ResourceLink } from './ExplorerPrimitives'
+import { ResourceGroup, ResourceLink } from './ExplorerPrimitives'
 import { isInProgress } from './explorerTime'
 import type { GlobalExplorerSidebarModel } from './useGlobalExplorerSidebar'
 
@@ -75,7 +75,7 @@ function ScheduleSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
 }
 
 function ResearchSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
-  if (explorer.researchGroups.length === 0 && explorer.needle) return null
+  if (explorer.researchSources.length === 0 && explorer.needle) return null
 
   return (
     <ResourceGroup
@@ -88,33 +88,20 @@ function ResearchSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
       isRefreshDisabled={Boolean(explorer.checkingSourceId)}
       refreshTitle="Check all active research feeds"
     >
-      {explorer.researchGroups.map((group) => (
-        <ResearchCategoryGroup
-          key={group.category}
-          label={group.label}
-          count={group.sources.length}
-          collapsed={group.collapsed}
-          onToggle={() => explorer.toggleResearchCategory(group.category)}
-          onRefetch={() => explorer.checkResearch(group.category)}
-          isRefetching={group.isRefetching}
-          disabled={explorer.researchCheckPending}
-        >
-          {group.sources.map((source) => (
-            <ResourceLink
-              key={source.id}
-              href={`/research/${source.slug}`}
-              label={source.name}
-              active={explorer.pathname.includes(`/research/${source.slug}`)}
-              status={source.status}
-              activityAt={source.lastChecked}
-              activityLabel="Last checked"
-              onRefetch={() => explorer.checkSource(source)}
-              isRefetching={explorer.checkingSourceId === source.id}
-              refreshDisabled={explorer.researchCheckPending}
-              refreshTitle={`Check ${source.name}`}
-            />
-          ))}
-        </ResearchCategoryGroup>
+      {explorer.researchSources.map((source) => (
+        <ResourceLink
+          key={source.id}
+          href={`/research/${source.slug}`}
+          label={source.name}
+          active={explorer.pathname.includes(`/research/${source.slug}`)}
+          status={source.status}
+          activityAt={source.lastChecked}
+          activityLabel="Last checked"
+          onRefetch={() => explorer.checkSource(source)}
+          isRefetching={explorer.checkingSourceId === source.id}
+          refreshDisabled={explorer.researchCheckPending}
+          refreshTitle={`Check ${source.name}`}
+        />
       ))}
     </ResourceGroup>
   )
