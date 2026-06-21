@@ -1,10 +1,12 @@
 import { PipelineRunService } from '../services/PipelineRunService'
 import { mimeTypeForAsset, OutputAssetService } from '../services/OutputAssetService'
 import { db } from '@project/db'
+import { authorization } from '../services/AuthorizationService'
 
 export async function listAllRuns(request: any, reply: any) {
   const limit = Math.min(Number(request.query?.limit ?? 50), 200)
   const rows = await db.pipelineRun.findMany({
+    where: { workspaceId: request.auth.workspaceId },
     orderBy: { startedAt: 'desc' },
     take: limit,
     include: {
@@ -42,22 +44,28 @@ const svc = new PipelineRunService()
 const assets = new OutputAssetService()
 
 export async function startPipelineRun(request: any, reply: any) {
+  authorization.authorize(request.auth, 'pipeline:run')
   const { variables, dryRun, title, forceRegenerate, forceRegenerateAgentUids } = request.body
   const run = await svc.startRun(request.params.pipelineId, variables, {
     dryRun,
     title,
     forceRegenerate,
     forceRegenerateAgentUids,
+    workspaceId: request.auth.workspaceId,
+    createdByUserId: request.auth.userId,
   })
   return reply.status(201).send({ data: run })
 }
 
 export async function publishRun(request: any, reply: any) {
-  const result = await svc.publishRun(request.params.runId)
+  authorization.authorize(request.auth, 'destination:use')
+  const result = await svc.publishRun(request.auth.workspaceId, request.params.runId)
   return reply.send(result)
 }
 
 export async function downloadRunAsset(request: any, reply: any) {
+  const run = await db.pipelineRun.findFirst({ where: { id: request.params.runId, workspaceId: request.auth.workspaceId } })
+  if (!run) return reply.status(404).send({ error: 'Run not found' })
   const file = await assets.getAssetFile(request.params.runId, request.params.assetId)
   if (!file) return reply.status(404).send({ error: 'Asset not found' })
 
@@ -68,8 +76,8 @@ export async function downloadRunAsset(request: any, reply: any) {
 }
 
 export async function getPipelineRun(request: any, reply: any) {
-  const run = await db.pipelineRun.findUniqueOrThrow({
-    where: { id: request.params.runId },
+  const run = await db.pipelineRun.findFirstOrThrow({
+    where: { id: request.params.runId, workspaceId: request.auth.workspaceId },
     include: {
       agentRuns: { orderBy: { sortOrder: 'asc' } },
       assets: { orderBy: { createdAt: 'asc' } },

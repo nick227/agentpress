@@ -42,6 +42,18 @@ const RunsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 )
+const CommunityPage = lazy(() =>
+  import('@/pages/CommunityPage').then((m) => ({ default: m.CommunityPage })),
+)
+const TeamsPage = lazy(() =>
+  import('@/pages/TeamsPage').then((m) => ({ default: m.TeamsPage })),
+)
+const PromptsPage = lazy(() =>
+  import('@/pages/PromptsPage').then((m) => ({ default: m.PromptsPage })),
+)
+const PromptEditorPage = lazy(() =>
+  import('@/pages/PromptEditorPage').then((m) => ({ default: m.PromptEditorPage })),
+)
 
 function PageFallback() {
   return (
@@ -88,11 +100,16 @@ export function App() {
             <Route path="/research" element={<LazyPage><ResearchPage /></LazyPage>} />
             <Route path="/research/new" element={<LazyPage><ResearchNewPage /></LazyPage>} />
             <Route path="/research/:sourceSlug" element={<LazyPage><ResearchSourcePage /></LazyPage>} />
+            <Route path="/prompts" element={<LazyPage><PromptsPage /></LazyPage>} />
+            <Route path="/prompts/new" element={<LazyPage><PromptEditorPage /></LazyPage>} />
+            <Route path="/prompts/:promptId" element={<LazyPage><PromptEditorPage /></LazyPage>} />
             <Route path="/destinations" element={<LazyPage><DestinationsPage /></LazyPage>} />
             <Route path="/destinations/new" element={<LazyPage><DestinationEditorPage /></LazyPage>} />
             <Route path="/destinations/:destinationId" element={<LazyPage><DestinationEditorPage /></LazyPage>} />
             <Route path="/runs" element={<LazyPage><RunsPage /></LazyPage>} />
             <Route path="/profile" element={<LazyPage><ProfilePage /></LazyPage>} />
+            <Route path="/community" element={<LazyPage><CommunityPage /></LazyPage>} />
+            <Route path="/teams" element={<LazyPage><TeamsPage /></LazyPage>} />
           </Route>
         </Route>
 

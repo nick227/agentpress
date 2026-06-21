@@ -78,6 +78,7 @@ export {
   appendAgentDefinitionToPipelineInputs,
   agentDefinitionToPipelineInput,
   libraryAgentToDefinition,
+  promptToDefinition,
   pipelineAgentToPipelineInput,
   pipelineAgentToDefinition,
   resolveAgentUid,

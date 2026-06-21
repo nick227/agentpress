@@ -7,6 +7,7 @@ import { contentFieldsFromFeedItem, contentFieldsFromTranscript } from './resear
 import { resolveGlobalDefaultSummaryPrompt } from './summaryPromptResolve'
 import { formatResearchCheckMessage } from './researchCheckMessage'
 import { createHash } from 'crypto'
+import { authorization, type AuthContext } from './AuthorizationService'
 
 const REMOTE_CACHE_TTL_MS = 60 * 60 * 1000
 const YOUTUBE_MISSING_TRANSCRIPT_CACHE_TTL_MS = 5 * 60 * 1000
@@ -42,10 +43,19 @@ function canonicalCategory(category?: string | null): string {
   return value
 }
 
-async function uniqueSlug(base: string): Promise<string> {
+function assertPublicSourceUrlSafe(sourceUrl: string) {
+  let url: URL
+  try { url = new URL(sourceUrl) } catch { throw Object.assign(new Error('A valid source URL is required'), { statusCode: 400 }) }
+  const sensitiveParam = [...url.searchParams.keys()].some((key) => /token|key|secret|password|auth/i.test(key))
+  if (url.username || url.password || sensitiveParam) {
+    throw Object.assign(new Error('Credentialed source URLs cannot be public'), { statusCode: 400 })
+  }
+}
+
+async function uniqueSlug(base: string, workspaceId: string): Promise<string> {
   let slug = base
   let n = 2
-  while (await db.researchSource.findUnique({ where: { slug } })) {
+  while (await db.researchSource.findFirst({ where: { slug, workspaceId } })) {
     slug = `${base}-${n++}`
   }
   return slug
@@ -205,9 +215,15 @@ export class ResearchService {
     } as const
   }
 
-  async list() {
+  async list(context: AuthContext) {
     const [sources, globalDefault] = await Promise.all([
       db.researchSource.findMany({
+        where: {
+          OR: [
+            { workspaceId: context.workspaceId },
+            { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } },
+          ],
+        },
         orderBy: { name: 'asc' },
         include: this.sourceInclude(),
       }),
@@ -216,10 +232,18 @@ export class ResearchService {
     return sources.map((source) => this.formatSource(source, globalDefault))
   }
 
-  async get(idOrSlug: string) {
+  async get(context: AuthContext, idOrSlug: string) {
     const [source, globalDefault] = await Promise.all([
       db.researchSource.findFirstOrThrow({
-        where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+        where: {
+          AND: [
+            { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+            { OR: [
+              { workspaceId: context.workspaceId },
+              { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } },
+            ] },
+          ],
+        },
         include: this.sourceInclude(),
       }),
       resolveGlobalDefaultSummaryPrompt(),
@@ -227,10 +251,13 @@ export class ResearchService {
     return this.formatSource(source, globalDefault)
   }
 
-  async create(data: { name: string; category?: string; sourceType?: string; sourceUrl: string }) {
+  async create(context: AuthContext, data: { name: string; category?: string; sourceType?: string; sourceUrl: string; visibility?: 'PRIVATE' | 'PUBLIC' }) {
+    authorization.authorize(context, 'resource:edit')
+    if (data.visibility === 'PUBLIC') authorization.authorize(context, 'resource:visibility')
+    if (data.visibility === 'PUBLIC') assertPublicSourceUrlSafe(data.sourceUrl)
     const sourceType = data.sourceType ?? 'youtube'
     const baseSlug = toSlug(data.name) || 'source'
-    const slug = await uniqueSlug(baseSlug)
+    const slug = await uniqueSlug(baseSlug, context.workspaceId)
 
     let externalId: string | null = null
     try {
@@ -245,6 +272,9 @@ export class ResearchService {
         sourceType,
         sourceUrl: data.sourceUrl,
         externalId,
+        workspaceId: context.workspaceId,
+        createdByUserId: context.userId,
+        visibility: data.visibility ?? 'PRIVATE',
       },
       include: this.sourceInclude(),
     })
@@ -252,23 +282,31 @@ export class ResearchService {
     return this.formatSource(source, globalDefault)
   }
 
-  async update(sourceId: string, data: {
+  async update(context: AuthContext, sourceId: string, data: {
     name?: string
     category?: string
     sourceUrl?: string
     status?: string
     defaultSummaryPromptId?: string | null
+    visibility?: 'PRIVATE' | 'PUBLIC'
   }) {
+    authorization.authorize(context, 'resource:edit')
+    const owned = await db.researchSource.findFirst({ where: { id: sourceId, workspaceId: context.workspaceId } })
+    if (!owned) throw Object.assign(new Error('Research source not found'), { statusCode: 404 })
+    if (data.visibility !== undefined) authorization.authorize(context, 'resource:visibility')
+    if (data.visibility === 'PUBLIC' || (owned.visibility === 'PUBLIC' && data.visibility !== 'PRIVATE')) {
+      assertPublicSourceUrlSafe(data.sourceUrl ?? owned.sourceUrl)
+    }
     let externalId: string | undefined = undefined
     if (data.sourceUrl) {
-      const source = await db.researchSource.findUnique({ where: { id: sourceId }, select: { sourceType: true } })
+      const source = owned
       try {
         externalId = (await this.resolveSourceCached(source?.sourceType ?? 'youtube', data.sourceUrl)) ?? undefined
       } catch {}
     }
 
     if (data.defaultSummaryPromptId) {
-      await db.summaryPrompt.findUniqueOrThrow({ where: { id: data.defaultSummaryPromptId } })
+      await db.prompt.findFirstOrThrow({ where: { id: data.defaultSummaryPromptId, kind: 'CONTENT' } })
     }
 
     const source = await db.researchSource.update({
@@ -278,6 +316,7 @@ export class ResearchService {
         ...(data.category !== undefined ? { category: data.category } : {}),
         ...(data.sourceUrl !== undefined ? { sourceUrl: data.sourceUrl, externalId } : {}),
         ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.visibility !== undefined ? { visibility: data.visibility } : {}),
         ...(data.defaultSummaryPromptId !== undefined
           ? { defaultSummaryPromptId: data.defaultSummaryPromptId }
           : {}),
@@ -288,8 +327,11 @@ export class ResearchService {
     return this.formatSource(source, globalDefault)
   }
 
-  async delete(sourceId: string) {
-    await db.researchSource.delete({ where: { id: sourceId } })
+  async delete(context: AuthContext, sourceId: string) {
+    authorization.authorize(context, 'resource:delete')
+    const source = await db.researchSource.findFirst({ where: { id: sourceId, workspaceId: context.workspaceId } })
+    if (!source) throw Object.assign(new Error('Research source not found'), { statusCode: 404 })
+    await db.researchSource.delete({ where: { id: source.id } })
   }
 
   private latestFromItem(
@@ -406,7 +448,7 @@ export class ResearchService {
     return { isNew: true, isUpdated: false, item: created, latest: this.latestFromItem(created, true, true) }
   }
 
-  async checkLatest(sourceId: string): Promise<{
+  async checkLatest(contextOrSourceId: AuthContext | string | null, sourceIdArg?: string): Promise<{
     checked: boolean
     newItem: boolean
     newCount: number
@@ -415,7 +457,16 @@ export class ResearchService {
     latest?: ReturnType<ResearchService['latestFromItem']>
     message?: string
   }> {
-    const source = await db.researchSource.findFirstOrThrow({ where: { OR: [{ id: sourceId }, { slug: sourceId }] } })
+    const context = typeof contextOrSourceId === 'string' ? null : contextOrSourceId
+    const sourceId = typeof contextOrSourceId === 'string' ? contextOrSourceId : sourceIdArg
+    if (!sourceId) throw Object.assign(new Error('Research source is required'), { statusCode: 400 })
+    if (context) authorization.authorize(context, 'resource:edit')
+    const source = await db.researchSource.findFirstOrThrow({
+      where: {
+        ...(context ? { workspaceId: context.workspaceId } : {}),
+        OR: [{ id: sourceId }, { slug: sourceId }],
+      },
+    })
 
     let externalId = source.externalId?.trim() || null
     if (!externalId) {
@@ -457,7 +508,7 @@ export class ResearchService {
     return { checked: true, newItem: newCount > 0, newCount, updatedCount, item: firstNew, latest }
   }
 
-  async checkMany(category?: string): Promise<{
+  async checkMany(context: AuthContext, category?: string): Promise<{
     category?: string
     checked: number
     succeeded: number
@@ -476,7 +527,7 @@ export class ResearchService {
   }> {
     const requestedCategory = category ? canonicalCategory(category) : undefined
     const activeSources = await db.researchSource.findMany({
-      where: { status: 'active' },
+      where: { status: 'active', workspaceId: context.workspaceId },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, sourceType: true, category: true },
     })
@@ -497,7 +548,7 @@ export class ResearchService {
     // Keep checks sequential to avoid bursts against YouTube and Reddit rate limits.
     for (const source of sources) {
       try {
-        const result = await this.checkLatest(source.id)
+        const result = await this.checkLatest(context, source.id)
         const message = result.message ?? formatResearchCheckMessage(source.sourceType, result)
         if (!result.checked) {
           results.push({
@@ -541,7 +592,11 @@ export class ResearchService {
     }
   }
 
-  async listItems(sourceId: string, page = 1, limit = 15) {
+  async listItems(context: AuthContext, sourceId: string, page = 1, limit = 15) {
+    const source = await db.researchSource.findFirst({
+      where: { id: sourceId, OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] },
+    })
+    if (!source) throw Object.assign(new Error('Research source not found'), { statusCode: 404 })
     const skip = (page - 1) * limit
     const [items, total] = await Promise.all([
       db.researchItem.findMany({
@@ -569,17 +624,18 @@ export class ResearchService {
     return { data, total, page, pages: Math.max(1, Math.ceil(total / limit)) }
   }
 
-  async getItem(itemId: string) {
-    const item = await db.researchItem.findUniqueOrThrow({
-      where: { id: itemId },
+  async getItem(context: AuthContext, itemId: string) {
+    const item = await db.researchItem.findFirstOrThrow({
+      where: { id: itemId, source: { OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] } },
       include: { _count: { select: { summaries: true } } },
     })
     return this.formatItem(item)
   }
 
-  async refreshItemContent(itemId: string) {
-    const item = await db.researchItem.findUniqueOrThrow({
-      where: { id: itemId },
+  async refreshItemContent(context: AuthContext, itemId: string) {
+    authorization.authorize(context, 'resource:edit')
+    const item = await db.researchItem.findFirstOrThrow({
+      where: { id: itemId, source: { workspaceId: context.workspaceId } },
       include: { source: { select: { sourceType: true } } },
     })
 
@@ -601,7 +657,10 @@ export class ResearchService {
     return this.formatItem(updated)
   }
 
-  async listSummaries(itemId: string) {
+  async listSummaries(context: AuthContext, itemId: string) {
+    await db.researchItem.findFirstOrThrow({
+      where: { id: itemId, source: { OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] } },
+    })
     const rows = await db.researchSummary.findMany({
       where: { itemId },
       include: { prompt: { select: { name: true, description: true } } },
@@ -615,10 +674,13 @@ export class ResearchService {
     }))
   }
 
-  async summarize(itemId: string, promptId: string) {
+  async summarize(context: AuthContext | null, itemId: string, promptId: string) {
+    if (context) authorization.authorize(context, 'resource:edit')
     const [item, prompt] = await Promise.all([
-      db.researchItem.findUniqueOrThrow({ where: { id: itemId } }),
-      db.summaryPrompt.findUniqueOrThrow({ where: { id: promptId } }),
+      db.researchItem.findFirstOrThrow({
+        where: { id: itemId, ...(context ? { source: { workspaceId: context.workspaceId } } : {}) },
+      }),
+      db.prompt.findFirstOrThrow({ where: { id: promptId, kind: 'CONTENT' } }),
     ])
 
     if (!item.content) {

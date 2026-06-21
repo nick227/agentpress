@@ -1,5 +1,6 @@
 import { db, Prisma } from '@project/db'
 import { nextScheduleOccurrence, validateTimezone } from './scheduleRecurrence'
+import { authorization, type AuthContext } from './AuthorizationService'
 
 const TRIGGER_POLICIES = ['always', 'any_checked_feed_new', 'selected_feeds_new'] as const
 type TriggerPolicy = typeof TRIGGER_POLICIES[number]
@@ -41,8 +42,9 @@ function apiError(message: string, statusCode = 400) {
 }
 
 export class ScheduleService {
-  async list() {
+  async list(context: AuthContext) {
     const schedules = await db.schedule.findMany({
+      where: { workspaceId: context.workspaceId },
       include: {
         _count: { select: { sources: true, pipelineActions: true } },
         executions: { orderBy: { createdAt: 'desc' }, take: 1 },
@@ -65,16 +67,19 @@ export class ScheduleService {
     }))
   }
 
-  async get(scheduleId: string) {
-    const schedule = await db.schedule.findUnique({ where: { id: scheduleId }, include: includeSchedule })
+  async get(context: AuthContext, scheduleId: string) {
+    const schedule = await db.schedule.findFirst({ where: { id: scheduleId, workspaceId: context.workspaceId }, include: includeSchedule })
     return schedule ? this.format(schedule) : null
   }
 
-  async create(input: ScheduleInput) {
-    const normalized = await this.validate(input)
+  async create(context: AuthContext, input: ScheduleInput) {
+    authorization.authorize(context, 'resource:edit')
+    const normalized = await this.validate(context, input)
     const schedule = await db.schedule.create({
       data: {
         ...normalized.fields,
+        workspaceId: context.workspaceId,
+        createdByUserId: context.userId,
         sources: {
           create: normalized.sourceIds.map((sourceId, sortOrder) => ({ sourceId, sortOrder })),
         },
@@ -95,8 +100,11 @@ export class ScheduleService {
     return this.format(schedule)
   }
 
-  async update(scheduleId: string, input: ScheduleInput) {
-    const normalized = await this.validate(input)
+  async update(context: AuthContext, scheduleId: string, input: ScheduleInput) {
+    authorization.authorize(context, 'resource:edit')
+    const existing = await db.schedule.findFirst({ where: { id: scheduleId, workspaceId: context.workspaceId } })
+    if (!existing) throw apiError('Schedule not found', 404)
+    const normalized = await this.validate(context, input)
 
     await db.$transaction(async (tx) => {
       await tx.schedule.update({ where: { id: scheduleId }, data: normalized.fields })
@@ -164,13 +172,16 @@ export class ScheduleService {
     return this.format(await db.schedule.findUniqueOrThrow({ where: { id: scheduleId }, include: includeSchedule }))
   }
 
-  async delete(scheduleId: string) {
-    await db.schedule.delete({ where: { id: scheduleId } })
+  async delete(context: AuthContext, scheduleId: string) {
+    authorization.authorize(context, 'resource:delete')
+    const schedule = await db.schedule.findFirst({ where: { id: scheduleId, workspaceId: context.workspaceId } })
+    if (!schedule) throw apiError('Schedule not found', 404)
+    await db.schedule.delete({ where: { id: schedule.id } })
   }
 
-  async listExecutions(scheduleId: string, limit = 25) {
+  async listExecutions(context: AuthContext, scheduleId: string, limit = 25) {
     const executions = await db.scheduleExecution.findMany({
-      where: { scheduleId },
+      where: { scheduleId, schedule: { workspaceId: context.workspaceId } },
       include: {
         researchChecks: true,
         pipelineExecutions: { include: { pipelineRun: true } },
@@ -182,9 +193,9 @@ export class ScheduleService {
     return executions.map((execution) => this.formatExecution(execution, itemMap))
   }
 
-  async getExecution(executionId: string) {
-    const execution = await db.scheduleExecution.findUnique({
-      where: { id: executionId },
+  async getExecution(context: AuthContext, executionId: string) {
+    const execution = await db.scheduleExecution.findFirst({
+      where: { id: executionId, schedule: { workspaceId: context.workspaceId } },
       include: {
         schedule: true,
         researchChecks: true,
@@ -280,7 +291,7 @@ export class ScheduleService {
     return new Map(items.map((item) => [item.id, item]))
   }
 
-  private async validate(input: ScheduleInput) {
+  private async validate(context: AuthContext, input: ScheduleInput) {
     const name = input.name?.trim()
     if (!name) throw apiError('Schedule name is required')
     const sourceIds = [...new Set(input.sourceIds ?? [])]
@@ -293,9 +304,17 @@ export class ScheduleService {
     }
 
     const [sources, pipelines] = await Promise.all([
-      db.researchSource.findMany({ where: { id: { in: sourceIds } } }),
+      db.researchSource.findMany({
+        where: {
+          id: { in: sourceIds },
+          OR: [
+            { workspaceId: context.workspaceId },
+            { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } },
+          ],
+        },
+      }),
       db.pipeline.findMany({
-        where: { id: { in: actions.map((action) => action.pipelineId) } },
+        where: { id: { in: actions.map((action) => action.pipelineId) }, workspaceId: context.workspaceId },
         include: { variables: true },
       }),
     ])

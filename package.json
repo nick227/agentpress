@@ -21,7 +21,9 @@
     "db:push": "pnpm --filter @project/db db:push",
     "db:seed": "pnpm --filter @project/db db:seed",
     "db:studio": "pnpm --filter @project/db db:studio",
-    "schedules:backfill": "tsx scripts/backfill-schedules.ts"
+    "schedules:backfill": "tsx scripts/backfill-schedules.ts",
+    "workspaces:backfill": "tsx scripts/backfill-workspaces.ts",
+    "workspaces:migrate": "pnpm workspaces:backfill && pnpm db:push"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.0",

@@ -14,6 +14,18 @@ export class AuthService {
       data: {
         email: data.email,
         passwordHash: hash,
+        workspaceMemberships: {
+          create: {
+            role: 'OWNER',
+            workspace: {
+              create: {
+                name: data.email.split('@')[0] || 'Personal',
+                slug: `personal-${randomUUID()}`,
+                type: 'PERSONAL',
+              },
+            },
+          },
+        },
       },
     })
     const session = await this._createSession(user.id)

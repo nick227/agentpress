@@ -1,4 +1,5 @@
 import { db } from '@project/db'
+import { authorization } from '../services/AuthorizationService'
 
 export async function bearerAuth(request: any, _reply: any, _params: any) {
   const token =
@@ -17,4 +18,6 @@ export async function bearerAuth(request: any, _reply: any, _params: any) {
   }
 
   request.user = session.user
+  const requestedWorkspaceId = (request.headers['x-workspace-id'] ?? request.params?.workspaceId) as string | undefined
+  request.auth = await authorization.contextFor(session.user.id, requestedWorkspaceId)
 }

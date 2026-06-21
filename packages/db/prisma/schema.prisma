@@ -22,6 +22,7 @@ model User {
   createdPipelineRuns    PipelineRun[]               @relation("PipelineRunCreator")
   createdSchedules       Schedule[]                  @relation("ScheduleCreator")
   feedSubscriptions      WorkspaceFeedSubscription[] @relation("FeedSubscriptionCreator")
+  auditEvents            AuditEvent[]                @relation("AuditActor")
 }
 
 enum WorkspaceType {
@@ -42,6 +43,11 @@ enum Visibility {
   PUBLIC
 }
 
+enum PromptKind {
+  TRANSFORMATIONAL
+  CONTENT
+}
+
 model Workspace {
   id                String                      @id @default(cuid())
   type              WorkspaceType
@@ -56,6 +62,24 @@ model Workspace {
   pipelineRuns      PipelineRun[]
   schedules         Schedule[]
   feedSubscriptions WorkspaceFeedSubscription[]
+  prompts           Prompt[]
+  auditEvents       AuditEvent[]
+}
+
+model AuditEvent {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorUserId String?
+  actor       User?     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action      String
+  targetType  String
+  targetId    String
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([targetType, targetId])
 }
 
 model WorkspaceMember {
@@ -82,7 +106,7 @@ model Session {
 model Pipeline {
   id               String                   @id @default(cuid())
   name             String
-  slug             String                   @unique
+  slug             String
   description      String?
   category         String?
   status           String                   @default("draft")
@@ -113,7 +137,10 @@ model Pipeline {
   imageAssets      ImageAsset[]
   scheduleActions  SchedulePipelineAction[]
   feedLinks        PipelineFeed[]
+  loop             PipelineLoop?
+  batches          PipelineRunBatch[]
 
+  @@unique([workspaceId, slug])
   @@index([workspaceId, visibility, updatedAt])
 }
 
@@ -197,8 +224,12 @@ model PipelineRun {
   publishAttempts             PublishAttempt[]
   schedulePipelineExecutionId String?                    @unique
   schedulePipelineExecution   SchedulePipelineExecution? @relation(fields: [schedulePipelineExecutionId], references: [id], onDelete: SetNull)
+  batchId                     String?
+  batch                       PipelineRunBatch?          @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  loopIndex                   Int?
 
   @@index([workspaceId, startedAt])
+  @@index([batchId])
 }
 
 model AgentRun {
@@ -274,14 +305,14 @@ model PublishAttempt {
 model ResearchSource {
   id                     String                          @id @default(cuid())
   name                   String
-  slug                   String                          @unique
+  slug                   String
   category               String?
   sourceType             String                          @default("youtube")
   sourceUrl              String                          @map("youtubeUrl")
   externalId             String?                         @map("channelId")
   status                 String                          @default("active")
   defaultSummaryPromptId String?
-  defaultSummaryPrompt   SummaryPrompt?                  @relation(fields: [defaultSummaryPromptId], references: [id], onDelete: SetNull)
+  defaultSummaryPrompt   Prompt?                         @relation("ResearchSourceDefaultPrompt", fields: [defaultSummaryPromptId], references: [id], onDelete: SetNull)
   lastChecked            DateTime?
   createdAt              DateTime                        @default(now())
   updatedAt              DateTime                        @updatedAt
@@ -295,7 +326,9 @@ model ResearchSource {
   scheduleTriggerSources SchedulePipelineTriggerSource[]
   subscriptions          WorkspaceFeedSubscription[]
   pipelineLinks          PipelineFeed[]
+  pipelineLoops          PipelineLoop[]
 
+  @@unique([workspaceId, slug])
   @@index([workspaceId, visibility, updatedAt])
 }
 
@@ -476,30 +509,16 @@ model ResearchItem {
   @@unique([sourceId, externalId], map: "ResearchItem_sourceId_videoId_key")
 }
 
-model SummaryPrompt {
-  id              String            @id @default(cuid())
-  name            String
-  description     String?
-  systemPrompt    String            @db.Text
-  userPrompt      String            @db.Text
-  isDefault       Boolean           @default(false)
-  sortOrder       Int               @default(0)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  summaries       ResearchSummary[]
-  researchSources ResearchSource[]
-}
-
 model ResearchSummary {
-  id        String        @id @default(cuid())
+  id        String       @id @default(cuid())
   itemId    String
-  item      ResearchItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item      ResearchItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
   promptId  String
-  prompt    SummaryPrompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
-  text      String?       @db.Text
-  status    String        @default("pending")
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  prompt    Prompt       @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  text      String?      @db.Text
+  status    String       @default("pending")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@unique([itemId, promptId])
 }
@@ -520,4 +539,72 @@ model LibraryAgent {
   sourceRunId  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Prompt {
+  id                        String            @id @default(cuid())
+  slug                      String            @unique
+  name                      String
+  description               String?           @db.Text
+  kind                      PromptKind        @default(TRANSFORMATIONAL)
+  category                  String            @default("general")
+  tags                      Json              @default("[]")
+  systemPrompt              String            @db.Text
+  userPrompt                String            @db.Text
+  uid                       String?
+  outputTarget              String?
+  outputFormat              String?           @default("text")
+  visibility                Visibility        @default(PRIVATE)
+  workspaceId               String?
+  workspace                 Workspace?        @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  promptHash                String            @unique
+  usageCount                Int               @default(0)
+  sortOrder                 Int               @default(0)
+  isDefault                 Boolean           @default(false)
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+  defaultForResearchSources ResearchSource[]  @relation("ResearchSourceDefaultPrompt")
+  researchSummaries         ResearchSummary[]
+
+  @@index([kind])
+  @@index([category])
+}
+
+model PipelineLoop {
+  id             String          @id @default(cuid())
+  pipelineId     String          @unique
+  pipeline       Pipeline        @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  loopType       String          @default("research_feed")
+  sourceId       String?
+  source         ResearchSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  cursorMode     String          @default("all_stored")
+  cursorAt       DateTime?
+  dateRangeStart DateTime?
+  dateRangeEnd   DateTime?
+  variableMap    Json?
+  maxBatchSize   Int             @default(50)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model PipelineRunBatch {
+  id             String        @id @default(cuid())
+  pipelineId     String
+  pipeline       Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  label          String?
+  loopType       String        @default("research_feed")
+  sourceId       String?
+  sourceName     String?
+  cursorMode     String?
+  dryRun         Boolean       @default(true)
+  status         String        @default("queued")
+  totalCount     Int           @default(0)
+  completedCount Int           @default(0)
+  failedCount    Int           @default(0)
+  skippedCount   Int           @default(0)
+  createdAt      DateTime      @default(now())
+  completedAt    DateTime?
+  runs           PipelineRun[]
+
+  @@index([pipelineId, createdAt])
 }

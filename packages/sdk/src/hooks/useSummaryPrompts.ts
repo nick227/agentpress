@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getApiClient, ApiError } from '../client'
 
+/** @deprecated Use usePrompts({ kind: 'CONTENT' }) — kept for legacy /api/summary-prompts consumers */
 export function useSummaryPrompts() {
   return useQuery({
     queryKey: ['summary-prompts'],
@@ -20,7 +21,10 @@ export function useCreateSummaryPrompt() {
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['summary-prompts'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['summary-prompts'] })
+      queryClient.invalidateQueries({ queryKey: ['prompts'] })
+    },
   })
 }
 
@@ -35,7 +39,10 @@ export function useUpdateSummaryPrompt() {
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['summary-prompts'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['summary-prompts'] })
+      queryClient.invalidateQueries({ queryKey: ['prompts'] })
+    },
   })
 }
 
@@ -49,6 +56,9 @@ export function useDeleteSummaryPrompt() {
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['summary-prompts'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['summary-prompts'] })
+      queryClient.invalidateQueries({ queryKey: ['prompts'] })
+    },
   })
 }

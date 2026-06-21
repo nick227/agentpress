@@ -6,6 +6,7 @@ import {
   templateAgentToDefinition,
 } from '@project/content'
 import { PipelineService } from './PipelineService'
+import type { AuthContext } from './AuthorizationService'
 
 const pipelines = new PipelineService()
 
@@ -18,18 +19,18 @@ export class ContentService {
     return getVariablePacks()
   }
 
-  async applyTemplate(templateId: string, name?: string) {
+  async applyTemplate(context: AuthContext, templateId: string, name?: string) {
     const template = getTemplate(templateId)
     if (!template) throw Object.assign(new Error('Template not found'), { statusCode: 404 })
 
-    const pipeline = await pipelines.create({
+    const pipeline = await pipelines.create(context, {
       name: name ?? template.name,
       category: template.category,
     })
 
     const pipelineId = pipeline.id
 
-    const withContent = await pipelines.update(pipelineId, {
+    const withContent = await pipelines.update(context, pipelineId, {
       variables: template.variables.map((v, i) => ({
         key: v.key,
         label: v.label,

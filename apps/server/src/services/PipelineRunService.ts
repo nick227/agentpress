@@ -17,6 +17,7 @@ import {
 } from './WordPressService'
 import { resolveExistingPath } from './runImagePaths'
 import { ResearchContextService } from './ResearchContextService'
+import { audit } from './AuditService'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
 
 const ai = new OpenAIService()
@@ -45,12 +46,18 @@ export function decrypt(encrypted: string): string {
 }
 
 interface StartRunOptions {
+  workspaceId: string
+  createdByUserId?: string
   dryRun?: boolean
   title?: string
   forceRegenerate?: boolean
   forceRegenerateAgentUids?: string[]
   schedulePipelineExecutionId?: string
   researchItemOverrides?: Record<string, string>
+  batchId?: string
+  loopIndex?: number
+  // When true, startRun awaits full execution before returning (used by batch service for sequential runs)
+  awaitExecution?: boolean
 }
 
 interface InlineImageMeta {
@@ -216,9 +223,12 @@ function resolveThumbnailLocalPath(post: GeneratedPost, outputFolder?: string | 
 }
 
 export class PipelineRunService {
-  async startRun(idOrSlug: string, variables: Record<string, unknown>, dryRunOverrideOrOptions?: boolean | StartRunOptions) {
+  async startRun(idOrSlug: string, variables: Record<string, unknown>, options: StartRunOptions) {
     const pipeline = await db.pipeline.findFirst({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      where: {
+        workspaceId: options.workspaceId,
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
       include: {
         variables: { orderBy: { sortOrder: 'asc' } },
         agents: { orderBy: { sortOrder: 'asc' }, where: { enabled: true }, include: { selectedImageAsset: true } },
@@ -226,10 +236,6 @@ export class PipelineRunService {
     })
 
     if (!pipeline) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
-
-    const options: StartRunOptions = typeof dryRunOverrideOrOptions === 'object'
-      ? dryRunOverrideOrOptions
-      : { dryRun: dryRunOverrideOrOptions }
 
     if (options.schedulePipelineExecutionId) {
       const existing = await db.pipelineRun.findUnique({
@@ -253,6 +259,10 @@ export class PipelineRunService {
           variables: runVariables as any,
           destinationId: dryRun ? null : (pipeline.destinationId ?? null),
           schedulePipelineExecutionId: options.schedulePipelineExecutionId,
+          workspaceId: pipeline.workspaceId,
+          createdByUserId: options.createdByUserId,
+          batchId: options.batchId ?? null,
+          loopIndex: options.loopIndex ?? null,
         },
       })
     } catch (error: any) {
@@ -262,6 +272,20 @@ export class PipelineRunService {
       })
       if (!existing) throw error
       return existing
+    }
+
+    await audit.record({ workspaceId: pipeline.workspaceId, actorUserId: options.createdByUserId, action: 'pipeline.run_started', targetType: 'pipelineRun', targetId: run.id, metadata: { pipelineId: pipeline.id, dryRun } })
+
+    if (options.awaitExecution) {
+      try {
+        await this._executeRun(run.id, pipeline, runVariables, dryRun, options)
+      } catch (err: any) {
+        await db.pipelineRun.update({
+          where: { id: run.id },
+          data: { status: 'failed', error: String(err.message), completedAt: new Date() },
+        })
+      }
+      return db.pipelineRun.findUniqueOrThrow({ where: { id: run.id } }) as any
     }
 
     this._executeRun(run.id, pipeline, runVariables, dryRun, options).catch(async (err) => {
@@ -279,7 +303,7 @@ export class PipelineRunService {
     pipeline: any,
     variables: Record<string, unknown>,
     dryRun: boolean,
-    options: StartRunOptions = {},
+    options: StartRunOptions,
   ) {
     const resolvedResearch = await researchContext.resolveForPipeline(pipeline, options.researchItemOverrides)
     const runVariables = { ...variables, ...resolvedResearch }
@@ -554,7 +578,25 @@ export class PipelineRunService {
   }): Promise<string> {
     if (input.dryRun || !input.pipeline.destinationId) return 'completed'
 
-    const destination = await db.destination.findUnique({ where: { id: input.pipeline.destinationId } })
+    const runBoundary = await db.pipelineRun.findUnique({
+      where: { id: input.runId },
+      select: { createdByUserId: true, schedulePipelineExecutionId: true, workspaceId: true },
+    })
+    if (!runBoundary) throw new Error('Run not found')
+    if (!runBoundary.schedulePipelineExecutionId && runBoundary.createdByUserId) {
+      const activeExecutor = await db.workspaceMember.count({
+        where: {
+          workspaceId: runBoundary.workspaceId,
+          userId: runBoundary.createdByUserId,
+          role: { in: ['OWNER', 'ADMIN', 'EDITOR'] },
+        },
+      })
+      if (activeExecutor === 0) throw Object.assign(new Error('Run creator no longer has publishing permission'), { statusCode: 403 })
+    }
+
+    const destination = await db.destination.findFirst({
+      where: { id: input.pipeline.destinationId, workspaceId: input.pipeline.workspaceId },
+    })
     if (!destination) return 'completed'
 
     const attempt = await db.publishAttempt.create({
@@ -795,9 +837,9 @@ export class PipelineRunService {
     }
   }
 
-  async publishRun(runId: string) {
-    const run = await db.pipelineRun.findUnique({
-      where: { id: runId },
+  async publishRun(workspaceId: string, runId: string) {
+    const run = await db.pipelineRun.findFirst({
+      where: { id: runId, workspaceId },
       include: {
         pipeline: true,
         assets: { where: { type: 'image' }, select: { filename: true, path: true } },
@@ -809,7 +851,7 @@ export class PipelineRunService {
     const destinationId = run.pipeline.destinationId
     if (!destinationId) throw Object.assign(new Error('No destination configured on pipeline'), { statusCode: 400 })
 
-    const destination = await db.destination.findUnique({ where: { id: destinationId } })
+    const destination = await db.destination.findFirst({ where: { id: destinationId, workspaceId } })
     if (!destination) throw Object.assign(new Error('Destination not found'), { statusCode: 404 })
 
     const attempt = await db.publishAttempt.create({

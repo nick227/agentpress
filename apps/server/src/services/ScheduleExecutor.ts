@@ -65,6 +65,22 @@ export class ScheduleExecutor {
       })
 
       const successfulSources = new Set<string>()
+      if (execution.schedule.pipelineActions.some((action) => action.pipeline.workspaceId !== execution.schedule.workspaceId)) {
+        throw new Error('Schedule contains a pipeline from another workspace')
+      }
+      const externalSourceIds = execution.schedule.sources
+        .filter(({ source }) => source.workspaceId !== execution.schedule.workspaceId)
+        .map(({ source }) => source.id)
+      if (externalSourceIds.length > 0) {
+        const allowed = await db.workspaceFeedSubscription.count({
+          where: {
+            workspaceId: execution.schedule.workspaceId,
+            sourceId: { in: externalSourceIds },
+            source: { visibility: 'PUBLIC' },
+          },
+        })
+        if (allowed !== externalSourceIds.length) throw new Error('Schedule contains an inaccessible research feed')
+      }
       let hadFailure = false
       for (const { source } of execution.schedule.sources) {
         await this.renewLease(executionId)
@@ -80,7 +96,7 @@ export class ScheduleExecutor {
           update: { status: 'running', startedAt: new Date(), completedAt: null, newCount: 0, updatedCount: 0, error: null },
         })
         try {
-          const result = await this.research.checkLatest(source.id)
+          const result = await this.research.checkLatest(null, source.id)
           if (!result.checked) throw new Error(result.message ?? 'Research feed check failed')
           successfulSources.add(source.id)
           await db.scheduleResearchCheck.update({
@@ -208,6 +224,8 @@ export class ScheduleExecutor {
         })
         try {
           await this.pipelineRuns.startRun(action.pipeline.id, variables, {
+            workspaceId: execution.schedule.workspaceId,
+            createdByUserId: execution.schedule.createdByUserId ?? undefined,
             schedulePipelineExecutionId: actionExecution.id,
             researchItemOverrides: pinnedBySource,
           })

@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowDown, ArrowUp, BookOpen, FileText, Image, Package, Plus, Type } from 'lucide-react'
+import { AlertCircle, ArrowDown, ArrowUp, BookOpen, CheckCircle2, FileText, Image, Layers, Loader2, Package, Plus, Type, XCircle } from 'lucide-react'
 import { BUILTIN_AGENT_DEFINITIONS, appendAgentDefinitionToPipelineInputs, type AgentDefinition } from '@project/content'
 import type { components } from '@project/sdk'
-import { useDestinations, useUpdateDestination, useUpdatePipeline, useWordPressCategories } from '@project/sdk'
+import { useDestinations, usePipelineBatches, useUpdateDestination, useUpdatePipeline, useWordPressCategories } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { VariablePackPicker } from '@/features/content/VariablePackPicker'
@@ -363,9 +363,20 @@ function ComposerRows({ pipeline, rows, onMove, onToggle }: { pipeline: Pipeline
 
 export function RunsSection({ pipeline, runs }: { pipeline: Pipeline; runs: Run[] }) {
   const { onSelect } = usePipelineSelection()
+  const { data: batchesData } = usePipelineBatches(pipeline.id)
+  const batches = batchesData?.data ?? []
+
   return (
     <section id="runs" className="space-y-3 mt-8 scroll-mt-6">
-      <SectionHeader title="Runs" description="Newest pipeline executions first." />
+      {batches.length > 0 && (
+        <div className="space-y-3">
+          <SectionHeader title="Batch runs" description="Each batch creates one run per research item." />
+          <div className="divide-y rounded border bg-surface">
+            {batches.map((batch) => <BatchRow key={batch.id} batch={batch} />)}
+          </div>
+        </div>
+      )}
+      <SectionHeader title={batches.length > 0 ? 'Individual runs' : 'Runs'} description="Newest pipeline executions first." />
       {runs.length === 0 ? <EmptyRow text="No runs yet." /> : (
         <div className="divide-y rounded border bg-surface">
           {runs.map((run) => <RunRow key={run.id} run={run} fallbackTitle={pipeline.name} onClick={() => onSelect({ type: 'run', id: run.id })} />)}
@@ -373,6 +384,46 @@ export function RunsSection({ pipeline, runs }: { pipeline: Pipeline; runs: Run[
       )}
     </section>
   )
+}
+
+type PipelineRunBatch = components['schemas']['PipelineRunBatch']
+
+function BatchRow({ batch }: { batch: PipelineRunBatch }) {
+  const isActive = batch.status === 'running' || batch.status === 'queued'
+  const pct = batch.totalCount > 0 ? Math.round((batch.completedCount / batch.totalCount) * 100) : 0
+
+  return (
+    <div className="px-3 py-2.5 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <Layers size={12} className="text-muted-foreground shrink-0" />
+        <span className="text-sm font-medium flex-1 truncate">
+          {batch.sourceName ?? 'Batch'} · {batch.totalCount} items
+        </span>
+        <BatchStatusBadge status={batch.status} />
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-green-500 transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-[10px] text-muted-foreground shrink-0">
+          {batch.completedCount}/{batch.totalCount}
+          {batch.failedCount > 0 && ` · ${batch.failedCount} failed`}
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground">{new Date(batch.createdAt).toLocaleString()}</p>
+    </div>
+  )
+}
+
+function BatchStatusBadge({ status }: { status: string }) {
+  if (status === 'running') return <span className="flex items-center gap-1 text-[10px] text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded"><Loader2 size={10} className="animate-spin" />Running</span>
+  if (status === 'completed') return <span className="flex items-center gap-1 text-[10px] text-green-700 bg-green-100 px-1.5 py-0.5 rounded"><CheckCircle2 size={10} />Done</span>
+  if (status === 'completed_with_failures') return <span className="flex items-center gap-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded"><AlertCircle size={10} />Partial</span>
+  if (status === 'failed') return <span className="flex items-center gap-1 text-[10px] text-red-700 bg-red-100 px-1.5 py-0.5 rounded"><XCircle size={10} />Failed</span>
+  return <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{status}</span>
 }
 
 function RunRow({ run, fallbackTitle, onClick }: { run: Run; fallbackTitle: string; onClick: () => void }) {

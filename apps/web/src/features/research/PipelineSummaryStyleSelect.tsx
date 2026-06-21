@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { useSummaryPrompts, useUpdateResearchSource } from '@project/sdk'
+import { usePrompts, useUpdateResearchSource } from '@project/sdk'
 import type { components } from '@project/sdk'
 
 type ResearchSource = components['schemas']['ResearchSource']
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function PipelineSummaryStyleSelect({ source }: Props) {
-  const { data: promptsData } = useSummaryPrompts()
+  const { data: promptsData } = usePrompts({ kind: 'CONTENT' })
   const updateSource = useUpdateResearchSource()
   const prompts = promptsData?.data ?? []
   const globalDefault = prompts.find((prompt) => prompt.isDefault) ?? prompts[0]

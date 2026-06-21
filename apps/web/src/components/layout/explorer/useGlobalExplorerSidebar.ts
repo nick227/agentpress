@@ -35,6 +35,12 @@ export function useGlobalExplorerSidebar() {
     () => needle ? resources.destinations.filter((destination) => destination.name.toLowerCase().includes(needle)) : resources.destinations,
     [resources.destinations, needle],
   )
+  const visiblePrompts = useMemo(
+    () => needle
+      ? resources.prompts.filter((prompt) => `${prompt.name} ${prompt.category}`.toLowerCase().includes(needle))
+      : resources.prompts,
+    [resources.prompts, needle],
+  )
   const visibleRuns = useMemo(
     () => needle
       ? resources.runs.filter((run) => (run.pipelineName + ' ' + (run.title ?? '')).toLowerCase().includes(needle))
@@ -61,6 +67,7 @@ export function useGlobalExplorerSidebar() {
     pipelines: visiblePipelines,
     schedules: visibleSchedules,
     destinations: visibleDestinations,
+    prompts: visiblePrompts,
     runs: visibleRuns,
     researchGroups: researchGroups.map((group) => ({
       ...group,
@@ -70,15 +77,18 @@ export function useGlobalExplorerSidebar() {
     hasResults: visiblePipelines.length > 0
       || visibleSchedules.length > 0
       || visibleSources.length > 0
+      || visiblePrompts.length > 0
       || visibleDestinations.length > 0
       || visibleRuns.length > 0,
     pipelinesFetching: resources.pipelinesFetching,
     schedulesFetching: resources.schedulesFetching,
     destinationsFetching: resources.destinationsFetching,
+    promptsFetching: resources.promptsFetching,
     runsFetching: resources.runsFetching,
     refreshPipelines: resources.refreshPipelines,
     refreshSchedules: resources.refreshSchedules,
     refreshDestinations: resources.refreshDestinations,
+    refreshPrompts: resources.refreshPrompts,
     refreshRuns: resources.refreshRuns,
     toggleResearchCategory,
     checkResearch: researchRefresh.checkResearch,

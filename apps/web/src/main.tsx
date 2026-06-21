@@ -10,6 +10,7 @@ import './index.css'
 
 createApiClient({
   baseUrl: import.meta.env.VITE_API_URL ?? '',
+  getWorkspaceId: () => localStorage.getItem('agentpress.workspaceId'),
 })
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

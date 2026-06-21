@@ -2,11 +2,13 @@ import { db } from '@project/db'
 import { ResearchService } from './ResearchService'
 import { formatResearchCheckMessage } from './researchCheckMessage'
 import { PipelineRunService } from './PipelineRunService'
+import type { AuthContext } from './AuthorizationService'
 
 export class AccountService {
-  async navigation() {
+  async navigation(context: AuthContext) {
     const [pipelines, schedules, researchSources, destinations] = await Promise.all([
       db.pipeline.findMany({
+        where: { workspaceId: context.workspaceId },
         orderBy: { name: 'asc' },
         select: {
           id: true,
@@ -17,11 +19,12 @@ export class AccountService {
         },
       }),
       db.schedule.findMany({
+        where: { workspaceId: context.workspaceId },
         orderBy: { name: 'asc' },
         include: { executions: { orderBy: { createdAt: 'desc' }, take: 1, select: { status: true, createdAt: true } } },
       }),
-      db.researchSource.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, slug: true, status: true, lastChecked: true } }),
-      db.destination.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, type: true } }),
+      db.researchSource.findMany({ where: { OR: [{ workspaceId: context.workspaceId }, { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } }] }, orderBy: { name: 'asc' }, select: { id: true, name: true, slug: true, status: true, lastChecked: true } }),
+      db.destination.findMany({ where: { workspaceId: context.workspaceId }, orderBy: { name: 'asc' }, select: { id: true, name: true, type: true } }),
     ])
     return {
       pipelines: pipelines.map((pipeline) => ({
@@ -51,19 +54,19 @@ export class AccountService {
     }
   }
 
-  async sync() {
+  async sync(context: AuthContext) {
     const research = new ResearchService()
     const runs = new PipelineRunService()
 
     const sources = await db.researchSource.findMany({
-      where: { status: 'active' },
+      where: { status: 'active', workspaceId: context.workspaceId },
     })
 
     const researchResults: Array<{ sourceName: string; sourceId: string; newItem: boolean; updatedCount?: number; itemTitle?: string; statusMessage?: string; error?: string }> = []
 
     for (const source of sources) {
       try {
-        const result = await research.checkLatest(source.id)
+        const result = await research.checkLatest(context, source.id)
         const statusMessage = formatResearchCheckMessage(source.sourceType, result)
         const transcriptFailed = source.sourceType === 'youtube' && result.latest && !result.latest.hasTranscript
         researchResults.push({
@@ -81,7 +84,7 @@ export class AccountService {
     }
 
     const pipelines = await db.pipeline.findMany({
-      where: { status: { not: 'paused' } },
+      where: { status: { not: 'paused' }, workspaceId: context.workspaceId },
       include: {
         variables: { orderBy: { sortOrder: 'asc' } },
         agents: { where: { enabled: true } },
@@ -105,7 +108,7 @@ export class AccountService {
         for (const v of pipeline.variables) {
           defaultVars[v.key] = v.defaultValue ?? ''
         }
-        const run = await runs.startRun(pipeline.id, defaultVars)
+        const run = await runs.startRun(pipeline.id, defaultVars, { workspaceId: context.workspaceId, createdByUserId: context.userId })
         pipelineResults.push({ pipelineName: pipeline.name, pipelineId: pipeline.id, status: 'started', runId: run.id })
       } catch (err: any) {
         pipelineResults.push({ pipelineName: pipeline.name, pipelineId: pipeline.id, status: 'skipped', reason: err.message ?? 'Failed to start' })

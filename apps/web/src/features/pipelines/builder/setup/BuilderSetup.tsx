@@ -10,6 +10,7 @@ import {
   VariablesSection,
 } from './BuilderSetupSections'
 import { RunPipelineControls } from './RunPipelineControls'
+import { LoopConfig } from './LoopConfig'
 
 type Pipeline = components['schemas']['Pipeline']
 type Run = components['schemas']['PipelineRun']
@@ -63,6 +64,7 @@ export function BuilderSetup({ pipeline, pipelineId, runs, onRunCreated }: Props
             <VariablesSection pipeline={pipeline} pipelineId={pipelineId} />
             <AgentsSection pipeline={pipeline} pipelineId={pipelineId} />
             <BodyComposerSection pipeline={pipeline} pipelineId={pipelineId} />
+            <LoopConfig pipeline={pipeline} pipelineId={pipelineId} />
             <RunsSection pipeline={pipeline} runs={runs} />
           </div>
         </div>

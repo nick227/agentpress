@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Globe, Play, Zap } from 'lucide-react'
+import { Globe, Layers, Play, Zap } from 'lucide-react'
 import type { components } from '@project/sdk'
-import { useDestinations, useStartPipelineRun } from '@project/sdk'
+import { useDestinations, useStartPipelineRun, usePreviewBatch, useStartBatch } from '@project/sdk'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { BatchPreviewModal } from './BatchPreviewModal'
 
 type Pipeline = components['schemas']['Pipeline']
 type Destination = components['schemas']['Destination']
+type BatchPreview = components['schemas']['BatchPreview']
 
 interface Props {
   pipeline: Pipeline
@@ -19,13 +21,30 @@ interface Props {
 }
 
 export function RunPipelineControls(props: Props) {
+  const isBatchMode = Boolean(props.pipeline.loop)
   const startRun = useStartPipelineRun()
+  const previewBatch = usePreviewBatch()
+  const startBatch = useStartBatch()
   const { data } = useDestinations()
   const [open, setOpen] = useState(false)
+  const [batchPreview, setBatchPreview] = useState<BatchPreview | null>(null)
   const [forceRegenerate, setForceRegenerate] = useState(false)
   const [forcedAgentUids, setForcedAgentUids] = useState<string[]>([])
   const [runVariables, setRunVariables] = useState<Record<string, string>>(() => getRunVariableDefaults(props.pipeline))
   const destination = (data?.data ?? []).find((item) => item.id === props.pipeline.destinationId)
+
+  async function handleRunClick() {
+    if (isBatchMode) {
+      try {
+        const result = await previewBatch.mutateAsync({ pipelineId: props.pipelineId })
+        setBatchPreview(result.data)
+      } catch (err: any) {
+        toast.error(err.message ?? 'Failed to preview batch')
+      }
+    } else {
+      setOpen(true)
+    }
+  }
 
   async function handleRun() {
     const result = await startRun.mutateAsync({
@@ -43,18 +62,41 @@ export function RunPipelineControls(props: Props) {
     props.onRunCreated(result.data.id)
   }
 
+  async function handleBatchConfirm() {
+    await startBatch.mutateAsync({
+      pipelineId: props.pipelineId,
+      dryRun: props.dryRun,
+    })
+    toast.success(`Batch started — ${batchPreview?.itemCount ?? 0} runs queued`)
+    setBatchPreview(null)
+  }
+
   function toggleAgent(uid: string) {
     setForcedAgentUids((current) => current.includes(uid) ? current.filter((item) => item !== uid) : [...current, uid])
   }
+
+  const runLabel = isBatchMode ? 'Run batch' : 'Run'
+  const modeLabel = isBatchMode
+    ? `Batch mode · ${props.dryRun ? 'dry' : 'live'}`
+    : (props.pipeline.dryRun ? 'Dry run mode' : 'Live run mode')
 
   return (
     <>
       <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur px-6 py-3">
         <div className="max-w-6xl flex items-center justify-end gap-4">
-          <p className="min-w-0 text-xs text-muted-foreground truncate">{props.pipeline.dryRun ? 'Dry run mode' : 'Live run mode'}</p>
-          <Button onClick={() => setOpen(true)} size="sm" className="gap-1.5 shrink-0"><Play size={13} /> Run</Button>
+          <p className="min-w-0 text-xs text-muted-foreground truncate">{modeLabel}</p>
+          <Button
+            onClick={handleRunClick}
+            size="sm"
+            className="gap-1.5 shrink-0"
+            loading={previewBatch.isPending}
+          >
+            {isBatchMode ? <Layers size={13} /> : <Play size={13} />}
+            {runLabel}
+          </Button>
         </div>
       </div>
+
       {open && (
         <RunPipelineDialog
           {...props}
@@ -68,6 +110,17 @@ export function RunPipelineControls(props: Props) {
           pending={startRun.isPending}
           onRun={handleRun}
           onClose={() => setOpen(false)}
+        />
+      )}
+
+      {batchPreview && props.pipeline.loop && (
+        <BatchPreviewModal
+          preview={batchPreview}
+          loop={props.pipeline.loop}
+          dryRun={props.dryRun}
+          pending={startBatch.isPending}
+          onConfirm={handleBatchConfirm}
+          onCancel={() => setBatchPreview(null)}
         />
       )}
     </>

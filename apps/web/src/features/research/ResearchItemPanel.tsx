@@ -5,7 +5,7 @@ import {
   useResearchItem,
   useResearchSummaries,
   useSummarizeResearchItem,
-  useSummaryPrompts,
+  usePrompts,
   useRefreshResearchItemContent,
 } from '@project/sdk'
 import type { components } from '@project/sdk'
@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { canRetryTranscript, contentStatusMessage, resolveContentStatus } from './contentStatus'
 
 type ResearchSummary = components['schemas']['ResearchSummary']
-type SummaryPrompt = components['schemas']['SummaryPrompt']
+type ContentPrompt = components['schemas']['Prompt']
 
 interface Props {
   itemId: string
@@ -25,7 +25,7 @@ interface Props {
 export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }: Props) {
   const { data: itemData, isLoading: itemLoading } = useResearchItem(itemId)
   const { data: summariesData } = useResearchSummaries(itemId)
-  const { data: promptsData } = useSummaryPrompts()
+  const { data: promptsData } = usePrompts({ kind: 'CONTENT' })
   const refreshContent = useRefreshResearchItemContent()
   const [showTranscript, setShowTranscript] = useState(false)
 
@@ -153,7 +153,7 @@ function SummaryCard({
   itemId,
   hasTranscript,
 }: {
-  prompt: SummaryPrompt
+  prompt: ContentPrompt
   summary: ResearchSummary | undefined
   itemId: string
   hasTranscript: boolean

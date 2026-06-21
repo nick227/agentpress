@@ -1,5 +1,7 @@
 import { db, Prisma } from '@project/db'
 import { parseCategoryIds } from './serviceUtils'
+import { authorization, type AuthContext } from './AuthorizationService'
+import { audit } from './AuditService'
 
 function toSlug(name: string): string {
   return name
@@ -8,11 +10,18 @@ function toSlug(name: string): string {
     .replace(/^-|-$/g, '')
 }
 
-async function uniqueSlug(base: string): Promise<string> {
+function assertPublicPromptsSafe(agents: Array<{ systemPrompt?: string; userPrompt?: string }>) {
+  const secretPattern = /(?:sk-[a-z0-9_-]{16,}|(?:api[_ -]?key|password|secret|token)\s*[:=]\s*[^\s{][^\s]{5,})/i
+  if (agents.some((agent) => secretPattern.test(`${agent.systemPrompt ?? ''}\n${agent.userPrompt ?? ''}`))) {
+    throw Object.assign(new Error('Remove embedded credentials before making this pipeline public'), { statusCode: 400 })
+  }
+}
+
+async function uniqueSlug(base: string, workspaceId: string): Promise<string> {
   let slug = base
   let suffix = 0
   while (true) {
-    const existing = await db.pipeline.findUnique({ where: { slug } })
+    const existing = await db.pipeline.findFirst({ where: { slug, workspaceId } })
     if (!existing) return slug
     suffix++
     slug = `${base}-${suffix}`
@@ -28,6 +37,7 @@ function formatPipeline(p: any) {
     description: p.description ?? undefined,
     category: p.category ?? undefined,
     status: p.status,
+    visibility: p.visibility,
     destinationId: p.destinationId ?? undefined,
     wpCategoryIds: wpCategoryIds.length > 0 ? wpCategoryIds : undefined,
     bodyComposer: p.bodyComposer ?? undefined,
@@ -57,23 +67,39 @@ function formatPipeline(p: any) {
       enabled: a.enabled,
       sortOrder: a.sortOrder,
     })),
+    loop: p.loop ? {
+      id: p.loop.id,
+      pipelineId: p.loop.pipelineId,
+      loopType: p.loop.loopType,
+      sourceId: p.loop.sourceId ?? undefined,
+      sourceName: (p.loop as any).source?.name ?? undefined,
+      cursorMode: p.loop.cursorMode,
+      cursorAt: p.loop.cursorAt ?? undefined,
+      dateRangeStart: p.loop.dateRangeStart ?? undefined,
+      dateRangeEnd: p.loop.dateRangeEnd ?? undefined,
+      variableMap: p.loop.variableMap ?? undefined,
+      maxBatchSize: p.loop.maxBatchSize,
+      createdAt: p.loop.createdAt,
+      updatedAt: p.loop.updatedAt,
+    } : undefined,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   }
 }
 
 export class PipelineService {
-  private async resolveId(idOrSlug: string): Promise<string> {
+  private async resolveId(context: AuthContext, idOrSlug: string): Promise<string> {
     const p = await db.pipeline.findFirst({
-      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-      select: { id: true },
+      where: { workspaceId: context.workspaceId, OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      select: { id: true, workspaceId: true },
     })
     if (!p) throw Object.assign(new Error('Pipeline not found'), { statusCode: 404 })
     return p.id
   }
 
-  async list() {
+  async list(context: AuthContext) {
     const pipelines = await db.pipeline.findMany({
+      where: { workspaceId: context.workspaceId },
       orderBy: { createdAt: 'desc' },
       include: {
         _count: { select: { agents: true } },
@@ -94,14 +120,15 @@ export class PipelineService {
     }))
   }
 
-  async get(pipelineId: string) {
+  async get(context: AuthContext, pipelineId: string) {
     const p = await db.pipeline.findFirst({
-      where: { OR: [{ id: pipelineId }, { slug: pipelineId }] },
+      where: { workspaceId: context.workspaceId, OR: [{ id: pipelineId }, { slug: pipelineId }] },
 
       include: {
         variables: { orderBy: { sortOrder: 'asc' } },
         agents: { orderBy: { sortOrder: 'asc' } },
         runs: { orderBy: { startedAt: 'desc' }, take: 10 },
+        loop: { include: { source: { select: { name: true } } } },
       },
     })
     if (!p) return null
@@ -125,14 +152,19 @@ export class PipelineService {
     }
   }
 
-  async create(data: { name: string; description?: string; category?: string }) {
-    const slug = await uniqueSlug(toSlug(data.name))
+  async create(context: AuthContext, data: { name: string; description?: string; category?: string; visibility?: 'PRIVATE' | 'PUBLIC' }) {
+    authorization.authorize(context, 'resource:edit')
+    if (data.visibility === 'PUBLIC') authorization.authorize(context, 'resource:visibility')
+    const slug = await uniqueSlug(toSlug(data.name), context.workspaceId)
     const p = await db.pipeline.create({
       data: {
         name: data.name,
         slug,
         description: data.description,
         category: data.category,
+        workspaceId: context.workspaceId,
+        createdByUserId: context.userId,
+        visibility: data.visibility ?? 'PRIVATE',
       },
       include: {
         variables: true,
@@ -142,14 +174,30 @@ export class PipelineService {
     return formatPipeline(p)
   }
 
-  async update(idOrSlug: string, data: any) {
-    const pipelineId = await this.resolveId(idOrSlug)
+  async update(context: AuthContext, idOrSlug: string, data: any) {
+    authorization.authorize(context, 'resource:edit')
+    const pipelineId = await this.resolveId(context, idOrSlug)
     const { variables, agents, ...fields } = data
+    const current = await db.pipeline.findUniqueOrThrow({ where: { id: pipelineId }, include: { agents: true } })
 
     if ('wpCategoryIds' in fields) {
       fields.wpCategoryIds = fields.wpCategoryIds?.length
         ? fields.wpCategoryIds
         : Prisma.DbNull
+    }
+    delete fields.workspaceId
+    delete fields.createdByUserId
+    if ('visibility' in fields) {
+      authorization.authorize(context, 'resource:visibility')
+      if (fields.visibility === 'PUBLIC') fields.destinationId = null
+    }
+    if (fields.visibility === 'PUBLIC' || (current.visibility === 'PUBLIC' && fields.visibility !== 'PRIVATE')) {
+      assertPublicPromptsSafe(agents ?? current.agents)
+      fields.destinationId = null
+    }
+    if (fields.destinationId) {
+      const destination = await db.destination.findFirst({ where: { id: fields.destinationId, workspaceId: context.workspaceId } })
+      if (!destination) throw Object.assign(new Error('Destination not found'), { statusCode: 404 })
     }
 
     await db.$transaction(async (tx) => {
@@ -202,11 +250,15 @@ export class PipelineService {
         agents: { orderBy: { sortOrder: 'asc' } },
       },
     })
+    if ('visibility' in fields && fields.visibility !== current.visibility) {
+      await audit.record({ workspaceId: context.workspaceId, actorUserId: context.userId, action: 'pipeline.visibility_changed', targetType: 'pipeline', targetId: pipelineId, metadata: { from: current.visibility, to: fields.visibility } })
+    }
     return formatPipeline(updated)
   }
 
-  async delete(idOrSlug: string) {
-    const pipelineId = await this.resolveId(idOrSlug)
+  async delete(context: AuthContext, idOrSlug: string) {
+    authorization.authorize(context, 'resource:delete')
+    const pipelineId = await this.resolveId(context, idOrSlug)
     await db.$transaction(async (tx) => {
       // PipelineRun's database constraint may predate the cascade relation in the
       // Prisma schema, so remove run history explicitly before the pipeline.
@@ -216,8 +268,8 @@ export class PipelineService {
     })
   }
 
-  async validate(idOrSlug: string) {
-    const pipelineId = await this.resolveId(idOrSlug)
+  async validate(context: AuthContext, idOrSlug: string) {
+    const pipelineId = await this.resolveId(context, idOrSlug)
     const p = await db.pipeline.findUniqueOrThrow({
       where: { id: pipelineId },
       include: {
@@ -240,6 +292,12 @@ export class PipelineService {
     const varKeys = new Set(p.variables.map((v) => v.key))
     const agentUidSet = new Set(uids)
     const researchSources = await db.researchSource.findMany({
+      where: {
+        OR: [
+          { workspaceId: context.workspaceId },
+          { visibility: 'PUBLIC', subscriptions: { some: { workspaceId: context.workspaceId } } },
+        ],
+      },
       select: { slug: true },
     })
     const researchSourceSlugs = new Set(researchSources.map((source) => source.slug))

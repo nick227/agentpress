@@ -236,6 +236,9 @@ components:
         status:
           type: string
           enum: [draft, active, paused, archived]
+        visibility:
+          type: string
+          enum: [PRIVATE, PUBLIC]
         destinationId:
           type: string
           nullable: true
@@ -258,6 +261,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PipelineAgent'
+        loop:
+          $ref: '#/components/schemas/PipelineLoop'
         createdAt:
           type: string
           format: date-time
@@ -464,6 +469,148 @@ components:
         outputFolder:
           type: string
         destinationId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+        batchId:
+          type: string
+        loopIndex:
+          type: integer
+
+    PipelineLoop:
+      type: object
+      required: [id, pipelineId, loopType, cursorMode, maxBatchSize, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        pipelineId:
+          type: string
+        loopType:
+          type: string
+          enum: [research_feed]
+        sourceId:
+          type: string
+        sourceName:
+          type: string
+        cursorMode:
+          type: string
+          enum: [all_stored, new_since_cursor, date_range]
+        cursorAt:
+          type: string
+          format: date-time
+        dateRangeStart:
+          type: string
+          format: date-time
+        dateRangeEnd:
+          type: string
+          format: date-time
+        variableMap:
+          type: object
+          additionalProperties:
+            type: string
+        maxBatchSize:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    BatchPreview:
+      type: object
+      required: [itemCount, agentCount, estimatedCalls, capped, maxBatchSize, items]
+      properties:
+        itemCount:
+          type: integer
+        agentCount:
+          type: integer
+        estimatedCalls:
+          type: integer
+        capped:
+          type: boolean
+        maxBatchSize:
+          type: integer
+        items:
+          type: array
+          items:
+            type: object
+            required: [itemId, title, publishedAt]
+            properties:
+              itemId:
+                type: string
+              title:
+                type: string
+              publishedAt:
+                type: string
+                format: date-time
+
+    PipelineRunBatch:
+      type: object
+      required: [id, pipelineId, loopType, status, totalCount, completedCount, failedCount, skippedCount, dryRun, createdAt]
+      properties:
+        id:
+          type: string
+        pipelineId:
+          type: string
+        label:
+          type: string
+        loopType:
+          type: string
+          enum: [research_feed]
+        sourceId:
+          type: string
+        sourceName:
+          type: string
+        cursorMode:
+          type: string
+          enum: [all_stored, new_since_cursor, date_range]
+        dryRun:
+          type: boolean
+        status:
+          type: string
+          enum: [queued, running, completed, completed_with_failures, failed, cancelled]
+        totalCount:
+          type: integer
+        completedCount:
+          type: integer
+        failedCount:
+          type: integer
+        skippedCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchRunSummary'
+
+    BatchRunSummary:
+      type: object
+      required: [id, status, dryRun, loopIndex, startedAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed, posted]
+        dryRun:
+          type: boolean
+        loopIndex:
+          type: integer
+        pinnedItemTitle:
           type: string
         startedAt:
           type: string
@@ -740,6 +887,9 @@ components:
         status:
           type: string
           enum: [active, paused]
+        visibility:
+          type: string
+          enum: [PRIVATE, PUBLIC]
         lastChecked:
           type: string
           format: date-time
@@ -897,6 +1047,57 @@ components:
           type: boolean
         sortOrder:
           type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Prompt:
+      type: object
+      required: [id, slug, name, kind, category, tags, systemPrompt, userPrompt, visibility, promptHash, usageCount, sortOrder, isDefault, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        kind:
+          type: string
+          enum: [TRANSFORMATIONAL, CONTENT]
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        uid:
+          type: string
+        outputTarget:
+          type: string
+        outputFormat:
+          type: string
+        visibility:
+          type: string
+          enum: [PRIVATE, PUBLIC]
+        workspaceId:
+          type: string
+        promptHash:
+          type: string
+        usageCount:
+          type: integer
+        sortOrder:
+          type: integer
+        isDefault:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -1390,6 +1591,162 @@ paths:
         '401':
           description: Current password incorrect
 
+  /api/workspaces:
+    get:
+      operationId: listWorkspaces
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: Workspaces available to the current user }
+    post:
+      operationId: createTeamWorkspace
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1 }
+      responses:
+        '201': { description: Team workspace created }
+
+  /api/workspaces/{workspaceId}/members:
+    parameters:
+      - in: path
+        name: workspaceId
+        required: true
+        schema: { type: string }
+    get:
+      operationId: listWorkspaceMembers
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: Workspace members }
+    post:
+      operationId: addWorkspaceMember
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role: { type: string, enum: [ADMIN, EDITOR, VIEWER] }
+      responses:
+        '201': { description: Workspace member added }
+
+  /api/workspaces/{workspaceId}/members/{userId}:
+    parameters:
+      - in: path
+        name: workspaceId
+        required: true
+        schema: { type: string }
+      - in: path
+        name: userId
+        required: true
+        schema: { type: string }
+    patch:
+      operationId: updateWorkspaceMember
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [ADMIN, EDITOR, VIEWER] }
+      responses:
+        '200': { description: Workspace member updated }
+    delete:
+      operationId: removeWorkspaceMember
+      security:
+        - bearerAuth: []
+      responses:
+        '200': { description: Workspace member removed }
+
+  /api/community/pipelines:
+    get:
+      operationId: listCommunityPipelines
+      security: []
+      responses:
+        '200': { description: Public pipeline catalog }
+
+  /api/community/pipelines/{pipelineId}/fork:
+    parameters:
+      - in: path
+        name: pipelineId
+        required: true
+        schema: { type: string }
+    post:
+      operationId: forkCommunityPipeline
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+      responses:
+        '201': { description: Private pipeline fork created }
+
+  /api/community/pipelines/{pipelineId}:
+    parameters:
+      - in: path
+        name: pipelineId
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getCommunityPipeline
+      security: []
+      responses:
+        '200': { description: Public reusable pipeline definition }
+
+  /api/community/feeds:
+    get:
+      operationId: listCommunityFeeds
+      security: []
+      responses:
+        '200': { description: Public feed catalog }
+
+  /api/community/feeds/{sourceId}/subscribe:
+    parameters:
+      - in: path
+        name: sourceId
+        required: true
+        schema: { type: string }
+    post:
+      operationId: subscribeCommunityFeed
+      security:
+        - bearerAuth: []
+      responses:
+        '201': { description: Feed subscribed to the active workspace }
+
+  /api/community/feeds/{sourceId}:
+    parameters:
+      - in: path
+        name: sourceId
+        required: true
+        schema: { type: string }
+    get:
+      operationId: getCommunityFeed
+      security: []
+      responses:
+        '200': { description: Public feed metadata and recent item metadata }
+
   /api/accounts/navigation:
     get:
       operationId: listAccountNavigation
@@ -1463,6 +1820,9 @@ paths:
                   type: string
                 description:
                   type: string
+                visibility:
+                  type: string
+                  enum: [PRIVATE, PUBLIC]
       responses:
         '201':
           description: Pipeline created
@@ -1527,6 +1887,9 @@ paths:
                 status:
                   type: string
                   enum: [draft, active, paused, archived]
+                visibility:
+                  type: string
+                  enum: [PRIVATE, PUBLIC]
                 destinationId:
                   type: string
                   nullable: true
@@ -1623,6 +1986,95 @@ paths:
                         type: array
                         items:
                           $ref: '#/components/schemas/PipelineValidationIssue'
+
+  /api/pipelines/{pipelineId}/loop:
+    parameters:
+      - { name: pipelineId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getPipelineLoop
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Pipeline loop configuration
+          content: { application/json: { schema: { type: object, properties: { data: { $ref: '#/components/schemas/PipelineLoop', nullable: true } } } } }
+    put:
+      operationId: upsertPipelineLoop
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [loopType, cursorMode]
+              properties:
+                loopType: { type: string, enum: [research_feed] }
+                sourceId: { type: string }
+                cursorMode: { type: string, enum: [all_stored, new_since_cursor, date_range] }
+                cursorAt: { type: string, format: date-time }
+                dateRangeStart: { type: string, format: date-time }
+                dateRangeEnd: { type: string, format: date-time }
+                variableMap: { type: object, additionalProperties: { type: string } }
+                maxBatchSize: { type: integer }
+      responses:
+        '200':
+          description: Pipeline loop configuration
+          content: { application/json: { schema: { type: object, required: [data], properties: { data: { $ref: '#/components/schemas/PipelineLoop' } } } } }
+    delete:
+      operationId: deletePipelineLoop
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Pipeline loop deleted }
+
+  /api/pipelines/{pipelineId}/batch/preview:
+    parameters:
+      - { name: pipelineId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: previewPipelineBatch
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, properties: { cursorMode: { type: string, enum: [all_stored, new_since_cursor, date_range] }, dateRangeStart: { type: string }, dateRangeEnd: { type: string } } } } }
+      responses:
+        '200':
+          description: Batch preview
+          content: { application/json: { schema: { type: object, required: [data], properties: { data: { $ref: '#/components/schemas/BatchPreview' } } } } }
+
+  /api/pipelines/{pipelineId}/batch:
+    parameters:
+      - { name: pipelineId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: startPipelineBatch
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: false
+        content: { application/json: { schema: { type: object, properties: { dryRun: { type: boolean }, cursorMode: { type: string, enum: [all_stored, new_since_cursor, date_range] }, dateRangeStart: { type: string }, dateRangeEnd: { type: string } } } } }
+      responses:
+        '201':
+          description: Batch started
+          content: { application/json: { schema: { type: object, required: [data], properties: { data: { $ref: '#/components/schemas/PipelineRunBatch' } } } } }
+
+  /api/pipelines/{pipelineId}/batches:
+    parameters:
+      - { name: pipelineId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: listPipelineBatches
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Pipeline batches
+          content: { application/json: { schema: { type: object, required: [data], properties: { data: { type: array, items: { $ref: '#/components/schemas/PipelineRunBatch' } } } } } }
+
+  /api/pipeline-batches/{batchId}:
+    parameters:
+      - { name: batchId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getPipelineBatch
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Pipeline batch
+          content: { application/json: { schema: { type: object, required: [data], properties: { data: { $ref: '#/components/schemas/PipelineRunBatch' } } } } }
 
   /api/pipelines/{pipelineId}/runs:
     parameters:
@@ -2416,6 +2868,195 @@ paths:
                   ok:
                     type: boolean
 
+  /api/prompts:
+    get:
+      operationId: listPrompts
+      tags: [prompts]
+      summary: List reusable prompts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [TRANSFORMATIONAL, CONTENT]
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prompt'
+
+    post:
+      operationId: createPrompt
+      tags: [prompts]
+      summary: Create a prompt
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, systemPrompt, userPrompt]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                kind:
+                  type: string
+                  enum: [TRANSFORMATIONAL, CONTENT]
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                systemPrompt:
+                  type: string
+                userPrompt:
+                  type: string
+                uid:
+                  type: string
+                outputTarget:
+                  type: string
+                outputFormat:
+                  type: string
+                sortOrder:
+                  type: integer
+                isDefault:
+                  type: boolean
+      responses:
+        '201':
+          description: Prompt created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Prompt'
+
+  /api/prompts/{promptId}:
+    parameters:
+      - name: promptId
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getPrompt
+      tags: [prompts]
+      summary: Get a prompt
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Prompt
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Prompt'
+        '404':
+          description: Not found
+
+    patch:
+      operationId: updatePrompt
+      tags: [prompts]
+      summary: Update a prompt
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                kind:
+                  type: string
+                  enum: [TRANSFORMATIONAL, CONTENT]
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                systemPrompt:
+                  type: string
+                userPrompt:
+                  type: string
+                uid:
+                  type: string
+                outputTarget:
+                  type: string
+                outputFormat:
+                  type: string
+                sortOrder:
+                  type: integer
+                isDefault:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated prompt
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Prompt'
+
+    delete:
+      operationId: deletePrompt
+      tags: [prompts]
+      summary: Delete a prompt
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
   /api/research:
     get:
       operationId: listResearchSources
@@ -2461,6 +3102,9 @@ paths:
                   type: string
                 sourceUrl:
                   type: string
+                visibility:
+                  type: string
+                  enum: [PRIVATE, PUBLIC]
       responses:
         '201':
           description: Research source created
@@ -2551,6 +3195,9 @@ paths:
                 status:
                   type: string
                   enum: [active, paused]
+                visibility:
+                  type: string
+                  enum: [PRIVATE, PUBLIC]
                 defaultSummaryPromptId:
                   type: string
                   nullable: true

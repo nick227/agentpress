@@ -153,6 +153,8 @@ pnpm db:seed
 pnpm dev
 ```
 
+For an existing database created before workspaces, replace the first command with `pnpm workspaces:migrate`. It creates nullable ownership columns, backfills and verifies every root resource, and then applies the required final schema. Run `pnpm db:seed` afterward to reconcile the public Community catalog.
+
 Open [http://localhost:5173](http://localhost:5173) and log in with the seeded credentials:
 
 ```txt

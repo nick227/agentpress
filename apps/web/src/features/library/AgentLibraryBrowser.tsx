@@ -3,15 +3,15 @@ import { toast } from 'sonner'
 import { X, Search, FlaskConical, PenLine, BarChart2, Pencil, ArrowUpRight, BookOpen } from 'lucide-react'
 import {
   appendAgentDefinitionToPipelineInputs,
-  libraryAgentToDefinition,
+  promptToDefinition,
 } from '@project/content'
-import { useLibraryAgents, useUpdatePipeline } from '@project/sdk'
+import { usePrompts, useUpdatePipeline } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Skeleton } from '@/components/ui/Skeleton'
 
-type LibraryAgent = components['schemas']['LibraryAgent']
+type Prompt = components['schemas']['Prompt']
 type Pipeline = components['schemas']['Pipeline']
 
 interface Props {
@@ -27,6 +27,7 @@ const CATEGORIES = [
   { id: 'writing', label: 'Writing', icon: <PenLine size={12} /> },
   { id: 'seo', label: 'SEO', icon: <BarChart2 size={12} /> },
   { id: 'editing', label: 'Editing', icon: <Pencil size={12} /> },
+  { id: 'pipeline', label: 'Pipeline', icon: <BookOpen size={12} /> },
   { id: 'promoted', label: 'From Runs', icon: <ArrowUpRight size={12} /> },
 ]
 
@@ -45,24 +46,25 @@ export function AgentLibraryBrowser({ pipeline, pipelineId, onClose, onAgentAdde
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState<string | null>(null)
 
-  const { data, isLoading } = useLibraryAgents(
-    category === 'all' ? undefined : category,
-    search || undefined,
-  )
+  const { data, isLoading } = usePrompts({
+    kind: 'TRANSFORMATIONAL',
+    category: category === 'all' ? undefined : category,
+    search: search || undefined,
+  })
   const update = useUpdatePipeline()
 
   const agents = data?.data ?? []
 
-  async function handleAdd(agent: LibraryAgent) {
-    setAdding(agent.id)
+  async function handleAdd(prompt: Prompt) {
+    setAdding(prompt.id)
     try {
-      const definition = libraryAgentToDefinition(agent)
+      const definition = promptToDefinition(prompt)
       const result = await update.mutateAsync({
         pipelineId,
         agents: appendAgentDefinitionToPipelineInputs(pipeline.agents, definition),
       })
       const added = result.data.agents[result.data.agents.length - 1]
-      toast.success(`"${agent.name}" added to pipeline`)
+      toast.success(`"${prompt.name}" added to pipeline`)
       if (added) onAgentAdded(added.id)
       onClose()
     } catch (err: any) {
@@ -150,12 +152,13 @@ function AgentCard({
   isAdding,
   onAdd,
 }: {
-  agent: LibraryAgent
+  agent: Prompt
   isAdding: boolean
   onAdd: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const targetColor = TARGET_COLORS[agent.outputTarget] ?? TARGET_COLORS.custom!
+  const outputTarget = agent.outputTarget ?? 'body'
+  const targetColor = TARGET_COLORS[outputTarget] ?? TARGET_COLORS.custom!
 
   return (
     <div className="border rounded-lg p-3.5 space-y-2 hover:border-muted-foreground/30 transition-colors">
@@ -164,7 +167,7 @@ function AgentCard({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold">{agent.name}</span>
             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${targetColor}`}>
-              {agent.outputTarget}
+              {outputTarget}
             </span>
             {agent.usageCount > 0 && (
               <span className="text-xs text-muted-foreground">
@@ -183,9 +186,9 @@ function AgentCard({
         </Button>
       </div>
 
-      {(agent.tags as string[]).length > 0 && (
+      {(agent.tags ?? []).length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {(agent.tags as string[]).map((tag) => (
+          {(agent.tags ?? []).map((tag) => (
             <span key={tag} className="px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground">
               {tag}
             </span>

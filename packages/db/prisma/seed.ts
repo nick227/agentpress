@@ -8,6 +8,21 @@ function promptHash(systemPrompt: string, userPrompt: string, outputTarget: stri
   return createHash('sha256').update(`${systemPrompt}|||${userPrompt}|||${outputTarget}`).digest('hex')
 }
 
+function catalogPromptHash(
+  kind: 'TRANSFORMATIONAL' | 'CONTENT',
+  systemPrompt: string,
+  userPrompt: string,
+  outputTarget?: string | null,
+): string {
+  return createHash('sha256')
+    .update(`${kind}|||${systemPrompt}|||${userPrompt}|||${outputTarget ?? ''}`)
+    .digest('hex')
+}
+
+function slugify(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80) || 'prompt'
+}
+
 const LIBRARY_AGENTS = [
   // ── Research ───────────────────────────────────────────────────────────
   {
@@ -232,16 +247,32 @@ const LIBRARY_AGENTS = [
 async function main() {
   // Create owner user
   const hash = await bcrypt.hash('password123', 12)
-  await db.user.upsert({
+  const owner = await db.user.upsert({
     where: { email: 'admin@agentpress.local' },
     update: {},
     create: { email: 'admin@agentpress.local', passwordHash: hash, role: 'OWNER' },
   })
 
+  const community = await db.workspace.upsert({
+    where: { slug: 'community' },
+    update: { name: 'Community', type: 'COMMUNITY' },
+    create: { name: 'Community', slug: 'community', type: 'COMMUNITY' },
+  })
+  const personal = await db.workspace.upsert({
+    where: { slug: `personal-${owner.id}` },
+    update: { type: 'PERSONAL' },
+    create: { name: 'Personal', slug: `personal-${owner.id}`, type: 'PERSONAL' },
+  })
+  await db.workspaceMember.upsert({
+    where: { workspaceId_userId: { workspaceId: personal.id, userId: owner.id } },
+    update: { role: 'OWNER' },
+    create: { workspaceId: personal.id, userId: owner.id, role: 'OWNER' },
+  })
+
   // ── SEO Blog Post pipeline ─────────────────────────────────────────────
   const pipeline = await db.pipeline.upsert({
-    where: { slug: 'seo-blog-post' },
-    update: {},
+    where: { workspaceId_slug: { workspaceId: community.id, slug: 'seo-blog-post' } },
+    update: { workspaceId: community.id, visibility: 'PUBLIC', destinationId: null },
     create: {
       name: 'SEO Blog Post',
       slug: 'seo-blog-post',
@@ -249,6 +280,8 @@ async function main() {
       status: 'active',
       dryRun: true,
       scheduleMode: 'manual',
+      workspaceId: community.id,
+      visibility: 'PUBLIC',
     },
   })
 
@@ -315,8 +348,8 @@ async function main() {
 
   // ── Political Commentary pipeline ──────────────────────────────────────
   const politicalPipeline = await db.pipeline.upsert({
-    where: { slug: 'political-commentary' },
-    update: {},
+    where: { workspaceId_slug: { workspaceId: community.id, slug: 'political-commentary' } },
+    update: { workspaceId: community.id, visibility: 'PUBLIC', destinationId: null },
     create: {
       name: 'Political Commentary',
       slug: 'political-commentary',
@@ -324,6 +357,8 @@ async function main() {
       status: 'active',
       dryRun: true,
       scheduleMode: 'manual',
+      workspaceId: community.id,
+      visibility: 'PUBLIC',
     },
   })
 
@@ -453,22 +488,24 @@ async function main() {
     },
   ]
 
-  console.log('\nSeeding summary prompts...')
-  for (const p of SUMMARY_PROMPTS) {
-    const existing = await db.summaryPrompt.findFirst({ where: { name: p.name } })
-    if (existing) {
-      await db.summaryPrompt.update({
-        where: { id: existing.id },
-        data: { description: p.description, systemPrompt: p.systemPrompt, userPrompt: p.userPrompt, sortOrder: p.sortOrder },
-      })
-    } else {
-      await db.summaryPrompt.create({ data: p })
-    }
-  }
-  console.log(`  ${SUMMARY_PROMPTS.length} prompts seeded`)
-
   // ── Research sources ───────────────────────────────────────────────────
   const RESEARCH_SOURCES = [
+    // YouTube — AI
+    { name: 'Nate Herk', slug: 'nateherk', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/nateherk' },
+    { name: 'Intheworldofai', slug: 'intheworldofai', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/intheworldofai' },
+    { name: 'AIBrainbox', slug: 'aibrainbox', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/aibrainbox' },
+    { name: 'NetworkChuck', slug: 'networkchuck', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/networkchuck' },
+    { name: 'WesRoth', slug: 'wesroth', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/wesroth' },
+    { name: 'ManuAGI', slug: 'manuagi', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@manuagi' },
+    { name: 'Realrobtheaiguy', slug: 'realrobtheaiguy', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@realrobtheaiguy' },
+    { name: 'Mr. E Flow', slug: 'mr-e-flow', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@mreflow' },
+    { name: 'GitHub Awesome', slug: 'github-awesome', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@GithubAwesome' },
+    { name: 'The AI Search', slug: 'the-ai-search', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@theAIsearch' },
+    { name: 'AI Labs', slug: 'ai-labs', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@AILABS-393' },
+    { name: 'AI Code King', slug: 'ai-code-king', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@AICodeKing' },
+    { name: 'Prompt Engineer', slug: 'prompt-engineer', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@PromptEngineer48' },
+    { name: 'I Am AI Master', slug: 'i-am-ai-master', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@iamAImaster' },
+    { name: 'Kittl Design', slug: 'kittl-design', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Kittldesign' },
     // YouTube — politics
     { name: 'Vaush', slug: 'vaush', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Vaush' },
     { name: 'Destiny', slug: 'destiny', category: 'politics', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@destiny' },
@@ -482,15 +519,6 @@ async function main() {
     { name: 'Fireship', slug: 'fireship', category: 'tech', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Fireship' },
     { name: 'Theo', slug: 'theo', category: 'tech', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@t3dotgg' },
     { name: 'ThePrimeagen', slug: 'theprimeagen', category: 'tech', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@ThePrimeagen' },
-    // YouTube — AI
-    { name: 'Mr. E Flow', slug: 'mr-e-flow', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@mreflow' },
-    { name: 'GitHub Awesome', slug: 'github-awesome', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@GithubAwesome' },
-    { name: 'The AI Search', slug: 'the-ai-search', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@theAIsearch' },
-    { name: 'AI Labs', slug: 'ai-labs', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@AILABS-393' },
-    { name: 'AI Code King', slug: 'ai-code-king', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@AICodeKing' },
-    { name: 'Prompt Engineer', slug: 'prompt-engineer', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@PromptEngineer48' },
-    { name: 'I Am AI Master', slug: 'i-am-ai-master', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@iamAImaster' },
-    { name: 'Kittl Design', slug: 'kittl-design', category: 'ai', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Kittldesign' },
     // YouTube — culture
     { name: 'Dr. Roy Casagranda', slug: 'dr-roy-casagranda', category: 'culture', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@DrRoyCasagranda' },
     { name: 'Channel 5', slug: 'channel-5', category: 'culture', sourceType: 'youtube', sourceUrl: 'https://www.youtube.com/@Channel5YouTube' },
@@ -513,9 +541,9 @@ async function main() {
   console.log('\nSeeding research sources...')
   for (const src of RESEARCH_SOURCES) {
     await db.researchSource.upsert({
-      where: { slug: src.slug },
-      update: {},
-      create: { status: 'active', ...src },
+      where: { workspaceId_slug: { workspaceId: community.id, slug: src.slug } },
+      update: { workspaceId: community.id, visibility: 'PUBLIC' },
+      create: { status: 'active', workspaceId: community.id, visibility: 'PUBLIC', ...src },
     })
   }
   console.log(`  ${RESEARCH_SOURCES.length} sources seeded`)
@@ -549,7 +577,129 @@ async function main() {
       skipped++
     }
   }
+  console.log(`  ${created} created, ${skipped} already existed`)
 
+  // ── Community prompts catalog ──────────────────────────────────────────
+  console.log('\nSeeding community prompts...')
+  let promptsCreated = 0
+  let promptsUpdated = 0
+
+  async function upsertCommunityPrompt(data: {
+    name: string
+    description?: string
+    kind: 'TRANSFORMATIONAL' | 'CONTENT'
+    category: string
+    tags?: string[]
+    systemPrompt: string
+    userPrompt: string
+    uid?: string
+    outputTarget?: string
+    outputFormat?: string
+    sortOrder?: number
+    isDefault?: boolean
+  }) {
+    const hash = catalogPromptHash(data.kind, data.systemPrompt, data.userPrompt, data.outputTarget)
+    const slug = slugify(data.name)
+    if (data.kind === 'CONTENT' && data.isDefault) {
+      await db.prompt.updateMany({ where: { kind: 'CONTENT', isDefault: true }, data: { isDefault: false } })
+    }
+    const existing = await db.prompt.findUnique({ where: { promptHash: hash } })
+    if (existing) {
+      await db.prompt.update({
+        where: { id: existing.id },
+        data: {
+          name: data.name,
+          description: data.description,
+          category: data.category,
+          tags: data.tags ?? [],
+          systemPrompt: data.systemPrompt,
+          userPrompt: data.userPrompt,
+          uid: data.uid,
+          outputTarget: data.outputTarget,
+          outputFormat: data.outputFormat,
+          sortOrder: data.sortOrder ?? 0,
+          isDefault: data.kind === 'CONTENT' ? (data.isDefault ?? false) : false,
+          visibility: 'PUBLIC',
+          workspaceId: community.id,
+        },
+      })
+      promptsUpdated++
+      return
+    }
+
+    const slugConflict = await db.prompt.findUnique({ where: { slug } })
+    await db.prompt.create({
+      data: {
+        slug: slugConflict ? `${slug}-${hash.slice(0, 6)}` : slug,
+        name: data.name,
+        description: data.description,
+        kind: data.kind,
+        category: data.category,
+        tags: data.tags ?? [],
+        systemPrompt: data.systemPrompt,
+        userPrompt: data.userPrompt,
+        uid: data.uid,
+        outputTarget: data.outputTarget,
+        outputFormat: data.outputFormat ?? 'text',
+        visibility: 'PUBLIC',
+        workspaceId: community.id,
+        promptHash: hash,
+        sortOrder: data.sortOrder ?? 0,
+        isDefault: data.kind === 'CONTENT' ? (data.isDefault ?? false) : false,
+      },
+    })
+    promptsCreated++
+  }
+
+  for (const agent of LIBRARY_AGENTS) {
+    await upsertCommunityPrompt({
+      name: agent.name,
+      description: agent.description,
+      kind: 'TRANSFORMATIONAL',
+      category: agent.category,
+      tags: agent.tags,
+      systemPrompt: agent.systemPrompt,
+      userPrompt: agent.userPrompt,
+      uid: agent.uid,
+      outputTarget: agent.outputTarget,
+      outputFormat: agent.outputFormat,
+    })
+  }
+
+  for (const [index, summary] of SUMMARY_PROMPTS.entries()) {
+    await upsertCommunityPrompt({
+      name: summary.name,
+      description: summary.description,
+      kind: 'CONTENT',
+      category: 'research',
+      tags: ['summary', 'research'],
+      systemPrompt: summary.systemPrompt,
+      userPrompt: summary.userPrompt,
+      sortOrder: summary.sortOrder ?? index,
+      isDefault: summary.isDefault,
+    })
+  }
+
+  const pipelineAgents = await db.pipelineAgent.findMany({
+    where: { pipeline: { visibility: 'PUBLIC' } },
+    include: { pipeline: { select: { name: true, slug: true } } },
+  })
+  for (const agent of pipelineAgents) {
+    await upsertCommunityPrompt({
+      name: `${agent.name} (${agent.pipeline.name})`,
+      description: `From community pipeline "${agent.pipeline.name}"`,
+      kind: 'TRANSFORMATIONAL',
+      category: 'pipeline',
+      tags: ['pipeline', agent.pipeline.slug],
+      systemPrompt: agent.systemPrompt,
+      userPrompt: agent.userPrompt,
+      uid: agent.uid,
+      outputTarget: agent.outputTarget,
+      outputFormat: agent.outputFormat,
+    })
+  }
+
+  console.log(`  ${promptsCreated} created, ${promptsUpdated} updated`)
 }
 
 main()

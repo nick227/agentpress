@@ -113,6 +113,13 @@ export function libraryAgentToDefinition(agent: DefinitionSource): AgentDefiniti
   return toDefinition(agent)
 }
 
+export function promptToDefinition(prompt: Omit<DefinitionSource, 'outputTarget'> & { outputTarget?: string }): AgentDefinition {
+  return toDefinition({
+    ...prompt,
+    outputTarget: prompt.outputTarget ?? 'body',
+  })
+}
+
 export function templateAgentToDefinition(agent: DefinitionSource): AgentDefinition {
   return toDefinition(agent)
 }

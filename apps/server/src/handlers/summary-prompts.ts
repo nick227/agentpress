@@ -3,8 +3,8 @@ import { SummaryPromptService } from '../services/SummaryPromptService'
 
 const svc = new SummaryPromptService()
 
-export async function listSummaryPrompts(_request: FastifyRequest, reply: FastifyReply) {
-  return reply.send({ data: await svc.list() })
+export async function listSummaryPrompts(request: FastifyRequest, reply: FastifyReply) {
+  return reply.send({ data: await svc.list((request as any).auth) })
 }
 
 export async function createSummaryPrompt(
@@ -13,7 +13,7 @@ export async function createSummaryPrompt(
   }>,
   reply: FastifyReply,
 ) {
-  return reply.status(201).send({ data: await svc.create(request.body) })
+  return reply.status(201).send({ data: await svc.create((request as any).auth, request.body) })
 }
 
 export async function updateSummaryPrompt(
@@ -23,13 +23,13 @@ export async function updateSummaryPrompt(
   }>,
   reply: FastifyReply,
 ) {
-  return reply.send({ data: await svc.update(request.params.promptId, request.body) })
+  return reply.send({ data: await svc.update((request as any).auth, request.params.promptId, request.body) })
 }
 
 export async function deleteSummaryPrompt(
   request: FastifyRequest<{ Params: { promptId: string } }>,
   reply: FastifyReply,
 ) {
-  await svc.delete(request.params.promptId)
+  await svc.delete((request as any).auth, request.params.promptId)
   return reply.send({ ok: true })
 }

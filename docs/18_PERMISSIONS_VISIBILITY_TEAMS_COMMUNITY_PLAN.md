@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed product and implementation plan. This document replaces the original single-owner permission assumptions for new work. It does not change the current schema by itself.
+Implemented on 2026-06-21. This document replaces the original single-owner permission assumptions. The workspace migration, centralized authorization, team workflows, Community catalog, pipeline forking, and public-feed subscriptions described here are now represented in the schema and application.
 
 ## Goals
 

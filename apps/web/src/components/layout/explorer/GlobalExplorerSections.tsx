@@ -1,4 +1,4 @@
-import { CalendarClock, Database, FlaskConical, Play, Workflow } from 'lucide-react'
+import { CalendarClock, Database, FlaskConical, MessageSquareText, Play, Workflow } from 'lucide-react'
 import { ResearchCategoryGroup, ResourceGroup, ResourceLink } from './ExplorerPrimitives'
 import { isInProgress } from './explorerTime'
 import type { GlobalExplorerSidebarModel } from './useGlobalExplorerSidebar'
@@ -9,6 +9,7 @@ export function GlobalExplorerSections({ explorer }: { explorer: GlobalExplorerS
       <PipelineSection explorer={explorer} />
       <ScheduleSection explorer={explorer} />
       <ResearchSection explorer={explorer} />
+      <PromptSection explorer={explorer} />
       <DestinationSection explorer={explorer} />
       <RunsSection explorer={explorer} />
       {explorer.needle && !explorer.hasResults && (
@@ -114,6 +115,31 @@ function ResearchSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
             />
           ))}
         </ResearchCategoryGroup>
+      ))}
+    </ResourceGroup>
+  )
+}
+
+function PromptSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
+  if (explorer.prompts.length === 0 && explorer.needle) return null
+
+  return (
+    <ResourceGroup
+      label="Prompts"
+      icon={MessageSquareText}
+      indexHref="/prompts"
+      addHref="/prompts/new"
+      onRefetch={explorer.refreshPrompts}
+      isRefetching={explorer.promptsFetching}
+    >
+      {explorer.prompts.map((prompt) => (
+        <ResourceLink
+          key={prompt.id}
+          href={`/prompts/${prompt.slug}`}
+          label={prompt.name}
+          active={explorer.pathname.includes(`/prompts/${prompt.slug}`)}
+          status={prompt.kind === 'TRANSFORMATIONAL' ? 'active' : 'configured'}
+        />
       ))}
     </ResourceGroup>
   )

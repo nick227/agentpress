@@ -90,6 +90,35 @@ FLUSH PRIVILEGES;
 - `GET /api/pipelines/:id` → full pipeline with agents + variables
 - Web build: 1,617 modules, clean compile
 
+## Batch / Loop System (added post-Phase 5)
+
+Pipelines can be switched to "Batch" mode to run once per research item.
+
+### Schema
+- `PipelineLoop` — 1-to-1 with Pipeline; stores loopType, sourceId, cursorMode, variableMap, maxBatchSize
+- `PipelineRunBatch` — execution record grouping N PipelineRuns from one batch trigger
+- `PipelineRun.batchId` + `PipelineRun.loopIndex` — link individual runs to their batch
+
+### Cursor modes: `all_stored` | `new_since_cursor` | `date_range`
+Cursor auto-advances on `new_since_cursor` after successful batch.
+
+### Key invariant
+Each batch spawns N normal PipelineRuns (one per item), executed sequentially. Pinning uses `researchItemOverrides: { [source.id]: item.id }` — so `{ziptrader.summary}` resolves to that item without variable remapping. Optional `variableMap` can additionally fill pipeline variables from item fields.
+
+### Safety: max 50 runs per batch (configurable). Preview modal shows estimated AI calls before start.
+
+### API endpoints (tag: batches)
+- `GET/PUT/DELETE /api/pipelines/:id/loop`
+- `POST /api/pipelines/:id/batch/preview`
+- `POST /api/pipelines/:id/batch`
+- `GET /api/pipelines/:id/batches`
+- `GET /api/pipeline-batches/:id`
+
+### UI
+- Pipeline Setup: "Run mode" section — Single vs Batch toggle + source/cursor/date config (LoopConfig.tsx)
+- Run button → "Run batch" in batch mode → BatchPreviewModal before confirming
+- Runs section shows batch progress bars above individual runs
+
 ## Next Steps / Phase 6
 
 - Add OpenAI API key to `.env` and do a live test run

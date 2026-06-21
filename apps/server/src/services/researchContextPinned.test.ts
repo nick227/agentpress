@@ -13,6 +13,10 @@ vi.mock('@project/db', () => ({
       findFirst: (...args: unknown[]) => findPrompt(...args),
       findUnique: vi.fn(),
     },
+    prompt: {
+      findFirst: (...args: unknown[]) => findPrompt(...args),
+      findUnique: vi.fn(),
+    },
     researchSummary: { findUnique: (...args: unknown[]) => findSummary(...args) },
   },
 }))

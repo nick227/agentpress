@@ -19,6 +19,7 @@ export interface ResearchContext {
 }
 
 type PipelineForResearch = {
+  workspaceId?: string
   variables?: Array<{ key: string }>
   agents?: Array<{ systemPrompt: string; userPrompt: string }>
 }
@@ -38,7 +39,15 @@ export class ResearchContextService {
     const referencedSources = this.findReferencedSources(pipeline)
     if (referencedSources.size > 0) {
       const sources = await db.researchSource.findMany({
-        where: { slug: { in: [...referencedSources.keys()] } },
+        where: {
+          slug: { in: [...referencedSources.keys()] },
+          ...(pipeline.workspaceId ? {
+            OR: [
+              { workspaceId: pipeline.workspaceId },
+              { visibility: 'PUBLIC' as const, subscriptions: { some: { workspaceId: pipeline.workspaceId } } },
+            ],
+          } : {}),
+        },
       })
       const sourceBySlug = new Map(sources.map((source) => [source.slug, source]))
 
@@ -113,7 +122,7 @@ export class ResearchContextService {
     })
 
     if (!summary || summary.status !== 'done' || !summary.text) {
-      summary = await this.research.summarize(item.id, prompt.id) as any
+      summary = await this.research.summarize(null, item.id, prompt.id) as any
     }
 
     if (!summary?.text) {

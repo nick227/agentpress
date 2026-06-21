@@ -1,4 +1,4 @@
-import { useAllRuns, useDestinations, usePipelines, useResearchSources, useSchedules } from '@project/sdk'
+import { useAllRuns, useDestinations, usePipelines, usePrompts, useResearchSources, useSchedules } from '@project/sdk'
 
 // Owns the five lightweight resource-list queries used by the global explorer.
 export function useExplorerResources() {
@@ -6,6 +6,7 @@ export function useExplorerResources() {
   const schedulesQuery = useSchedules()
   const researchQuery = useResearchSources()
   const destinationsQuery = useDestinations()
+  const promptsQuery = usePrompts()
   const runsQuery = useAllRuns(30)
 
   return {
@@ -13,14 +14,17 @@ export function useExplorerResources() {
     schedules: schedulesQuery.data?.data ?? [],
     researchSources: researchQuery.data?.data ?? [],
     destinations: destinationsQuery.data?.data ?? [],
+    prompts: promptsQuery.data?.data ?? [],
     runs: runsQuery.data?.data ?? [],
     pipelinesFetching: pipelinesQuery.isFetching,
     schedulesFetching: schedulesQuery.isFetching,
     destinationsFetching: destinationsQuery.isFetching,
+    promptsFetching: promptsQuery.isFetching,
     runsFetching: runsQuery.isFetching,
     refreshPipelines: () => void pipelinesQuery.refetch(),
     refreshSchedules: () => void schedulesQuery.refetch(),
     refreshDestinations: () => void destinationsQuery.refetch(),
+    refreshPrompts: () => void promptsQuery.refetch(),
     refreshRuns: () => void runsQuery.refetch(),
   }
 }

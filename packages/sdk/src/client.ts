@@ -4,6 +4,7 @@ import type { paths } from './generated/types'
 type ClientConfig = {
   baseUrl: string
   getToken?: () => string | null  // only for native apps; web uses httpOnly cookies
+  getWorkspaceId?: () => string | null
 }
 
 let _client: ReturnType<typeof createClient<paths>> | null = null
@@ -23,6 +24,16 @@ export function createApiClient(config: ClientConfig) {
       },
     }
     client.use(authMiddleware)
+  }
+
+  if (config.getWorkspaceId) {
+    client.use({
+      async onRequest({ request }) {
+        const workspaceId = config.getWorkspaceId!()
+        if (workspaceId) request.headers.set('X-Workspace-Id', workspaceId)
+        return request
+      },
+    })
   }
 
   _client = client
