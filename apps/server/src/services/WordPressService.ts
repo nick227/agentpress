@@ -57,6 +57,14 @@ export function resolveCategoryIds(
   return parseCategoryIds(destination.defaultCategoryIds)
 }
 
+function titleToSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 200)
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -221,11 +229,13 @@ export class WordPressService {
       }
     }
 
+    const slug = titleToSlug(post.title)
     const payload: Record<string, unknown> = {
       title: post.title,
       excerpt: post.excerpt,
       content: post.content,
       status: post.status,
+      slug,
     }
 
     if (featuredMediaId !== undefined) payload.featured_media = featuredMediaId
@@ -247,7 +257,11 @@ export class WordPressService {
       throw new Error(`WordPress publish failed (${response.status}): ${body}`)
     }
 
-    const data = (await response.json()) as { id: number; link: string }
-    return { postId: String(data.id), postUrl: data.link, featuredImageUploaded }
+    const data = (await response.json()) as { id: number; link: string; slug: string }
+    const resolvedSlug = data.slug || slug
+    const postUrl = (data.link.includes('?p=') && resolvedSlug)
+      ? `${credentials.siteUrl.replace(/\/$/, '')}/${resolvedSlug}/`
+      : data.link
+    return { postId: String(data.id), postUrl, featuredImageUploaded }
   }
 }

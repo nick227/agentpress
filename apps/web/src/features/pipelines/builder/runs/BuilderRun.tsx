@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useDestinations, usePipelineRun, usePublishRun } from '@project/sdk'
 import type { components } from '@project/sdk'
@@ -58,6 +58,8 @@ export function BuilderRun({ runId, pipeline }: Props) {
   const { data, isLoading } = usePipelineRun(runId, { pollForPublish: publishing || publish.isPending })
   const { data: destinationsData } = useDestinations()
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [selectedDestId, setSelectedDestId] = useState<string>('')
+  const initializedDestRef = useRef(false)
 
   const assets = data?.assets ?? []
   const downloadAssets = [...assets]
@@ -65,7 +67,19 @@ export function BuilderRun({ runId, pipeline }: Props) {
     .sort((a, b) => assetSortOrder(a.filename, a.type) - assetSortOrder(b.filename, b.type))
   const imageAssets = downloadAssets.filter(isPreviewableImageAsset)
   const publishAttempts = data?.publishAttempts ?? []
-  const destination = destinationsData?.data.find((item) => item.id === pipeline.destinationId)
+  const destinations = destinationsData?.data ?? []
+  // Resolve the active destination: prefer pipeline's configured one, else the user-selected one
+  const activeDestId = pipeline.destinationId ?? selectedDestId
+  const activeDest = destinations.find((d) => d.id === activeDestId)
+
+  // Seed the selector to the pipeline destination once destinations load
+  useEffect(() => {
+    if (!initializedDestRef.current && destinations.length > 0) {
+      initializedDestRef.current = true
+      setSelectedDestId(pipeline.destinationId ?? destinations[0]?.id ?? '')
+    }
+  }, [destinations, pipeline.destinationId])
+
   const isPublishing = publishing || publish.isPending || publishAttempts.some((attempt) => attempt.status === 'pending')
 
   useEffect(() => {
@@ -96,13 +110,14 @@ export function BuilderRun({ runId, pipeline }: Props) {
   const post = run.generatedPost as any
   const isActive = run.status === 'queued' || run.status === 'running'
 
-  const canPublish = !isActive && Boolean(pipeline.destinationId) && Boolean(post)
+  const canPublish = !isActive && Boolean(post)
 
   async function handlePublish() {
     setPublishing(true)
     toast.loading('Starting WordPress publish…', { id: PUBLISH_TOAST_ID })
     try {
-      const result = await publish.mutateAsync(runId)
+      const destId = (pipeline.destinationId ?? selectedDestId) || undefined
+      const result = await publish.mutateAsync({ runId, destinationId: destId })
       const details = [
         result.inlineImagesUploaded ? `${result.inlineImagesUploaded} inline image${result.inlineImagesUploaded === 1 ? '' : 's'}` : null,
         result.featuredImageUploaded ? 'featured image' : null,
@@ -123,6 +138,7 @@ export function BuilderRun({ runId, pipeline }: Props) {
       setPublishing(false)
     }
   }
+
 
   async function handleDownloadAsset(assetId: string, filename: string) {
     setDownloadingId(assetId)
@@ -165,16 +181,35 @@ export function BuilderRun({ runId, pipeline }: Props) {
           </Link>
           {canPublish && (
             <>
-              {destination ? (
-                <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[140px]" title={destination.siteUrl}>
-                  {destination.name ?? destination.siteUrl}
+              {pipeline.destinationId ? (
+                <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[140px]" title={activeDest?.siteUrl}>
+                  {activeDest?.name ?? activeDest?.siteUrl}
                 </span>
-              ) : null}
+              ) : destinations.length > 0 ? (
+                <select
+                  value={selectedDestId}
+                  onChange={(e) => setSelectedDestId(e.target.value)}
+                  disabled={isPublishing}
+                  className="text-xs border rounded px-2 py-1 bg-surface text-foreground max-w-[160px] truncate"
+                >
+                  {destinations.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name ?? d.siteUrl}</option>
+                  ))}
+                </select>
+              ) : (
+                <Link
+                  to={`/pipelines/${pipeline.slug}`}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
+                  title="Add a destination"
+                >
+                  No destination
+                </Link>
+              )}
               <Button
                 size="sm"
                 className="gap-1.5 shrink-0"
                 loading={isPublishing}
-                disabled={isPublishing}
+                disabled={isPublishing || (!pipeline.destinationId && !selectedDestId)}
                 onClick={handlePublish}
               >
                 <Send size={13} />
@@ -196,7 +231,7 @@ export function BuilderRun({ runId, pipeline }: Props) {
         <PublishProgressPanel
           attempts={publishAttempts}
           isPublishing={isPublishing}
-          destinationSiteUrl={destination?.siteUrl}
+          destinationSiteUrl={activeDest?.siteUrl}
         />
       )}
 

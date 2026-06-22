@@ -1,6 +1,8 @@
 import { CommunityService } from '../services/CommunityService'
+import { WorkflowService } from '../services/WorkflowService'
 
 const service = new CommunityService()
+const workflowService = new WorkflowService()
 
 export async function listCommunityAgents(request: any, reply: any) {
   return reply.send({ data: await service.listAgents(request.auth?.workspaceId) })
@@ -40,4 +42,18 @@ export async function forkCommunityFeed(request: any, reply: any) {
 
 export async function forkCommunityPrompt(request: any, reply: any) {
   return reply.status(201).send({ data: await service.forkPrompt(request.auth, request.params.promptId) })
+}
+
+export async function listCommunityWorkflows(request: any, reply: any) {
+  return reply.send({ data: await service.listWorkflows(request.auth?.workspaceId) })
+}
+
+export async function getCommunityWorkflow(request: any, reply: any) {
+  return reply.send({ data: await service.getWorkflow(request.params.workflowId) })
+}
+
+export async function forkCommunityWorkflow(request: any, reply: any) {
+  return reply.status(201).send({
+    data: await workflowService.fork(request.auth, request.params.workflowId, request.body?.name),
+  })
 }

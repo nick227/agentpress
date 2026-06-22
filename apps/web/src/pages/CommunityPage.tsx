@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
-import { Bot, Check, GitFork, Rss, Workflow, BookOpen } from 'lucide-react'
+import { Bot, Check, GitFork, Layers, Rss, Workflow, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
-import { useCommunityAgents, useCommunityFeeds, useCommunityPipelines, useCommunityPrompts, useForkCommunityAgent, useForkCommunityFeed, useForkCommunityPipeline, useForkCommunityPrompt } from '@project/sdk'
+import { useCommunityAgents, useCommunityFeeds, useCommunityPipelines, useCommunityPrompts, useCommunityWorkflows, useForkCommunityAgent, useForkCommunityFeed, useForkCommunityPipeline, useForkCommunityPrompt, useForkCommunityWorkflow } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
-type Tab = 'pipelines' | 'agents' | 'feeds' | 'prompts'
+type Tab = 'pipelines' | 'agents' | 'feeds' | 'prompts' | 'workflows'
 
 const PIPELINE_CATEGORY_LABELS: Record<string, string> = {
   financial: 'Financial',
@@ -30,6 +30,19 @@ const PROMPT_KIND_LABELS: Record<string, string> = {
   TRANSFORMATIONAL: 'Reusable Prompts',
 }
 const PROMPT_KIND_ORDER = ['CONTENT', 'TRANSFORMATIONAL']
+
+const WORKFLOW_CATEGORY_LABELS: Record<string, string> = {
+  research: 'Research',
+  writing: 'Writing',
+  seo: 'SEO',
+  finance: 'Finance',
+  newsletter: 'Newsletter',
+  social: 'Social',
+  news: 'News',
+  video: 'Video',
+  general: 'General',
+}
+const WORKFLOW_CATEGORY_ORDER = ['research', 'writing', 'seo', 'finance', 'newsletter', 'social', 'news', 'video']
 
 function groupBy<T>(items: T[], key: (item: T) => string, order?: string[]): [string, T[]][] {
   const map: Record<string, T[]> = {}
@@ -78,10 +91,11 @@ function SectionHeader({ label, first }: { label: string; first: boolean }) {
 export function CommunityPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab')
-  const tab: Tab = requestedTab === 'agents' || requestedTab === 'feeds' || requestedTab === 'prompts' ? requestedTab : 'pipelines'
+  const tab: Tab = requestedTab === 'agents' || requestedTab === 'feeds' || requestedTab === 'prompts' || requestedTab === 'workflows' ? requestedTab : 'pipelines'
   const [pipelineCat, setPipelineCat] = useState<string | null>(null)
   const [feedCat, setFeedCat] = useState<string | null>(null)
   const [promptKind, setPromptKind] = useState<string | null>(null)
+  const [workflowCat, setWorkflowCat] = useState<string | null>(null)
 
   // Optimistic "added" tracking — IDs added this session show Added immediately
   // without waiting for the community list to refetch.
@@ -92,30 +106,40 @@ export function CommunityPage() {
   const agents = useCommunityAgents()
   const feeds = useCommunityFeeds()
   const prompts = useCommunityPrompts()
+  const workflows = useCommunityWorkflows()
   const forkPipeline = useForkCommunityPipeline()
   const forkAgent = useForkCommunityAgent()
   const forkFeed = useForkCommunityFeed()
   const forkPrompt = useForkCommunityPrompt()
+  const forkWorkflow = useForkCommunityWorkflow()
 
   const allPipelines = pipelines.data ?? []
   const allAgents = agents.data ?? []
   const allFeeds = feeds.data ?? []
   const allPrompts = prompts.data ?? []
+  const allWorkflows = workflows.data?.data ?? []
 
   const pipelineCats = PIPELINE_CATEGORY_ORDER.filter(c => allPipelines.some(p => p.category === c))
   const feedCats = FEED_CATEGORY_ORDER.filter(c => allFeeds.some(f => f.category === c))
   const promptKinds = PROMPT_KIND_ORDER.filter(k => allPrompts.some(p => p.kind === k))
+  const workflowCats = WORKFLOW_CATEGORY_ORDER.filter(c => allWorkflows.some(w => w.category === c))
 
   const filteredPipelines = pipelineCat ? allPipelines.filter(p => p.category === pipelineCat) : allPipelines
   const filteredFeeds = feedCat ? allFeeds.filter(f => f.category === feedCat) : allFeeds
   const filteredPrompts = promptKind ? allPrompts.filter(p => p.kind === promptKind) : allPrompts
+  const filteredWorkflows = workflowCat ? allWorkflows.filter(w => w.category === workflowCat) : allWorkflows
 
   const pipelineGroups = groupBy(filteredPipelines, p => p.category ?? 'other', PIPELINE_CATEGORY_ORDER)
   const feedGroups = groupBy(filteredFeeds, f => f.category ?? 'other', FEED_CATEGORY_ORDER)
   const promptGroups = groupBy(filteredPrompts, p => p.kind ?? 'CONTENT', PROMPT_KIND_ORDER)
+  const workflowGroups = groupBy(filteredWorkflows, w => w.category ?? 'general', WORKFLOW_CATEGORY_ORDER)
 
   function setTab(next: Tab) {
     setSearchParams(next === 'pipelines' ? {} : { tab: next })
+    setWorkflowCat(null)
+    setPipelineCat(null)
+    setFeedCat(null)
+    setPromptKind(null)
   }
 
   function isAdded(item: any) {
@@ -144,6 +168,7 @@ export function CommunityPage() {
 
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant={tab === 'pipelines' ? 'default' : 'outline'} onClick={() => setTab('pipelines')}><Workflow size={13} /> Pipelines</Button>
+        <Button size="sm" variant={tab === 'workflows' ? 'default' : 'outline'} onClick={() => setTab('workflows')}><Layers size={13} /> Workflows</Button>
         <Button size="sm" variant={tab === 'agents' ? 'default' : 'outline'} onClick={() => setTab('agents')}><Bot size={13} /> Agents</Button>
         <Button size="sm" variant={tab === 'feeds' ? 'default' : 'outline'} onClick={() => setTab('feeds')}><Rss size={13} /> Feeds</Button>
         <Button size="sm" variant={tab === 'prompts' ? 'default' : 'outline'} onClick={() => setTab('prompts')}><BookOpen size={13} /> Prompts</Button>
@@ -237,6 +262,36 @@ export function CommunityPage() {
           </div>
         </>
       )}
+
+      {tab === 'workflows' && (
+        <>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Building blocks — reusable sequences of agent nodes. Fork one, then insert it into any pipeline.
+          </p>
+          {workflowCats.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              <Chip label="All" active={!workflowCat} onClick={() => setWorkflowCat(null)} />
+              {workflowCats.map(c => (
+                <Chip key={c} label={WORKFLOW_CATEGORY_LABELS[c] ?? c} active={workflowCat === c} onClick={() => setWorkflowCat(c === workflowCat ? null : c)} />
+              ))}
+            </div>
+          )}
+          <div className="rounded border bg-surface overflow-hidden">
+            {workflowCat
+              ? filteredWorkflows.map(w => (
+                  <WorkflowRow key={w.id} workflow={w} added={isAdded(w)} loading={pendingId === w.id} onFork={() => handleFork(w.id, (id) => forkWorkflow.mutateAsync({ workflowId: id }), 'Workflow added to your library')} />
+                ))
+              : workflowGroups.map(([cat, items], gi) => (
+                  <div key={cat}>
+                    <SectionHeader label={WORKFLOW_CATEGORY_LABELS[cat] ?? cat} first={gi === 0} />
+                    {items.map(w => (
+                      <WorkflowRow key={w.id} workflow={w} added={isAdded(w)} loading={pendingId === w.id} onFork={() => handleFork(w.id, (id) => forkWorkflow.mutateAsync({ workflowId: id }), 'Workflow added to your library')} />
+                    ))}
+                  </div>
+                ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -306,6 +361,24 @@ function PromptRow({ prompt, added, loading, onFork }: { prompt: any; added: boo
       {added
         ? <AddedBadge />
         : <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add prompt</Button>
+      }
+    </div>
+  )
+}
+
+function WorkflowRow({ workflow, added, loading, onFork }: { workflow: any; added: boolean; loading: boolean; onFork: () => void }) {
+  return (
+    <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
+      <Layers size={14} className="text-accent shrink-0" />
+      <div className="min-w-0 flex-1">
+        <Link to={`/workflows/${workflow.id}`} className="text-sm font-medium hover:underline block">{workflow.name}</Link>
+        <p className="text-xs text-muted-foreground truncate">
+          {workflow.description || `${workflow.nodeCount ?? 0} nodes`}
+        </p>
+      </div>
+      {added
+        ? <AddedBadge />
+        : <Button size="sm" variant="outline" loading={loading} onClick={onFork}><GitFork size={13} /> Fork workflow</Button>
       }
     </div>
   )

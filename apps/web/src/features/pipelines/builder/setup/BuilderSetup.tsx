@@ -60,9 +60,9 @@ export function BuilderSetup({ pipeline, pipelineId, runs, onRunCreated }: Props
               onRunTitleChange={runDefaults.setRunTitle}
               onDryRunChange={runDefaults.setDryRun}
             />
+            <LoopConfig pipeline={pipeline} pipelineId={pipelineId} />
             <VariablesSection pipeline={pipeline} pipelineId={pipelineId} />
             <AgentsSection pipeline={pipeline} pipelineId={pipelineId} />
-            <LoopConfig pipeline={pipeline} pipelineId={pipelineId} />
             <RunsSection pipeline={pipeline} runs={runs} />
           </div>
         </div>

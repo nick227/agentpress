@@ -46,14 +46,15 @@ export function usePipelineRun(runId: string, options?: { pollForPublish?: boole
 export function usePublishRun() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (runId: string) => {
+    mutationFn: async ({ runId, destinationId }: { runId: string; destinationId?: string }) => {
       const { data, error, response } = await getApiClient().POST('/api/pipeline-runs/{runId}/publish', {
         params: { path: { runId } },
+        body: { destinationId: destinationId ?? undefined },
       })
       if (error) throw new ApiError((response as Response).status, (error as any).error)
       return data!
     },
-    onSuccess: (_data, runId) => {
+    onSuccess: (_data, { runId }) => {
       queryClient.invalidateQueries({ queryKey: ['run', runId] })
       queryClient.invalidateQueries({ queryKey: ['all-runs'] })
     },

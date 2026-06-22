@@ -312,7 +312,7 @@ export class PipelineRunService {
     dryRun: boolean,
     options: StartRunOptions,
   ) {
-    const resolvedResearch = await researchContext.resolveForPipeline(pipeline, options.researchItemOverrides)
+    const resolvedResearch = await researchContext.resolveForPipeline(pipeline, options.researchItemOverrides, dryRun)
     const runVariables = { ...variables, ...resolvedResearch }
 
     await db.pipelineRun.update({
@@ -845,7 +845,7 @@ export class PipelineRunService {
     }
   }
 
-  async publishRun(workspaceId: string, runId: string) {
+  async publishRun(workspaceId: string, runId: string, destinationIdOverride?: string) {
     const run = await db.pipelineRun.findFirst({
       where: { id: runId, workspaceId },
       include: {
@@ -856,7 +856,7 @@ export class PipelineRunService {
     if (!run) throw Object.assign(new Error('Run not found'), { statusCode: 404 })
     if (!run.generatedPost) throw Object.assign(new Error('Run has no generated content'), { statusCode: 400 })
 
-    const destinationId = run.pipeline.destinationId
+    const destinationId = destinationIdOverride ?? run.pipeline.destinationId
     if (!destinationId) throw Object.assign(new Error('No destination configured on pipeline'), { statusCode: 400 })
 
     const destination = await db.destination.findFirst({ where: { id: destinationId, workspaceId } })
@@ -867,6 +867,7 @@ export class PipelineRunService {
         pipelineRunId: runId,
         destinationId: destination.id,
         status: 'pending',
+        postStatus: destination.defaultStatus,
         progressMessage: 'Starting WordPress publish…',
       },
     })

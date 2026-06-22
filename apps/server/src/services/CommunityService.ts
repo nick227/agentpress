@@ -219,4 +219,45 @@ export class CommunityService {
       },
     })
   }
+
+  async listWorkflows(workspaceId?: string) {
+    const items = await db.workflow.findMany({
+      where: { visibility: 'PUBLIC' },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      select: {
+        id: true, workspaceId: true, visibility: true, key: true, slug: true,
+        name: true, description: true, category: true, tags: true, sortOrder: true,
+        sourceWorkflowId: true, usageCount: true, createdAt: true, updatedAt: true,
+        _count: { select: { nodes: true } },
+      },
+    })
+    if (!workspaceId || items.length === 0) {
+      return items.map(w => ({ ...w, nodeCount: w._count.nodes, forked: false }))
+    }
+    const forkedSet = new Set(
+      (await db.workflow.findMany({
+        where: { workspaceId, sourceWorkflowId: { in: items.map(w => w.id) } },
+        select: { sourceWorkflowId: true },
+      })).map(w => w.sourceWorkflowId!)
+    )
+    return items.map(w => ({ ...w, nodeCount: w._count.nodes, forked: forkedSet.has(w.id) }))
+  }
+
+  async getWorkflow(workflowId: string) {
+    const wf = await db.workflow.findFirst({
+      where: { id: workflowId, visibility: 'PUBLIC' },
+      include: {
+        nodes: {
+          orderBy: { sortOrder: 'asc' },
+          select: {
+            id: true, workflowId: true, uid: true, kind: true, name: true, description: true,
+            systemPrompt: true, userPrompt: true, outputTarget: true, outputFormat: true,
+            imageMode: true, enabled: true, sortOrder: true, createdAt: true, updatedAt: true,
+          },
+        },
+      },
+    })
+    if (!wf) throw Object.assign(new Error('Community Workflow not found'), { statusCode: 404 })
+    return wf
+  }
 }

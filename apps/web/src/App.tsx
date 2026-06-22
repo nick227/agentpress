@@ -63,6 +63,9 @@ const PromptEditorPage = lazy(() =>
 )
 const AgentsPage = lazy(() => import('@/pages/AgentsPage').then((m) => ({ default: m.AgentsPage })))
 const AgentEditorPage = lazy(() => import('@/pages/AgentEditorPage').then((m) => ({ default: m.AgentEditorPage })))
+const WorkflowsPage = lazy(() => import('@/pages/WorkflowsPage').then((m) => ({ default: m.WorkflowsPage })))
+const WorkflowsNewPage = lazy(() => import('@/pages/WorkflowsNewPage').then((m) => ({ default: m.WorkflowsNewPage })))
+const WorkflowDetailPage = lazy(() => import('@/pages/WorkflowDetailPage').then((m) => ({ default: m.WorkflowDetailPage })))
 
 function PageFallback() {
   return (
@@ -97,6 +100,9 @@ export function App() {
             <Route index element={<HomePage />} />
             <Route path="/pipelines" element={<PipelinesPage />} />
             <Route path="/pipelines/new" element={<LazyPage><PipelinesNewPage /></LazyPage>} />
+            <Route path="/workflows" element={<LazyPage><WorkflowsPage /></LazyPage>} />
+            <Route path="/workflows/new" element={<LazyPage><WorkflowsNewPage /></LazyPage>} />
+            <Route path="/workflows/:workflowId" element={<LazyPage><WorkflowDetailPage /></LazyPage>} />
             <Route path="/agents" element={<LazyPage><AgentsPage /></LazyPage>} />
             <Route path="/agents/new" element={<LazyPage><AgentEditorPage /></LazyPage>} />
             <Route path="/agents/:agentId" element={<LazyPage><AgentEditorPage /></LazyPage>} />

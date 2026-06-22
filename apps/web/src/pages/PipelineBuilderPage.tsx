@@ -16,6 +16,8 @@ export function PipelineBuilderPage() {
   const pipeline = data?.data
   const recentRuns = useMemo(() => data?.recentRuns ?? [], [data?.recentRuns])
   const selection = useMemo<Selection>(() => {
+    const view = searchParams.get('view')
+    if (view === 'workflow-editor') return { type: 'workflow-editor' }
     const variableId = searchParams.get('variable')
     const agentId = searchParams.get('agent')
     const runId = searchParams.get('run')
@@ -28,6 +30,10 @@ export function PipelineBuilderPage() {
   function handleSelect(next: Selection) {
     if (next.type === 'setup') {
       setSearchParams({}, { replace: false })
+      return
+    }
+    if (next.type === 'workflow-editor') {
+      setSearchParams({ view: 'workflow-editor' }, { replace: false })
       return
     }
     setSearchParams({ [next.type]: next.id }, { replace: false })

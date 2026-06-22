@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'react-router-dom'
-import { Bot, CalendarClock, Database, FlaskConical, Globe2, MessageSquareText, Play, Workflow } from 'lucide-react'
+import { Bot, CalendarClock, Database, FlaskConical, Layers, MessageSquareText, Play, Workflow } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
 
@@ -9,6 +9,12 @@ const NAV_ITEMS: { to: string; label: string; icon: LucideIcon; match: (p: strin
     label: 'Pipelines',
     icon: Workflow,
     match: (p) => p.startsWith('/pipelines'),
+  },
+  {
+    to: '/workflows',
+    label: 'Workflows',
+    icon: Layers,
+    match: (p) => p.startsWith('/workflows'),
   },
   {
     to: '/agents',
@@ -46,12 +52,6 @@ const NAV_ITEMS: { to: string; label: string; icon: LucideIcon; match: (p: strin
     icon: Play,
     match: (p) => p.startsWith('/runs'),
   },
-  {
-    to: '/community',
-    label: 'Community',
-    icon: Globe2,
-    match: (p) => p.startsWith('/community'),
-  },
 ]
 
 export function TopNav() {
@@ -60,9 +60,9 @@ export function TopNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="w-full min-w-0 shrink-0 border-b bg-surface/80 backdrop-blur-sm"
+      className="w-full min-w-0 shrink-0 border-b backdrop-blur-sm"
     >
-      <div className="flex w-full min-w-0 items-center flex-wrap px-2 sm:gap-3 md:gap-5">
+      <div className="flex w-full min-w-0 items-center flex-wrap px-2 sm:gap-3 md:gap-5 items-center justify-start lg:justify-center">
         {NAV_ITEMS.map(({ to, label, icon: Icon, match }) => {
           const active = match(pathname)
           return (

@@ -125,6 +125,52 @@ Each batch spawns N normal PipelineRuns (one per item), executed sequentially. P
 - Verify `pnpm dev` starts both apps and full auth flow works in browser
 - Phase 6: Documentation generation
 
+## Workflow Resource System (added post-Phase 5)
+
+A Workflow is a reusable, ordered sequence of agent nodes (`WorkflowNode[]`) that can be inserted into any Pipeline. It is a platform-level first-class resource — not a run, not a post composer.
+
+### Schema
+- `Workflow` — owns key, slug, visibility, category, tags, sortOrder, fork provenance
+- `WorkflowNode` — mirrors PipelineAgent fields (uid, kind, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder)
+- `PipelineAgent.sourceWorkflowNodeId` — optional provenance FK (SetNull), records which WorkflowNode a PipelineAgent was created from; holds no execution dependency
+
+### Catalog / Fork / Override Pattern
+- Community Workflows: `visibility: PUBLIC`, `workspaceId: community.id`
+- Workspace Workflows: `visibility: PRIVATE`, `workspaceId: personal/team.id`
+- Shadowing: workspace `key` beats community `key` in resolved catalog listings
+- Fork: `POST /api/community/workflows/{id}/fork` → creates workspace copy; idempotent (returns existing if key owned)
+
+### Insert-into-Pipeline
+`POST /api/pipelines/{id}/workflows/insert` copies WorkflowNode records into new PipelineAgent rows. This is a **one-time snapshot** — there is no live FK dependency from PipelineAgent to Workflow at execution time. Community Workflows may be inserted directly (without forking first); execution operates only on the copied PipelineAgent records.
+
+### Key invariants
+- Execution NEVER reads from Workflow or WorkflowNode; it uses the PipelineAgent copies
+- Community Workflows must never be mutated during execution (only workspace-owned resources can be edited via API)
+- Inserting a Workflow shifts existing agents' sortOrder to make room
+- UIDs are made unique within the Pipeline on insert (appending `_2`, `_3`, etc. on collision)
+- `usageCount` increments on each successful insert
+
+### API endpoints (tag: workflows / community)
+- `GET /api/workflows` — list workspace workflows (+ `resolved=true` for shadowing)
+- `POST /api/workflows` — create
+- `GET/PATCH/DELETE /api/workflows/{id}` — get/update/delete
+- `GET /api/community/workflows` — list PUBLIC workflows
+- `GET /api/community/workflows/{id}` — get with nodes
+- `POST /api/community/workflows/{id}/fork` — fork to workspace
+- `POST /api/pipelines/{id}/workflows/insert` — snapshot into pipeline
+
+### SDK hooks
+`useWorkflows`, `useWorkflow`, `useCreateWorkflow`, `useUpdateWorkflow`, `useDeleteWorkflow`, `useCommunityWorkflows`, `useCommunityWorkflow`, `useForkCommunityWorkflow`, `useInsertWorkflowIntoPipeline`
+
+### Community Seed Workflows (5 templates)
+- `research-and-outline` — Outline Strategist → Thesis Developer → Source Advisor
+- `intro-and-hook` — Hook Writer → Introduction Writer
+- `seo-metadata` — SEO Title Writer → Meta Description Writer
+- `financial-analysis` — Ticker Identifier → Bull Case Builder → Bear Case Builder
+- `newsletter-composer` — Newsletter Intro Writer → Weekly Digest Writer
+
 ## Architectural Invariants & Rules
 
 - **Provider Caching**: Provider fetch cache keys must never include `workspaceId`, `userId`, or `ResearchSource.id`. They must use `sourceType` + canonical `externalId` (e.g., `reddit:stocks`, `youtube:UC...`) so forked copies share upstream protection against API spam while keeping local items private.
+- **Workflow Execution Isolation**: Execution must never read from `Workflow` or `WorkflowNode` tables. All runtime agent resolution goes through `PipelineAgent`. WorkflowNode provenance in `PipelineAgent.sourceWorkflowNodeId` is informational only.
+- **Community Resource Immutability**: Community resources (`visibility: PUBLIC`) can never be mutated via the API. All mutation endpoints scope to `workspaceId: context.workspaceId`. Community resources used in execution are accessed via workspace copies or direct PipelineAgent snapshots — never live community records.

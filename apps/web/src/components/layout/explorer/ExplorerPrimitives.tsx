@@ -65,7 +65,7 @@ export function ResourceGroup({
           </Link>
         )}
       </div>
-      <div className="max-h-[30vh] overflow-auto p-2">{children}</div>
+      <div className="max-h-[10vh] overflow-auto p-2">{children}</div>
     </div>
   )
 }

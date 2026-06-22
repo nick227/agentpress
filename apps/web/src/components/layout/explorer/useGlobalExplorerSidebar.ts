@@ -50,6 +50,12 @@ export function useGlobalExplorerSidebar() {
       : resources.runs,
     [resources.runs, needle],
   )
+  const visibleWorkflows = useMemo(
+    () => needle
+      ? resources.workflows.filter((wf) => `${wf.name} ${wf.category} ${(wf.tags ?? []).join(' ')}`.toLowerCase().includes(needle))
+      : resources.workflows,
+    [resources.workflows, needle],
+  )
   return {
     pathname,
     query,
@@ -62,25 +68,29 @@ export function useGlobalExplorerSidebar() {
     prompts: visiblePrompts,
     runs: visibleRuns,
     researchSources: visibleSources,
+    workflows: visibleWorkflows,
     hasResults: visiblePipelines.length > 0
       || visibleAgents.length > 0
       || visibleSchedules.length > 0
       || visibleSources.length > 0
       || visiblePrompts.length > 0
       || visibleDestinations.length > 0
-      || visibleRuns.length > 0,
+      || visibleRuns.length > 0
+      || visibleWorkflows.length > 0,
     pipelinesFetching: resources.pipelinesFetching,
     agentsFetching: resources.agentsFetching,
     schedulesFetching: resources.schedulesFetching,
     destinationsFetching: resources.destinationsFetching,
     promptsFetching: resources.promptsFetching,
     runsFetching: resources.runsFetching,
+    workflowsFetching: resources.workflowsFetching,
     refreshPipelines: resources.refreshPipelines,
     refreshAgents: resources.refreshAgents,
     refreshSchedules: resources.refreshSchedules,
     refreshDestinations: resources.refreshDestinations,
     refreshPrompts: resources.refreshPrompts,
     refreshRuns: resources.refreshRuns,
+    refreshWorkflows: resources.refreshWorkflows,
     checkResearch: researchRefresh.checkResearch,
     checkSource: researchRefresh.checkSource,
     checkingAllResearch: researchRefresh.checkingAll,

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useResearchSource, useResearchItems } from '@project/sdk'
+import { toast } from 'sonner'
+import { useCheckResearchSource, useResearchSource, useResearchItems } from '@project/sdk'
 import type { components } from '@project/sdk'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { ResearchItemPanel } from '@/features/research/ResearchItemPanel'
 import { ResearchInfoPanel } from '@/features/research/ResearchInfoPanel'
@@ -18,8 +20,26 @@ export function ResearchSourcePage() {
 
   const { data: sourceData, isLoading: sourceLoading } = useResearchSource(sourceSlug!)
   const source = sourceData?.data
+  const checkSource = useCheckResearchSource()
 
   const { data: itemsData, isLoading: itemsLoading } = useResearchItems(source?.id ?? '', page, ITEMS_PER_PAGE)
+
+  async function handleCheckNow() {
+    if (!source) return
+    const toastId = `check-${source.id}`
+    toast.loading(`Checking ${source.name}…`, { id: toastId })
+    try {
+      const { data: result } = await checkSource.mutateAsync(source.id)
+      const msg = result.message ?? (result.newCount > 0
+        ? `${result.newCount} new item${result.newCount === 1 ? '' : 's'} found.`
+        : 'No new items.')
+      if (!result.checked) toast.error(msg, { id: toastId })
+      else if (result.newCount > 0 || result.updatedCount > 0) toast.success(msg, { id: toastId })
+      else toast.info(msg, { id: toastId })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Check failed', { id: toastId })
+    }
+  }
 
   function handlePageChange(nextPage: number) {
     setPage(nextPage)
@@ -49,7 +69,15 @@ export function ResearchSourcePage() {
     const isCommunity = source.visibility === 'PUBLIC'
     content = (
       <div className="page-shell pb-10">
-        <Link to={isCommunity ? "/community?tab=feeds" : "/"} className="mt-5 inline-flex text-sm text-muted-foreground hover:text-foreground">← {isCommunity ? 'Community' : 'Home'}</Link>
+        <div className="mt-5 flex items-center justify-between">
+          <Link to={isCommunity ? "/community?tab=feeds" : "/research"} className="text-sm text-muted-foreground hover:text-foreground">← Research</Link>
+          {!isCommunity && (
+            <Button size="sm" variant="outline" disabled={checkSource.isPending} onClick={handleCheckNow}>
+              {checkSource.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              {checkSource.isPending ? 'Checking…' : 'Check now'}
+            </Button>
+          )}
+        </div>
         <ResearchInfoPanel source={source} />
         <ResearchItemsSection
           sourceType={source.sourceType}

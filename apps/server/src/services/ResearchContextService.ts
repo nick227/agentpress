@@ -34,6 +34,7 @@ export class ResearchContextService {
   async resolveForPipeline(
     pipeline: PipelineForResearch,
     itemOverridesBySourceId: Record<string, string> = {},
+    dryRun = false,
   ): Promise<Record<string, ResearchContext>> {
     const contexts: Record<string, ResearchContext> = {}
 
@@ -49,30 +50,23 @@ export class ResearchContextService {
           ],
         },
       })
-      const communitySourceSlugs = new Set(
-        rawSources
-          .filter((source) => source.workspaceId === communityWorkspaceId)
-          .map((source) => source.slug),
-      )
       const sourceBySlug = new Map<string, typeof rawSources[0]>()
       for (const source of rawSources) {
-        if (pipeline.workspaceId && source.workspaceId === pipeline.workspaceId) {
+        const isOwned = pipeline.workspaceId && source.workspaceId === pipeline.workspaceId
+        const isCommunity = source.workspaceId === communityWorkspaceId
+        if (isOwned || (isCommunity && !sourceBySlug.has(source.slug))) {
           sourceBySlug.set(source.slug, source)
         }
       }
 
       for (const [slug, itemKeys] of referencedSources) {
         const source = sourceBySlug.get(slug)
-        if (!source && communitySourceSlugs.has(slug)) {
-          throw new Error(
-            `Pipeline references community feed "${slug}". Add it to your workspace before running.`,
-          )
-        }
-        if (!source) throw new Error(`Research source "${slug}" was not found in this workspace`)
+        if (!source) throw new Error(`Research source "${slug}" was not found in this workspace or the community library`)
         const sourceContext = contexts[slug] ?? await this.resolveSource(
           source,
           undefined,
           itemOverridesBySourceId[source.id],
+          dryRun,
         )
         contexts[slug] = sourceContext
 
@@ -80,6 +74,8 @@ export class ResearchContextService {
           ;(sourceContext as unknown as Record<string, ResearchContext>)[itemKey] = await this.resolveSource(
             source,
             itemKey,
+            undefined,
+            dryRun,
           )
         }
       }
@@ -116,7 +112,7 @@ export class ResearchContextService {
     name: string
     sourceType: string
     defaultSummaryPromptId?: string | null
-  }, itemKey?: string, overrideItemId?: string): Promise<ResearchContext> {
+  }, itemKey?: string, overrideItemId?: string, dryRun = false): Promise<ResearchContext> {
     let item = itemKey
       ? await this.findItemByKey(source.id, itemKey)
       : overrideItemId
@@ -127,9 +123,36 @@ export class ResearchContextService {
           })
 
     if (!item) {
-      throw new Error(itemKey
-        ? `No research item found for "${source.name}" on ${itemKey}`
-        : `No research items found for "${source.name}"`)
+      if (dryRun) {
+        await this.research.checkLatest(null, source.id).catch(() => null)
+        item = itemKey
+          ? await this.findItemByKey(source.id, itemKey)
+          : await db.researchItem.findFirst({
+              where: { sourceId: source.id },
+              orderBy: { publishedAt: 'desc' },
+            })
+        if (!item) {
+          return {
+            sourceId: source.id,
+            sourceSlug: source.slug,
+            sourceName: source.name,
+            sourceType: source.sourceType,
+            itemId: '',
+            title: `[No content yet — ${source.name}]`,
+            url: '',
+            date: new Date().toISOString().slice(0, 10),
+            publishedAt: new Date().toISOString(),
+            summaryPromptId: '',
+            summaryPromptName: '',
+            summary: `[No content available for ${source.name}]`,
+            content: '',
+          }
+        }
+      } else {
+        throw new Error(itemKey
+          ? `No research item found for "${source.name}" on ${itemKey}`
+          : `No research items found for "${source.name}"`)
+      }
     }
 
     const prompt = await resolvePipelineSummaryPrompt(source.defaultSummaryPromptId)

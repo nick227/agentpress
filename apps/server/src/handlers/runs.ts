@@ -59,7 +59,8 @@ export async function startPipelineRun(request: any, reply: any) {
 
 export async function publishRun(request: any, reply: any) {
   authorization.authorize(request.auth, 'destination:use')
-  const result = await svc.publishRun(request.auth.workspaceId, request.params.runId)
+  const destinationId = (request.body as any)?.destinationId
+  const result = await svc.publishRun(request.auth.workspaceId, request.params.runId, destinationId)
   return reply.send(result)
 }
 
@@ -136,6 +137,7 @@ export async function getPipelineRun(request: any, reply: any) {
       pipelineRunId: p.pipelineRunId,
       destinationId: p.destinationId,
       status: p.status,
+      postStatus: p.postStatus ?? undefined,
       progressMessage: p.progressMessage ?? undefined,
       remotePostId: p.remotePostId ?? undefined,
       remoteUrl: p.remoteUrl ?? undefined,

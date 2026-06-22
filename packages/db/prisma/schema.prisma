@@ -72,6 +72,7 @@ model Workspace {
   feedSubscriptions WorkspaceFeedSubscription[]
   prompts           Prompt[]
   agents            Agent[]
+  workflows         Workflow[]
   auditEvents       AuditEvent[]
 }
 
@@ -169,30 +170,33 @@ model PipelineVariable {
 }
 
 model PipelineAgent {
-  id                   String       @id @default(cuid())
+  id                   String        @id @default(cuid())
   pipelineId           String
-  pipeline             Pipeline     @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  pipeline             Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
   uid                  String
-  kind                 AgentKind    @default(AI_TEXT)
+  kind                 AgentKind     @default(AI_TEXT)
   sourceAgentId        String?
-  sourceAgent          Agent?       @relation(fields: [sourceAgentId], references: [id], onDelete: SetNull)
+  sourceAgent          Agent?        @relation(fields: [sourceAgentId], references: [id], onDelete: SetNull)
+  sourceWorkflowNodeId String?
+  sourceWorkflowNode   WorkflowNode? @relation("PipelineAgentWorkflowNode", fields: [sourceWorkflowNodeId], references: [id], onDelete: SetNull)
   name                 String
-  systemPrompt         String       @db.Text
-  userPrompt           String       @db.Text
+  systemPrompt         String        @db.Text
+  userPrompt           String        @db.Text
   outputTarget         String
-  outputFormat         String       @default("text")
-  imageMode            String       @default("generate")
+  outputFormat         String        @default("text")
+  imageMode            String        @default("generate")
   selectedImageAssetId String?
-  selectedImageAsset   ImageAsset?  @relation("SelectedImageAsset", fields: [selectedImageAssetId], references: [id], onDelete: SetNull)
-  enabled              Boolean      @default(true)
-  sortOrder            Int          @default(0)
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  imageAssets          ImageAsset[] @relation("AgentImageAssets")
-  agentRuns            AgentRun[]   @relation("PipelineAgentRuns")
+  selectedImageAsset   ImageAsset?   @relation("SelectedImageAsset", fields: [selectedImageAssetId], references: [id], onDelete: SetNull)
+  enabled              Boolean       @default(true)
+  sortOrder            Int           @default(0)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  imageAssets          ImageAsset[]  @relation("AgentImageAssets")
+  agentRuns            AgentRun[]    @relation("PipelineAgentRuns")
 
   @@unique([pipelineId, uid])
   @@index([sourceAgentId])
+  @@index([sourceWorkflowNodeId])
 }
 
 model ImageAsset {
@@ -314,6 +318,7 @@ model PublishAttempt {
   destinationId   String
   destination     Destination @relation(fields: [destinationId], references: [id])
   status          String      @default("pending")
+  postStatus      String?
   progressMessage String?     @db.Text
   remotePostId    String?
   remoteUrl       String?
@@ -670,4 +675,56 @@ model PipelineRunBatch {
   runs           PipelineRun[]
 
   @@index([pipelineId, createdAt])
+}
+
+model Workflow {
+  id               String         @id @default(cuid())
+  workspaceId      String
+  workspace        Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  visibility       Visibility     @default(PRIVATE)
+  key              String
+  slug             String
+  name             String
+  description      String?        @db.Text
+  category         String         @default("general")
+  tags             Json           @default("[]")
+  sortOrder        Int            @default(0)
+  sourceWorkflowId String?
+  sourceWorkflow   Workflow?      @relation("WorkflowForks", fields: [sourceWorkflowId], references: [id], onDelete: SetNull)
+  forks            Workflow[]     @relation("WorkflowForks")
+  forkedAt         DateTime?
+  sourceVersionAt  DateTime?
+  createdByUserId  String?
+  usageCount       Int            @default(0)
+  nodes            WorkflowNode[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([workspaceId, key])
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, visibility, updatedAt])
+  @@index([sourceWorkflowId])
+}
+
+model WorkflowNode {
+  id                String          @id @default(cuid())
+  workflowId        String
+  workflow          Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  uid               String
+  kind              AgentKind       @default(AI_TEXT)
+  name              String
+  description       String?         @db.Text
+  systemPrompt      String          @db.Text
+  userPrompt        String          @db.Text
+  outputTarget      String          @default("none")
+  outputFormat      String          @default("markdown")
+  imageMode         String          @default("generate")
+  enabled           Boolean         @default(true)
+  sortOrder         Int             @default(0)
+  pipelineSnapshots PipelineAgent[] @relation("PipelineAgentWorkflowNode")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([workflowId, uid])
+  @@index([workflowId, sortOrder])
 }

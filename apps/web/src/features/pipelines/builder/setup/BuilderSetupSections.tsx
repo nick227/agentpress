@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { AlertCircle, ArrowDown, ArrowUp, BookOpen, CheckCircle2, FileSpreadsheet, FileText, Image, Layers, Link2, Loader2, Package, Plus, Trash2, Upload, XCircle } from 'lucide-react'
+import { AlertCircle, ArrowDown, ArrowUp, BookOpen, CheckCircle2, FileSpreadsheet, FileText, Image, Layers, Link2, Loader2, Package, Plus, Trash2, Upload, Workflow, XCircle } from 'lucide-react'
 import { BUILTIN_AGENT_DEFINITIONS, appendAgentDefinitionToPipelineInputs, type AgentDefinition } from '@project/content'
 import type { components } from '@project/sdk'
 import { useDeletePipelineLoop, useDestinations, usePipelineBatches, useUpdateDestination, useUpdatePipeline, useUpsertPipelineLoop, useWordPressCategories } from '@project/sdk'
@@ -37,7 +37,8 @@ export function PipelineNameField({ pipeline, pipelineId, onRenamed }: {
   }
 
   return (
-    <div className="max-w-2xl">
+    <section className="space-y-2">
+        <Label>Pipeline Name</Label>
       <Input
         value={nameInput}
         onChange={(event) => setNameInput(event.target.value)}
@@ -45,7 +46,7 @@ export function PipelineNameField({ pipeline, pipelineId, onRenamed }: {
         onKeyDown={(event) => { if (event.key === 'Enter') (event.target as HTMLInputElement).blur() }}
         className="font-medium text-base"
       />
-    </div>
+    </section>
   )
 }
 
@@ -146,7 +147,7 @@ function CategoryPickers({ categories, destination, pipeline, onDestinationChang
 }) {
   return (
     <>
-      <CategoryPicker label="Destination categories" categories={categories} selected={destination.defaultCategoryIds ?? []} onChange={onDestinationChange} />
+      <CategoryPicker label="" categories={categories} selected={destination.defaultCategoryIds ?? []} onChange={onDestinationChange} />
     </>
   )
 }
@@ -208,7 +209,7 @@ export function VariablesSection({ pipeline, pipelineId }: { pipeline: Pipeline;
 
   return (
     <section id="variables" className="space-y-3 scroll-mt-6">
-      <SectionHeader title="Variables" description="Static inputs and row-based batch data available to agent prompts.">
+      <SectionHeader title="Variables">
         <Button variant="ghost" size="icon-sm" onClick={() => setShowPicker(true)} title="Import variable pack"><Package size={13} /></Button>
         <Button variant="outline" size="sm" loading={update.isPending} onClick={addVariable}><Plus size={13} /> Add variable</Button>
         <DatasetInput pipeline={pipeline} pipelineId={pipelineId} />
@@ -451,8 +452,10 @@ export function AgentsSection({ pipeline, pipelineId }: { pipeline: Pipeline; pi
 }
 
 function AgentSectionHeader({ pending, onBrowse, onAdd }: { pending: boolean; onBrowse: () => void; onAdd: (definition: AgentDefinition) => void }) {
+  const { onSelect } = usePipelineSelection()
   return (
-    <SectionHeader title="Workflow" description="Set the execution and final-body order. Disable any step you want to skip.">
+    <SectionHeader title="Workflow">
+      <Button variant="outline" size="sm" onClick={() => onSelect({ type: 'workflow-editor' })} title="Open full workflow editor"><Workflow size={13} /> Full Editor</Button>
       <Button variant="outline" size="sm" onClick={onBrowse} title="Browse agent library"><BookOpen size={13} /> Browse library</Button>
       <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankImage)} title="Add image agent"><Image size={13} />Add image</Button>
       <Button variant="outline" size="sm" loading={pending} onClick={() => onAdd(BUILTIN_AGENT_DEFINITIONS.blankStatic)} title="Add static text Agent"><FileText size={13} /> Static text</Button>
@@ -505,7 +508,7 @@ export function RunsSection({ pipeline, runs }: { pipeline: Pipeline; runs: Run[
           </div>
         </div>
       )}
-      <SectionHeader title={batches.length > 0 ? 'Individual runs' : 'Runs'} description="Newest pipeline executions first." />
+      <SectionHeader title={batches.length > 0 ? 'Individual runs' : 'Runs'} />
       {runs.length === 0 ? <EmptyRow text="No runs yet." /> : (
         <div className="divide-y rounded border bg-surface">
           {runs.map((run) => <RunRow key={run.id} run={run} fallbackTitle={pipeline.name} onClick={() => onSelect({ type: 'run', id: run.id })} />)}

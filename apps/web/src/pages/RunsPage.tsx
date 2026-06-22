@@ -293,7 +293,7 @@ function RunDetail({ run }: { run: RunSummary }) {
 
   async function handlePublish() {
     try {
-      await publishRun.mutateAsync(run.id)
+      await publishRun.mutateAsync({ runId: run.id })
       toast.success('Published successfully')
     } catch {
       toast.error('Failed to publish')

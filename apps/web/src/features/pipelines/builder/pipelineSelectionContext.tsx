@@ -5,6 +5,7 @@ export type Selection =
   | { type: 'variable'; id: string }
   | { type: 'agent'; id: string }
   | { type: 'run'; id: string }
+  | { type: 'workflow-editor' }
 
 interface PipelineSelectionContextValue {
   selection: Selection

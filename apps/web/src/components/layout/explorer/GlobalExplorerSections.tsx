@@ -1,4 +1,4 @@
-import { Bot, CalendarClock, Database, FlaskConical, MessageSquareText, Play, Workflow } from 'lucide-react'
+import { Bot, CalendarClock, Database, FlaskConical, Layers, MessageSquareText, Play, Workflow } from 'lucide-react'
 import { ResourceGroup, ResourceLink } from './ExplorerPrimitives'
 import { isInProgress } from './explorerTime'
 import type { GlobalExplorerSidebarModel } from './useGlobalExplorerSidebar'
@@ -6,10 +6,11 @@ import type { GlobalExplorerSidebarModel } from './useGlobalExplorerSidebar'
 export function GlobalExplorerSections({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
   return (
     <>
-      <PipelineSection explorer={explorer} />
-      <AgentSection explorer={explorer} />
       <ScheduleSection explorer={explorer} />
+      <PipelineSection explorer={explorer} />
       <ResearchSection explorer={explorer} />
+      <WorkflowSection explorer={explorer} />
+      <AgentSection explorer={explorer} />
       <PromptSection explorer={explorer} />
       <DestinationSection explorer={explorer} />
       <RunsSection explorer={explorer} />
@@ -17,6 +18,17 @@ export function GlobalExplorerSections({ explorer }: { explorer: GlobalExplorerS
         <p className="px-4 py-3 text-xs text-muted-foreground">No matching resources.</p>
       )}
     </>
+  )
+}
+
+function WorkflowSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
+  if (explorer.workflows.length === 0) return null
+  return (
+    <ResourceGroup label="Workflows" icon={Layers} indexHref="/workflows" onRefetch={explorer.refreshWorkflows} isRefetching={explorer.workflowsFetching}>
+      {explorer.workflows.map((wf) => (
+        <ResourceLink key={wf.id} href={`/workflows/${wf.id}`} label={wf.name} active={explorer.pathname === `/workflows/${wf.id}`} status="configured" />
+      ))}
+    </ResourceGroup>
   )
 }
 

@@ -18,12 +18,13 @@ interface Props {
   value: string
   onChange: (v: string) => void
   promptKind: 'system' | 'user'
-  pipeline: Pipeline
-  agent: Agent
+  pipeline?: Pipeline
+  agent?: Agent
   defaultSaveName: string
   savingPrompt: boolean
   onSavePrompt: (name: string) => Promise<void>
   placeholder?: string
+  onSave?: () => void
 }
 
 export function PromptField({
@@ -37,6 +38,7 @@ export function PromptField({
   savingPrompt,
   onSavePrompt,
   placeholder,
+  onSave,
 }: Props) {
   const promptAssist = usePromptAssist()
   const { data: promptsData, isLoading: promptsLoading } = usePrompts({
@@ -57,7 +59,7 @@ export function PromptField({
 
   function insertAtCursor(text: string) {
     const el = textareaRef.current
-    if (!el) { onChange(value + text); return }
+    if (!el) { onChange(value + text); onSave?.(); return }
     const start = el.selectionStart
     const end = el.selectionEnd
     const next = value.slice(0, start) + text + value.slice(end)
@@ -65,10 +67,11 @@ export function PromptField({
     setTimeout(() => {
       el.focus()
       el.setSelectionRange(start + text.length, start + text.length)
+      onSave?.()
     }, 0)
   }
 
-  const agentsBefore = pipeline.agents.filter((a) => a.sortOrder < agent.sortOrder)
+  const agentsBefore = pipeline && agent ? pipeline.agents.filter((a) => a.sortOrder < agent.sortOrder) : []
   const researchSources = (researchData?.data ?? []).filter((source) => (source.itemCount ?? 0) > 0)
   const savedPrompts = promptsData?.data ?? []
   const ownedPrompts = savedPrompts.filter((prompt) => prompt.visibility === 'PRIVATE')
@@ -88,10 +91,10 @@ export function PromptField({
 
   async function handleAssist() {
     const result = await promptAssist.mutateAsync({
-      pipelineName: pipeline.name,
-      variables: pipeline.variables,
+      pipelineName: pipeline?.name ?? 'Global',
+      variables: pipeline?.variables ?? [],
       previousAgents: agentsBefore,
-      currentAgent: agent,
+      currentAgent: agent ?? { uid: 'global', name: 'Global', kind: 'AI_TEXT', outputTarget: 'body', outputFormat: 'markdown' } as Agent,
       promptKind,
       currentPrompt: value,
       userInstruction: instruction,
@@ -132,7 +135,7 @@ export function PromptField({
                           label="Your prompts"
                           prompts={ownedPrompts}
                           promptKind={promptKind}
-                          onApply={(text) => { onChange(text); setShowPromptMenu(false) }}
+                          onApply={(text) => { onChange(text); setShowPromptMenu(false); onSave?.() }}
                         />
                       )}
                       {communityPrompts.length > 0 && (
@@ -140,7 +143,7 @@ export function PromptField({
                           label="Community prompts"
                           prompts={communityPrompts}
                           promptKind={promptKind}
-                          onApply={(text) => { onChange(text); setShowPromptMenu(false) }}
+                          onApply={(text) => { onChange(text); setShowPromptMenu(false); onSave?.() }}
                         />
                       )}
                     </>
@@ -198,7 +201,7 @@ export function PromptField({
               type="button"
               variant="ghost"
               size="sm"
-              disabled={pipeline.variables.length === 0}
+              disabled={!pipeline || pipeline.variables.length === 0}
               onClick={() => {
                 setShowVariableMenu((v) => !v)
                 setShowResearchMenu(false)
@@ -209,7 +212,7 @@ export function PromptField({
             >
               Variables <ChevronDown size={11} />
             </Button>
-            {showVariableMenu && (
+            {showVariableMenu && pipeline && (
               <div className="absolute right-0 top-8 w-56 bg-surface border rounded shadow-lg z-20 py-1">
                 {pipeline.variables.length > 0 ? (
                   pipeline.variables.map((v) => (
@@ -356,6 +359,7 @@ export function PromptField({
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onSave}
         rows={7}
         placeholder={placeholder}
         className="font-mono text-xs"
@@ -389,7 +393,7 @@ export function PromptField({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => { onChange(suggested); setSuggested(''); setShowAssist(false) }}
+                onClick={() => { onChange(suggested); setSuggested(''); setShowAssist(false); onSave?.() }}
               >
                 Apply
               </Button>

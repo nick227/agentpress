@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { usePipelineSelection } from '@/features/pipelines/builder/pipelineSelectionContext'
+import { useUpdatePipeline } from '@project/sdk'
 
 const BuilderSetup = lazy(() =>
   import('./setup/BuilderSetup').then((m) => ({ default: m.BuilderSetup })),
@@ -14,6 +15,9 @@ const BuilderAgent = lazy(() =>
 )
 const BuilderRun = lazy(() =>
   import('./runs/BuilderRun').then((m) => ({ default: m.BuilderRun })),
+)
+const BuilderWorkflowEditor = lazy(() =>
+  import('./workflow/BuilderWorkflowEditor').then((m) => ({ default: m.BuilderWorkflowEditor })),
 )
 
 type Pipeline = components['schemas']['Pipeline']
@@ -36,6 +40,7 @@ function PanelFallback() {
 
 export function DetailPanel({ pipeline, runs, pipelineId }: Props) {
   const { selection, onSelect } = usePipelineSelection()
+  const update = useUpdatePipeline()
 
   if (selection.type === 'setup') {
     return (
@@ -93,6 +98,22 @@ export function DetailPanel({ pipeline, runs, pipelineId }: Props) {
       <Suspense fallback={<PanelFallback />}>
         <InnerView onBack={() => onSelect({ type: 'setup' })} label="Back to Pipeline">
           <BuilderRun runId={selection.id} pipeline={pipeline} />
+        </InnerView>
+      </Suspense>
+    )
+  }
+
+  if (selection.type === 'workflow-editor') {
+    return (
+      <Suspense fallback={<PanelFallback />}>
+        <InnerView onBack={() => onSelect({ type: 'setup' })} label="Back to Pipeline Configuration">
+          <BuilderWorkflowEditor 
+            nodes={pipeline.agents}
+            pipeline={pipeline}
+            onUpdateNodes={async (newNodes: any) => {
+              await update.mutateAsync({ pipelineId, agents: newNodes })
+            }}
+          />
         </InnerView>
       </Suspense>
     )

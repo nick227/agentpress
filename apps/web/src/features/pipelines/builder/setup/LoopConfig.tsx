@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import type { components } from '@project/sdk'
 import {
   useResearchSources,
@@ -83,15 +83,16 @@ export function LoopConfig({ pipeline, pipelineId }: Props) {
     toast.success('Batch config saved')
     setDirty(false)
   }
+  
+  function Row({ label, children }: { label: string; children: ReactNode }) {
+    return <div className="flex items-start gap-3"><span className="text-xs text-muted-foreground w-20 shrink-0 pt-1.5">{label}</span><div className="flex-1">{children}</div></div>
+  }
 
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="px-4 py-3 bg-muted/20 border-b flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium">Run mode</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {isEnabled ? 'Batch — creates one run per research item' : 'Single run per trigger'}
-          </p>
         </div>
         <ModeToggle enabled={isEnabled} onEnable={handleEnable} onDisable={handleDisable} pending={upsert.isPending || remove.isPending} />
       </div>

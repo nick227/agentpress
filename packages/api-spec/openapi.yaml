@@ -451,6 +451,8 @@ components:
         status:
           type: string
           enum: [pending, success, failed]
+        postStatus:
+          type: string
         remotePostId:
           type: string
         remoteUrl:
@@ -874,6 +876,191 @@ components:
           type: string
         sourceAgentId:
           type: string
+
+    WorkflowNode:
+      type: object
+      required: [id, workflowId, uid, kind, name, systemPrompt, userPrompt, outputTarget, outputFormat, imageMode, enabled, sortOrder, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        workflowId:
+          type: string
+        uid:
+          type: string
+        kind:
+          type: string
+          enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+        name:
+          type: string
+        description:
+          type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        outputTarget:
+          type: string
+          enum: [title, excerpt, thumbnail_prompt, thumbnail, body, image, none]
+        outputFormat:
+          type: string
+          enum: [text, markdown, json, image, static]
+        imageMode:
+          type: string
+          enum: [generate, selected, none]
+        enabled:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkflowNodeInput:
+      type: object
+      required: [uid, kind, name, systemPrompt, userPrompt, outputTarget, outputFormat, enabled, sortOrder]
+      properties:
+        uid:
+          type: string
+        kind:
+          type: string
+          enum: [AI_TEXT, AI_IMAGE, STATIC_TEXT, STATIC_IMAGE]
+        name:
+          type: string
+        description:
+          type: string
+        systemPrompt:
+          type: string
+        userPrompt:
+          type: string
+        outputTarget:
+          type: string
+          enum: [title, excerpt, thumbnail_prompt, thumbnail, body, image, none]
+        outputFormat:
+          type: string
+          enum: [text, markdown, json, image, static]
+        imageMode:
+          type: string
+          enum: [generate, selected, none]
+        enabled:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    Workflow:
+      type: object
+      required: [id, workspaceId, visibility, key, slug, name, category, tags, sortOrder, usageCount, nodes, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        visibility:
+          type: string
+          enum: [PRIVATE, PUBLIC]
+        key:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        sortOrder:
+          type: integer
+        sourceWorkflowId:
+          type: string
+        forkedAt:
+          type: string
+          format: date-time
+        sourceVersionAt:
+          type: string
+          format: date-time
+        usageCount:
+          type: integer
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowNode'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkflowInput:
+      type: object
+      required: [name, nodes]
+      properties:
+        name:
+          type: string
+        key:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        sortOrder:
+          type: integer
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowNodeInput'
+
+    WorkflowSummary:
+      type: object
+      required: [id, workspaceId, visibility, key, slug, name, category, tags, sortOrder, usageCount, nodeCount, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        visibility:
+          type: string
+          enum: [PRIVATE, PUBLIC]
+        key:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        sortOrder:
+          type: integer
+        sourceWorkflowId:
+          type: string
+        usageCount:
+          type: integer
+        nodeCount:
+          type: integer
+        forked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     TemplateVariable:
       type: object
@@ -2524,6 +2711,15 @@ paths:
       summary: Publish a completed dry run to its pipeline destination
       security:
         - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                destinationId:
+                  type: string
       responses:
         '200':
           description: Publish result
@@ -4077,3 +4273,264 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/ScheduleExecution'
+
+  /api/workflows:
+    get:
+      operationId: listWorkflows
+      tags: [workflows]
+      summary: List workspace Workflows, optionally with resolved community fallbacks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: resolved
+          in: query
+          description: Include public community fallbacks, shadowed by workspace Workflows with the same key.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Workflows
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkflowSummary'
+    post:
+      operationId: createWorkflow
+      tags: [workflows]
+      summary: Create a private workspace Workflow
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowInput'
+      responses:
+        '201':
+          description: Created Workflow
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Workflow'
+
+  /api/workflows/{workflowId}:
+    parameters:
+      - name: workflowId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getWorkflow
+      tags: [workflows]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Workflow with nodes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Workflow'
+        '404':
+          description: Not found
+    patch:
+      operationId: updateWorkflow
+      tags: [workflows]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                key:
+                  type: string
+                description:
+                  type: string
+                category:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                sortOrder:
+                  type: integer
+                nodes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/WorkflowNodeInput'
+      responses:
+        '200':
+          description: Updated Workflow
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Workflow'
+    delete:
+      operationId: deleteWorkflow
+      tags: [workflows]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /api/community/workflows:
+    get:
+      operationId: listCommunityWorkflows
+      tags: [community]
+      summary: List public community Workflows
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Community Workflows
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkflowSummary'
+
+  /api/community/workflows/{workflowId}:
+    parameters:
+      - name: workflowId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getCommunityWorkflow
+      tags: [community]
+      summary: Get a single public community Workflow with nodes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Community Workflow
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Workflow'
+        '404':
+          description: Not found
+
+  /api/community/workflows/{workflowId}/fork:
+    post:
+      operationId: forkCommunityWorkflow
+      tags: [community]
+      summary: Fork a community Workflow into the current workspace
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Forked Workflow
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Workflow'
+
+  /api/pipelines/{pipelineId}/workflows/insert:
+    post:
+      operationId: insertWorkflowIntoPipeline
+      tags: [workflows]
+      summary: Copy Workflow nodes into a Pipeline as new PipelineAgents (snapshot — no live dependency)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pipelineId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workflowId]
+              properties:
+                workflowId:
+                  type: string
+                insertAfterSortOrder:
+                  type: integer
+                  description: Insert nodes after this sortOrder. Defaults to after the last existing agent.
+      responses:
+        '200':
+          description: Updated Pipeline
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Pipeline'

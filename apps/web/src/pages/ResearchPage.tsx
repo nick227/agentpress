@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, Plus, Rss, Youtube, MessageSquare } from 'lucide-react'
-import { useResearchSources } from '@project/sdk'
+import { FlaskConical, Loader2, Plus, RefreshCw, Rss, Youtube, MessageSquare } from 'lucide-react'
+import { toast } from 'sonner'
+import { useCheckResearchSources, useResearchSources } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -27,7 +28,23 @@ const SOURCE_LABEL: Record<string, string> = {
 export function ResearchPage() {
   const navigate = useNavigate()
   const { data, isLoading } = useResearchSources()
+  const checkAll = useCheckResearchSources()
   const [search, setSearch] = useState('')
+
+  async function handleCheckAll() {
+    const toastId = 'research-check-all'
+    toast.loading('Checking all active research feeds…', { id: toastId })
+    try {
+      const { data: result } = await checkAll.mutateAsync({})
+      const detail = result.newCount > 0 ? `${result.newCount} new item${result.newCount === 1 ? '' : 's'}` : 'no new items'
+      const msg = `Checked ${result.checked} feed${result.checked === 1 ? '' : 's'} — ${detail}${result.failed ? `, ${result.failed} failed` : ''}.`
+      if (result.failed > 0 && result.failed === result.checked) toast.error(msg, { id: toastId })
+      else if (result.failed > 0) toast.warning(msg, { id: toastId })
+      else toast.success(msg, { id: toastId })
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Could not check feeds', { id: toastId })
+    }
+  }
 
   const allSources = data?.data ?? []
   const filtered = search
@@ -67,6 +84,10 @@ export function ResearchPage() {
           </p>
         </div>
         <div className="page-header-actions">
+          <Button size="sm" variant="outline" disabled={checkAll.isPending} onClick={handleCheckAll}>
+            {checkAll.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {checkAll.isPending ? 'Checking…' : 'Check all feeds'}
+          </Button>
           <Button size="sm" onClick={() => navigate('/research/new')}>
             <Plus size={13} /> Add source
           </Button>
