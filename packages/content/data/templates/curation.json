@@ -1,0 +1,147 @@
+[
+  {
+    "id": "sunday-curated-digest",
+    "name": "The Sunday Curated Digest",
+    "description": "Reads multiple feeds and curates the top links into an HTML newsletter.",
+    "category": "curation",
+    "categoryLabel": "Curation",
+    "tags": ["newsletter", "curation", "digest", "email"],
+    "variables": [
+      {
+        "key": "tech_feed",
+        "label": "Tech Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "Feed for technology news"
+      },
+      {
+        "key": "design_feed",
+        "label": "Design Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "Feed for design/creative news"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "link_selector",
+        "name": "Link Selector",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Review multiple news summaries and select the top 3 most interesting, unique, or high-leverage links. Ignore generic news.",
+        "userPrompt": "Select the top 3 links from these feeds:\n\nTech:\n{tech_feed.summary}\n\nDesign:\n{design_feed.summary}"
+      },
+      {
+        "uid": "blurb_writer",
+        "name": "Blurb Writer",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Write a punchy, 2-sentence summary for each selected link. Explain why the reader should click it. Include the URL.",
+        "userPrompt": "Write blurbs for these links:\n\n{link_selector.text}"
+      },
+      {
+        "uid": "newsletter_assembler",
+        "name": "Newsletter Assembler",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Format blurbs into a clean, publishable email format. Add a warm Sunday greeting and a brief sign-off.",
+        "userPrompt": "Assemble this newsletter:\n\n{blurb_writer.text}"
+      }
+    ]
+  },
+  {
+    "id": "deep-dive-video-essay",
+    "name": "Deep-Dive Video Essay Brief",
+    "description": "Compiles heavy research from feeds into a structured brief for a video essayist.",
+    "category": "curation",
+    "categoryLabel": "Curation",
+    "tags": ["research", "video-essay", "youtube", "brief"],
+    "variables": [
+      {
+        "key": "research_feed",
+        "label": "Research Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "The feed containing academic papers, deep-dives, or investigative journalism"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "stat_extractor",
+        "name": "Stat Extractor",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Pull all relevant statistics, data points, and concrete facts from the research. List them clearly with their source context.",
+        "userPrompt": "Extract stats from this research:\n\n{research_feed.summary}"
+      },
+      {
+        "uid": "quote_miner",
+        "name": "Quote Miner",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Extract the 3 most impactful, thought-provoking, or emotional quotes from the text. These will be used for voiceover emphasis.",
+        "userPrompt": "Extract quotes from this research:\n\n{research_feed.summary}"
+      },
+      {
+        "uid": "brief_compiler",
+        "name": "Brief Compiler",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Organize stats and quotes into a structured research brief document. Create logical sections that a video essayist can use to structure their script.",
+        "userPrompt": "Compile the brief using these inputs:\n\nStats:\n{stat_extractor.text}\n\nQuotes:\n{quote_miner.text}"
+      }
+    ]
+  },
+  {
+    "id": "reddit-niche-content",
+    "name": "Reddit Niche Content Engine",
+    "description": "Turns common community questions into actionable blog post outlines.",
+    "category": "curation",
+    "categoryLabel": "Curation",
+    "tags": ["reddit", "blog", "content-ideas", "seo"],
+    "variables": [
+      {
+        "key": "reddit_feed",
+        "label": "Reddit Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "The subreddit feed to monitor"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "question_spotter",
+        "name": "Question Spotter",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Analyze community discussions and find the 3 most frequently asked beginner or intermediate questions that have confusing or fragmented answers.",
+        "userPrompt": "Find the top 3 questions in this feed:\n\n{reddit_feed.summary}"
+      },
+      {
+        "uid": "outline_creator",
+        "name": "Outline Creator",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Create a detailed blog post outline that definitively answers the provided community questions. Use clear headings (H2, H3).",
+        "userPrompt": "Create an outline to answer these questions:\n\n{question_spotter.text}"
+      },
+      {
+        "uid": "intro_hook_writer",
+        "name": "Intro & Hook Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Write a compelling, relatable introduction for a blog post based on a provided outline. Empathize with the reader's confusion, then transition into the outline.",
+        "userPrompt": "Write an intro and append the outline below it:\n\nOutline:\n{outline_creator.text}"
+      }
+    ]
+  }
+]

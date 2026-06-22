@@ -70,7 +70,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write high-performing LinkedIn posts. Rules: start with the hook (from the plan), use very short paragraphs (1–2 sentences each), add white space between every paragraph, be specific with numbers or examples, end with a CTA question, add 3–5 relevant hashtags on the final line. No bullet points — use line breaks only. Total length: 150–300 words.",
-        "userPrompt": "Write a complete LinkedIn post.\n\nPost plan (use hook and beats from this):\n{agents.hook_writer.output}\n\nTopic: {topic}\nAuthor role: {author_role}\nAudience: {audience}\nTone: {tone}\nCall to action: {call_to_action}\n\nWrite the full post including the hook, body, CTA question, and hashtags."
+        "userPrompt": "Write a complete LinkedIn post.\n\nPost plan (use hook and beats from this):\n{hook_writer.output}\n\nTopic: {topic}\nAuthor role: {author_role}\nAudience: {audience}\nTone: {tone}\nCall to action: {call_to_action}\n\nWrite the full post including the hook, body, CTA question, and hashtags."
       }
     ]
   },
@@ -145,7 +145,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write email preview text (the snippet shown after the subject line in an inbox). 80–100 characters. It should complement the subject line, not repeat it. Create enough curiosity to earn the open. Return only the preview text.",
-        "userPrompt": "Write email preview text.\n\nSubject line: {agents.subject_writer.output}\nNewsletter topic: {topic}\nAudience: {audience}\n\nPreview text:"
+        "userPrompt": "Write email preview text.\n\nSubject line: {subject_writer.output}\nNewsletter topic: {topic}\nAudience: {audience}\n\nPreview text:"
       },
       {
         "uid": "body_writer",
@@ -154,7 +154,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write email newsletter bodies that feel personal and are easy to read. Structure: brief personal opening (1–2 sentences), the main content (the insight, story, or update — 3–5 short paragraphs), a clear CTA, and a friendly sign-off. Use plain language. Keep paragraphs short (2–3 sentences). No Markdown headers — this is email, not a blog. You can use bold for emphasis.",
-        "userPrompt": "Write the body of an email newsletter.\n\nSubject: {agents.subject_writer.output}\nTopic: {topic}\nBrand / newsletter name: {brand_name}\nAudience: {audience}\nTone: {tone}\nCall to action: {cta}\n\nWrite a complete email body from opening to sign-off."
+        "userPrompt": "Write the body of an email newsletter.\n\nSubject: {subject_writer.output}\nTopic: {topic}\nBrand / newsletter name: {brand_name}\nAudience: {audience}\nTone: {tone}\nCall to action: {cta}\n\nWrite a complete email body from opening to sign-off."
       }
     ]
   }

@@ -34,7 +34,7 @@
 
 - Add/edit/delete/reorder agents
 - Fields: UID, name, system prompt, user prompt, output target, output format
-- Agent outputs referenceable as `{agents.researcher.output}`
+- Agent outputs referenceable as `{uid.output}` (e.g. `{outline.output}`)
 - Agent types/output targets: Body, Title, Excerpt, Image Prompt
 
 ### Prompt tools

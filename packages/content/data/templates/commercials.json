@@ -70,7 +70,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write produced TV/radio commercial scripts. Format for a 30-second spot: scene headings in caps (EXT. / INT.), action lines in standard prose, VO (voiceover) in parentheses with the script on the same line, SUPER: for text on screen, MUSIC: for audio cues. Timing notes in brackets: [0:00–0:05]. Dialogue is punchy — 30 seconds is about 70–80 words of spoken content. Every second counts.",
-        "userPrompt": "Write a produced 30-second commercial script.\n\nBrand: {product_name}\nKey benefit: {key_benefit}\nAudience: {target_audience}\nTone: {tone}\nCTA: {call_to_action}\nConcept plan:\n{agents.concept_writer.output}\n\nFormat with timing, scene directions, VO, and SUPER. Every second of the 30 must be accounted for."
+        "userPrompt": "Write a produced 30-second commercial script.\n\nBrand: {product_name}\nKey benefit: {key_benefit}\nAudience: {target_audience}\nTone: {tone}\nCTA: {call_to_action}\nConcept plan:\n{concept_writer.output}\n\nFormat with timing, scene directions, VO, and SUPER. Every second of the 30 must be accounted for."
       },
       {
         "uid": "title_writer",
@@ -79,7 +79,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You name TV commercial spots. Ad agencies give spots short internal names that capture the central idea ('The Leap', 'First Day', 'Just Ask'). Under 4 words. Return only the spot name — no quotes.",
-        "userPrompt": "Name this TV spot.\n\nBrand: {product_name}\nConcept plan:\n{agents.concept_writer.output}\n\nSpot name:"
+        "userPrompt": "Name this TV spot.\n\nBrand: {product_name}\nConcept plan:\n{concept_writer.output}\n\nSpot name:"
       },
       {
         "uid": "thumbnail_prompter",
@@ -88,7 +88,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write DALL-E image prompts for TV commercial key frames — the single image that captures the emotional peak of the spot. Return only the image prompt.",
-        "userPrompt": "Write a DALL-E image prompt for the key visual frame of this commercial.\n\nSpot: {agents.title_writer.output}\nBrand: {product_name}\nTone: {tone}\nConcept plan:\n{agents.concept_writer.output}\n\nA single cinematic frame that captures the emotional peak. No text. Film quality. Professional advertising photography or direction."
+        "userPrompt": "Write a DALL-E image prompt for the key visual frame of this commercial.\n\nSpot: {title_writer.output}\nBrand: {product_name}\nTone: {tone}\nConcept plan:\n{concept_writer.output}\n\nA single cinematic frame that captures the emotional peak. No text. Film quality. Professional advertising photography or direction."
       }
     ]
   },
@@ -172,7 +172,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write paid social ad scripts (15–30 seconds). Format: [HOOK 0:00–0:03], [PROBLEM 0:03–0:10], [SOLUTION 0:10–0:20], [PROOF 0:20–0:25], [CTA 0:25–0:30]. Adjust timing for 15 seconds by compressing. Write every spoken word. Include [ON SCREEN TEXT:] for key callouts. Conversational, direct, fast-paced. No corporate speak.",
-        "userPrompt": "Write a complete {ad_length}-second paid social ad script.\n\nHook plan:\n{agents.hook_writer.output}\n\nProduct: {product_name}\nPain point: {pain_point}\nDifferentiator: {unique_offer}\nPlatform: {platform}\nCTA: {call_to_action}\n\nEvery second accounted for with timing markers. Write every spoken word."
+        "userPrompt": "Write a complete {ad_length}-second paid social ad script.\n\nHook plan:\n{hook_writer.output}\n\nProduct: {product_name}\nPain point: {pain_point}\nDifferentiator: {unique_offer}\nPlatform: {platform}\nCTA: {call_to_action}\n\nEvery second accounted for with timing markers. Write every spoken word."
       },
       {
         "uid": "title_writer",
@@ -181,7 +181,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write paid social ad headlines — the text above or below the video on Facebook/Instagram. Under 40 characters, benefit-forward, no emoji. Return only the headline.",
-        "userPrompt": "Write the ad headline (text shown with the video on {platform}).\n\nProduct: {product_name}\nKey benefit addressed: {pain_point}\nHook plan:\n{agents.hook_writer.output}\n\nUnder 40 characters. Benefit-forward. Headline:"
+        "userPrompt": "Write the ad headline (text shown with the video on {platform}).\n\nProduct: {product_name}\nKey benefit addressed: {pain_point}\nHook plan:\n{hook_writer.output}\n\nUnder 40 characters. Benefit-forward. Headline:"
       },
       {
         "uid": "thumbnail_prompter",

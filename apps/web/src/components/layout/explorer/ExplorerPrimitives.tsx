@@ -107,7 +107,7 @@ export function ResourceLink({
         : 'bg-muted-foreground/40'
 
   return (
-    <div className={cn('group/resource flex items-center rounded-l text-muted-foreground hover:bg-muted/60 hover:text-foreground')}>
+    <div className={cn('group/resource flex items-center rounded-l text-muted-foreground')}>
 
       <Link to={href} className="flex min-w-0 flex-1 items-center gap-2 text-xs" title={label}>
         <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', statusClass)} />

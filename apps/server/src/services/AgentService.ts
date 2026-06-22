@@ -110,8 +110,14 @@ export class AgentService {
   }
 
   async get(context: AuthContext, idOrSlug: string) {
+    const communityWorkspaceId = await getCommunityWorkspaceId()
     const agent = await db.agent.findFirst({
-      where: { workspaceId: context.workspaceId, OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      where: {
+        OR: [
+          { workspaceId: context.workspaceId, OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+          ...(communityWorkspaceId ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const, OR: [{ id: idOrSlug }, { slug: idOrSlug }] }] : []),
+        ],
+      },
     })
     return agent ? formatAgent(agent) : null
   }

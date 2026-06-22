@@ -61,7 +61,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write YouTube video titles optimized for click-through rate. Specific, outcome-focused, under 65 characters. No vague clickbait. Return only the title.",
-        "userPrompt": "Write a YouTube video title.\n\nTopic: {topic}\nAudience: {audience}\nScript plan:\n{agents.planner.output}\n\nTitle:"
+        "userPrompt": "Write a YouTube video title.\n\nTopic: {topic}\nAudience: {audience}\nScript plan:\n{planner.output}\n\nTitle:"
       },
       {
         "uid": "hook_writer",
@@ -70,7 +70,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write the opening hook of YouTube video scripts — the first 45–75 seconds of spoken dialogue. A great hook: creates immediate pattern interrupt, opens a loop the viewer needs closed, and ends on a line that makes cutting away feel like a mistake. Write as natural spoken dialogue. No 'Hey guys, welcome back.' No intros. No channel plugs. The hook ends the moment the viewer is committed to watching.",
-        "userPrompt": "Write the opening hook for this YouTube video.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\nScript plan (use the hook angle from this):\n{agents.planner.output}\n\nWrite 45–75 seconds of spoken dialogue. Use [PAUSE] and [CUT TO:] markers where they help. End on a line that transitions into the main content — do NOT say 'Let's get into it.' Establish the voice the whole script will follow."
+        "userPrompt": "Write the opening hook for this YouTube video.\n\nTitle: {title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\nScript plan (use the hook angle from this):\n{planner.output}\n\nWrite 45–75 seconds of spoken dialogue. Use [PAUSE] and [CUT TO:] markers where they help. End on a line that transitions into the main content — do NOT say 'Let's get into it.' Establish the voice the whole script will follow."
       },
       {
         "uid": "content_writer",
@@ -79,7 +79,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write the main content body of YouTube video scripts. You receive a hook that has already set the tone and a plan with 3–5 points to cover. Your job is to write each point as spoken dialogue that flows naturally from the previous one. Include [B-ROLL: description] markers for visual cutaway suggestions. Each point should feel like a natural conversation, not a lecture. Maintain the exact voice and energy established in the hook.",
-        "userPrompt": "Write the main content sections of this YouTube script.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\nScript plan (follow the 3–5 main points from this):\n{agents.planner.output}\n\nHook already written (pick up directly after this — match its voice and energy):\n{agents.hook_writer.output}\n\nWrite all main content points as spoken dialogue. Include [B-ROLL:] markers. Each point flows into the next. Target: {length_minutes} minutes total minus hook (~45s) and CTA (~30s)."
+        "userPrompt": "Write the main content sections of this YouTube script.\n\nTitle: {title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\nScript plan (follow the 3–5 main points from this):\n{planner.output}\n\nHook already written (pick up directly after this — match its voice and energy):\n{hook_writer.output}\n\nWrite all main content points as spoken dialogue. Include [B-ROLL:] markers. Each point flows into the next. Target: {length_minutes} minutes total minus hook (~45s) and CTA (~30s)."
       },
       {
         "uid": "cta_writer",
@@ -88,7 +88,7 @@
         "outputFormat": "text",
         "sortOrder": 4,
         "systemPrompt": "You write the closing 30–45 seconds of YouTube video scripts — the wrap-up and call to action. A great video close: briefly crystallizes the single most important takeaway (not a full recap), connects that takeaway directly to the CTA, and delivers the CTA in a way that feels earned rather than bolted on. Match the exact tone and voice of the rest of the script.",
-        "userPrompt": "Write the closing and CTA for this YouTube video.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nScript plan (use the CTA direction from this):\n{agents.planner.output}\n\nMain content just written (close must reference what was covered):\n{agents.content_writer.output}\n\nWrite 30–45 seconds of spoken dialogue. Crystallize one key takeaway, then the CTA. Match the voice of the full script."
+        "userPrompt": "Write the closing and CTA for this YouTube video.\n\nTitle: {title_writer.output}\nTopic: {topic}\nScript plan (use the CTA direction from this):\n{planner.output}\n\nMain content just written (close must reference what was covered):\n{content_writer.output}\n\nWrite 30–45 seconds of spoken dialogue. Crystallize one key takeaway, then the CTA. Match the voice of the full script."
       },
       {
         "uid": "thumbnail_prompter",
@@ -97,7 +97,7 @@
         "outputFormat": "text",
         "sortOrder": 5,
         "systemPrompt": "You write DALL-E image generation prompts for YouTube thumbnails. Return only the image prompt — no explanation.",
-        "userPrompt": "Write a DALL-E image prompt for a YouTube thumbnail.\n\nVideo title: {agents.title_writer.output}\nTopic: {topic}\n\nRequirements: eye-catching, bold colors, one clear visual subject, no text in the image, cinematic or editorial quality."
+        "userPrompt": "Write a DALL-E image prompt for a YouTube thumbnail.\n\nVideo title: {title_writer.output}\nTopic: {topic}\n\nRequirements: eye-catching, bold colors, one clear visual subject, no text in the image, cinematic or editorial quality."
       }
     ]
   },
@@ -163,7 +163,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write podcast episode titles. Specific, outcome-focused, under 70 characters. No episode numbers. Return only the title.",
-        "userPrompt": "Write a podcast episode title.\n\nTopic: {episode_topic}\nShow: {show_name}\nEpisode plan:\n{agents.planner.output}\n\nTitle:"
+        "userPrompt": "Write a podcast episode title.\n\nTopic: {episode_topic}\nShow: {show_name}\nEpisode plan:\n{planner.output}\n\nTitle:"
       },
       {
         "uid": "intro_writer",
@@ -172,7 +172,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write the opening of podcast episode scripts — the teaser and intro. Format: [MUSIC: fade in] marker, teaser (30 seconds of spoken dialogue — drop straight into the most interesting moment before the full intro), [MUSIC: fade out], then the proper intro with host name and show name. Use [PAUSE] markers. Write as natural spoken dialogue — contractions, short sentences, human rhythm. Set the voice and energy the full episode will follow.",
-        "userPrompt": "Write the teaser and intro for this podcast episode.\n\nTitle: {agents.title_writer.output}\nTopic: {episode_topic}\nHost: {host_name}\nShow: {show_name}\nEpisode plan (use the teaser hook and tone note from this):\n{agents.planner.output}\n\nWrite: [MUSIC: fade in], 30-second teaser, [MUSIC: fade out], then full intro. Total: 60–90 seconds of spoken content."
+        "userPrompt": "Write the teaser and intro for this podcast episode.\n\nTitle: {title_writer.output}\nTopic: {episode_topic}\nHost: {host_name}\nShow: {show_name}\nEpisode plan (use the teaser hook and tone note from this):\n{planner.output}\n\nWrite: [MUSIC: fade in], 30-second teaser, [MUSIC: fade out], then full intro. Total: 60–90 seconds of spoken content."
       },
       {
         "uid": "content_writer",
@@ -181,7 +181,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write the main segment body of podcast episode scripts. You receive an intro that has already established the episode's voice and topic, and a plan with 3–4 talking points. Write each talking point as spoken dialogue — personal, specific, with stories and examples. Use [PAUSE] markers at natural breath points. Transitions between points should feel conversational, not like a list being read. This is the bulk of the episode — take the time to develop each point properly.",
-        "userPrompt": "Write the main content segments for this podcast episode.\n\nTitle: {agents.title_writer.output}\nTopic: {episode_topic}\nEpisode plan (follow the 3–4 talking points from this):\n{agents.planner.output}\n\nIntro already written (pick up here — match its voice exactly):\n{agents.intro_writer.output}\n\nWrite all 3–4 segments as spoken dialogue. Each point, its story or example, and what it proves. Target: {episode_length} minutes total minus intro (~90s) and outro (~60s)."
+        "userPrompt": "Write the main content segments for this podcast episode.\n\nTitle: {title_writer.output}\nTopic: {episode_topic}\nEpisode plan (follow the 3–4 talking points from this):\n{planner.output}\n\nIntro already written (pick up here — match its voice exactly):\n{intro_writer.output}\n\nWrite all 3–4 segments as spoken dialogue. Each point, its story or example, and what it proves. Target: {episode_length} minutes total minus intro (~90s) and outro (~60s)."
       },
       {
         "uid": "outro_writer",
@@ -190,7 +190,7 @@
         "outputFormat": "text",
         "sortOrder": 4,
         "systemPrompt": "You write podcast episode outros. A great podcast outro: distills the episode's central lesson into one or two lines (not a full recap), delivers it as the host's personal take, then moves to the CTA. 45–60 seconds. [MUSIC: fade in at end] marker at the close. Match the voice of the full episode exactly.",
-        "userPrompt": "Write the outro for this podcast episode.\n\nShow: {show_name}\nHost: {host_name}\nEpisode plan (use the outro direction from this):\n{agents.planner.output}\n\nMain content already covered:\n{agents.content_writer.output}\n\nWrite the outro: distill the lesson, personal take, CTA, [MUSIC: fade in]. 45–60 seconds of spoken dialogue."
+        "userPrompt": "Write the outro for this podcast episode.\n\nShow: {show_name}\nHost: {host_name}\nEpisode plan (use the outro direction from this):\n{planner.output}\n\nMain content already covered:\n{content_writer.output}\n\nWrite the outro: distill the lesson, personal take, CTA, [MUSIC: fade in]. 45–60 seconds of spoken dialogue."
       },
       {
         "uid": "excerpt_writer",
@@ -199,7 +199,7 @@
         "outputFormat": "text",
         "sortOrder": 5,
         "systemPrompt": "You write podcast show notes excerpts — 2–3 sentences that appear in podcast apps and on the episode page. Hook the listener, clearly state what they'll get from the episode. No 'In this episode...' opener. Return only the excerpt.",
-        "userPrompt": "Write a show notes excerpt for this episode.\n\nTitle: {agents.title_writer.output}\nTopic: {episode_topic}\nShow: {show_name}\n\nExcerpt:"
+        "userPrompt": "Write a show notes excerpt for this episode.\n\nTitle: {title_writer.output}\nTopic: {episode_topic}\nShow: {show_name}\n\nExcerpt:"
       }
     ]
   },
@@ -265,7 +265,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write the full body of short-form video scripts, picking up directly after the hook. Format with timing markers: [0:03–0:15], [0:15–0:45], etc. Include [ON SCREEN TEXT: ...] for key callouts. One sentence at a time — fast, direct, no filler. Make one clear point. End with a strong CTA or loop-closer. Match the exact energy and voice of the hook.",
-        "userPrompt": "Write the rest of this {target_length}-second {platform} script — picking up immediately after the hook.\n\nTopic: {topic}\nNiche: {niche}\n\nHook already written (continue from exactly this point — match its voice and energy):\n{agents.hook_writer.output}\n\nWrite with timing markers. [ON SCREEN TEXT:] for key points. One idea per line. End with a CTA. Total including hook = {target_length} seconds."
+        "userPrompt": "Write the rest of this {target_length}-second {platform} script — picking up immediately after the hook.\n\nTopic: {topic}\nNiche: {niche}\n\nHook already written (continue from exactly this point — match its voice and energy):\n{hook_writer.output}\n\nWrite with timing markers. [ON SCREEN TEXT:] for key points. One idea per line. End with a CTA. Total including hook = {target_length} seconds."
       },
       {
         "uid": "caption_writer",
@@ -274,7 +274,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write captions for short-form social videos. 1–3 lines. The first line mirrors or amplifies the hook. End with a question or CTA. Under 150 characters for the first line. Return only the caption — no hashtags.",
-        "userPrompt": "Write a caption for this short-form video.\n\nHook: {agents.hook_writer.output}\nTopic: {topic}\nPlatform: {platform}\n\nCaption:"
+        "userPrompt": "Write a caption for this short-form video.\n\nHook: {hook_writer.output}\nTopic: {topic}\nPlatform: {platform}\n\nCaption:"
       }
     ]
   }

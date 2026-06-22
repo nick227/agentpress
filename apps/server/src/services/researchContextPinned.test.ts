@@ -46,7 +46,7 @@ describe('ResearchContextService pinned schedule input', () => {
   it('resolves an ordinary feed reference from the pinned item ID', async () => {
     const result = await new ResearchContextService().resolveForPipeline({
       workspaceId: 'workspace-1',
-      agents: [{ systemPrompt: '', userPrompt: '{feed.summary}' }],
+      agents: [{ uid: 'writer', systemPrompt: '', userPrompt: '{feed.summary}' }],
     }, { 'source-1': 'item-pinned' })
 
     expect(findItem).toHaveBeenCalledWith({ where: { id: 'item-pinned', sourceId: 'source-1' } })
@@ -57,7 +57,7 @@ describe('ResearchContextService pinned schedule input', () => {
   it('keeps explicit date references independent from the pinned item', async () => {
     await new ResearchContextService().resolveForPipeline({
       workspaceId: 'workspace-1',
-      agents: [{ systemPrompt: '', userPrompt: '{feed.2026-06-18.summary}' }],
+      agents: [{ uid: 'writer', systemPrompt: '', userPrompt: '{feed.2026-06-18.summary}' }],
     }, { 'source-1': 'item-pinned' })
 
     expect(findItem).toHaveBeenCalledWith(expect.objectContaining({
@@ -80,7 +80,7 @@ describe('ResearchContextService pinned schedule input', () => {
 
     await expect(new ResearchContextService().resolveForPipeline({
       workspaceId: 'workspace-1',
-      agents: [{ systemPrompt: '', userPrompt: '{feed.summary}' }],
+      agents: [{ uid: 'writer', systemPrompt: '', userPrompt: '{feed.summary}' }],
     })).rejects.toThrow('Add it to your workspace before running')
 
     expect(findItem).not.toHaveBeenCalled()

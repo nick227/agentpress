@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { BookOpen, Check, FileText, Layers } from 'lucide-react'
 
-type TabId = 'overview' | 'concepts' | 'data'
+type TabId = 'overview' | 'concepts' | 'references' | 'data'
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'overview', label: 'Start here' },
   { id: 'concepts', label: 'Core concepts' },
+  { id: 'references', label: 'References' },
   { id: 'data', label: 'Data & publishing' },
 ]
 
@@ -16,9 +17,9 @@ export function DocumentationPage() {
     <div className="page-shell page-shell--3xl space-y-6">
       <header className="space-y-2">
         <div className="flex items-center gap-2 text-muted-foreground"><BookOpen size={16} /><span className="text-xs font-medium uppercase tracking-wide">Documentation</span></div>
-        <h1 className="text-2xl font-semibold tracking-tight">What is AgentPress?</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">What is AgentPress</h1>
         <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-          AgentPress is a tool for creating repeatable AI content workflows. You provide information, a series of AI steps turns it into content, and AgentPress saves or publishes the result.
+          AgentPress is a tool for automating AI workflows. You provide information, AI turns it into new content, and AgentPress saves and publishes the result.
         </p>
       </header>
 
@@ -39,6 +40,7 @@ export function DocumentationPage() {
 
       {activeTab === 'overview' && <OverviewTab />}
       {activeTab === 'concepts' && <ConceptsTab />}
+      {activeTab === 'references' && <ReferencesTab />}
       {activeTab === 'data' && <DataTab />}
     </div>
   )
@@ -50,7 +52,7 @@ function OverviewTab() {
       <section className="rounded border bg-surface p-5">
         <h2 className="text-base font-semibold">A simple example</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Imagine you need 100 write movie reviews. You can plug-in a spreadsheet of movie titles and AgentPress will generate a review for each one.
+          Imagine you need a one hundred movie reviews. You can plug-in a spreadsheet of titles and AgentPress will systematically generate a custom review for each one.
         </p>
       </section>
 
@@ -66,11 +68,11 @@ function OverviewTab() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">The whole process</h2>
         <ol className="divide-y rounded border bg-surface">
-          <ProcessLine number="1">Create a pipeline for the kind of content you want.</ProcessLine>
-          <ProcessLine number="2">Add the information the pipeline needs.</ProcessLine>
-          <ProcessLine number="3">Add and order the AI steps.</ProcessLine>
+          <ProcessLine number="1">Setup web sources to pull feeds from.</ProcessLine>
+          <ProcessLine number="2">Add agents to create your new content.</ProcessLine>
+          <ProcessLine number="3">Arrange and sort your content.</ProcessLine>
           <ProcessLine number="4">Run a preview and review the result.</ProcessLine>
-          <ProcessLine number="5">Publish it, or adjust the pipeline and try again.</ProcessLine>
+          <ProcessLine number="5">Publish or   adjust the pipeline and try again.</ProcessLine>
         </ol>
       </section>
     </div>
@@ -88,8 +90,113 @@ function ConceptsTab() {
         <Concept title="Run">One use of a pipeline. Every run keeps its inputs, generated content, status, and errors.</Concept>
       </div>
       <div className="rounded border bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
-        Later agents can use earlier work. For example, a writer can use the researcher’s result with <Code>{'{agents.researcher}'}</Code>.
+        Later agents can use earlier work. For example, a writer can use the researcher’s output with <Code>{'{researcher.output}'}</Code>. See the <strong className="text-foreground">References</strong> tab for the full syntax.
       </div>
+    </div>
+  )
+}
+
+function ReferencesTab() {
+  return (
+    <div role="tabpanel" className="space-y-6">
+      <Intro title="Pulling data into prompts">
+        In any agent prompt, wrap a name in curly braces to insert a value at run time. AgentPress fills these in before the AI runs.
+      </Intro>
+
+      <section className="divide-y rounded border bg-surface">
+        <RefRow
+          syntax="{topic}"
+          meaning="A pipeline variable you define (topic, tone, audience, etc.)"
+        />
+        <RefRow
+          syntax="{outline.output}"
+          meaning="The full output from a previous agent — use that agent’s UID"
+        />
+        <RefRow
+          syntax="{writer.body}"
+          meaning="Same output, keyed by the agent’s Output Use (body, title, excerpt, …)"
+        />
+        <RefRow
+          syntax="{ziptrader.summary}"
+          meaning="Latest summary from a research feed — use the feed slug as the root"
+        />
+        <RefRow
+          syntax="{row.title}"
+          meaning="A column from the current spreadsheet or CSV row"
+        />
+        <RefRow
+          syntax="{context}"
+          meaning="A value injected when running over a list or loop"
+        />
+      </section>
+
+      <section className="rounded border bg-surface p-5 space-y-3">
+        <h2 className="text-base font-semibold">How to think about it</h2>
+        <p className="text-sm leading-6 text-muted-foreground">
+          The word before the dot is the <strong className="text-foreground">name of the thing</strong>. The word after the dot is the <strong className="text-foreground">field</strong> you want from it.
+        </p>
+        <ul className="space-y-2 text-sm leading-6 text-muted-foreground">
+          <li><Code>{'{outline.output}'}</Code> — “give me the output from the agent named <em>outline</em>”</li>
+          <li><Code>{'{ziptrader.summary}'}</Code> — “give me the summary from the feed named <em>ziptrader</em>”</li>
+          <li><Code>{'{topic}'}</Code> — “give me the pipeline variable named <em>topic</em>”</li>
+        </ul>
+      </section>
+
+      <section className="rounded border bg-surface p-5 space-y-3">
+        <h2 className="text-base font-semibold">Chaining agents</h2>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Agents run top to bottom. Each one can read what came before it by UID:
+        </p>
+        <pre className="overflow-x-auto rounded bg-muted p-4 text-xs leading-6 text-foreground">
+{`Agent "outline"  →  writes a plan
+Agent "writer"   →  prompt includes:
+
+  Turn this outline into a full post:
+  {outline.output}`}
+        </pre>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Use <Code>{'{uid.output}'}</Code> for the raw text. If the prior agent’s Output Use is set to Body or Title, you can also write <Code>{'{uid.body}'}</Code> or <Code>{'{uid.title}'}</Code>.
+        </p>
+      </section>
+
+      <section className="rounded border bg-surface p-5 space-y-3">
+        <h2 className="text-base font-semibold">Research feeds</h2>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Every research source has a slug (from its name). Common fields:
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2 text-sm">
+          <FeedField field="summary" desc="AI summary of the latest item" />
+          <FeedField field="content" desc="Full transcript or article text" />
+          <FeedField field="title" desc="Title of the source item" />
+          <FeedField field="date" desc="Publish date (YYYY-MM-DD)" />
+          <FeedField field="url" desc="Link to the source item" />
+        </div>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Pin a specific day: <Code>{'{wallstreetbets.2026-06-18.summary}'}</Code>
+        </p>
+      </section>
+
+      <div className="rounded border bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
+        <strong className="text-foreground">Tip:</strong> name each agent with a short, unique UID (like <Code>outline</Code> or <Code>writer</Code>). That UID is what you type in prompts — no <Code>agents.</Code> prefix needed.
+      </div>
+    </div>
+  )
+}
+
+function RefRow({ syntax, meaning }: { syntax: string; meaning: string }) {
+  return (
+    <div className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:gap-4">
+      <Code>{syntax}</Code>
+      <p className="text-sm leading-6 text-muted-foreground">{meaning}</p>
+    </div>
+  )
+}
+
+function FeedField({ field, desc }: { field: string; desc: string }) {
+  return (
+    <div className="rounded bg-muted/40 px-3 py-2">
+      <Code>{'{slug.' + field + '}'}</Code>
+      <p className="mt-1 text-muted-foreground">{desc}</p>
     </div>
   )
 }

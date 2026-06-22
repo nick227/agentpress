@@ -117,6 +117,7 @@ export function ResearchInfoPanel({ source }: Props) {
   }
 
   const itemWord = source.sourceType === 'youtube' ? 'video' : source.sourceType === 'reddit' ? 'digest' : 'article'
+  const isCommunity = source.visibility === 'PUBLIC'
 
   return (
     <div className="page-shell page-shell--2xl">
@@ -124,18 +125,23 @@ export function ResearchInfoPanel({ source }: Props) {
         <div className="min-w-0">
           <h1 className="text-lg font-semibold">{source.name}</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
+            {isCommunity ? 'Community feed — read-only template from the catalog. ' : ''}
             {source.itemCount ?? 0} {itemWord}{(source.itemCount ?? 0) !== 1 ? 's' : ''} collected
             {source.lastChecked ? ` · Last checked ${new Date(source.lastChecked).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}
           </p>
         </div>
         <div className="page-header-actions">
-          <Button variant="outline" size="sm" disabled={isChecking} onClick={handleCheck}>
-            {isChecking ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            {isChecking ? 'Checking…' : labels.checkLabel}
-          </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => setEditing((v) => !v)}>
-            <Pencil size={13} />
-          </Button>
+          {!isCommunity && (
+            <>
+              <Button variant="outline" size="sm" disabled={isChecking} onClick={handleCheck}>
+                {isChecking ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                {isChecking ? 'Checking…' : labels.checkLabel}
+              </Button>
+              <Button variant="ghost" size="icon-sm" onClick={() => setEditing((v) => !v)}>
+                <Pencil size={13} />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

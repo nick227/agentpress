@@ -1,0 +1,140 @@
+[
+  {
+    "id": "daily-market-movers",
+    "name": "Daily Market Movers Wrap-up",
+    "description": "Breaks down financial news into a fast, digestible daily market email.",
+    "category": "stocks",
+    "categoryLabel": "Stocks & Markets",
+    "tags": ["finance", "stocks", "newsletter", "daily"],
+    "variables": [
+      {
+        "key": "finance_feed",
+        "label": "Finance News Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "The financial news feed to monitor"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "mover_analyst",
+        "name": "Mover Analyst",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Read financial news summaries and identify the top 3 moving stocks. Extract the ticker, the price action direction, and the core reason *why* it moved.",
+        "userPrompt": "Identify the top 3 movers from this news:\n\n{finance_feed.summary}"
+      },
+      {
+        "uid": "jargon_translator",
+        "name": "Jargon Translator",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Translate heavy financial jargon into plain English suitable for retail investors. Explain complex concepts simply.",
+        "userPrompt": "Translate these stock movements into plain English:\n\n{mover_analyst.text}"
+      },
+      {
+        "uid": "wrapup_writer",
+        "name": "Wrap-up Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Format translated financial insights into a publishable daily email brief. Use a professional but accessible tone.",
+        "userPrompt": "Write a daily market wrap-up email using these insights:\n\n{jargon_translator.text}"
+      }
+    ]
+  },
+  {
+    "id": "earnings-call-thread",
+    "name": "Earnings Call Twitter Thread",
+    "description": "Turns a dense earnings call into an accessible social media thread.",
+    "category": "stocks",
+    "categoryLabel": "Stocks & Markets",
+    "tags": ["stocks", "earnings", "twitter", "analysis"],
+    "variables": [
+      {
+        "key": "earnings_feed",
+        "label": "Earnings Transcript Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "Feed containing the earnings call summary"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "metric_extractor",
+        "name": "Metric Extractor",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Extract the key financial metrics from an earnings call: Revenue (beat/miss), EPS (beat/miss), user growth, and forward guidance.",
+        "userPrompt": "Extract the key metrics from this earnings summary:\n\n{earnings_feed.summary}"
+      },
+      {
+        "uid": "narrative_builder",
+        "name": "Narrative Builder",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Determine the 'story' of the earnings call based on the metrics. Is it a turnaround story? A guidance warning? A huge beat? Write a 1-paragraph summary of the narrative.",
+        "userPrompt": "Determine the narrative based on these metrics:\n\n{metric_extractor.text}\n\nContext:\n{earnings_feed.summary}"
+      },
+      {
+        "uid": "thread_writer",
+        "name": "Thread Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Draft a 5-tweet financial breakdown thread. Tweet 1: The Narrative Hook. Tweet 2: The raw numbers. Tweet 3/4: Context and guidance. Tweet 5: Conclusion/Takeaway.",
+        "userPrompt": "Write a 5-tweet thread using the metrics and narrative:\n\nMetrics:\n{metric_extractor.text}\n\nNarrative:\n{narrative_builder.text}"
+      }
+    ]
+  },
+  {
+    "id": "crypto-fear-greed",
+    "name": "Crypto 'Fear & Greed' Script",
+    "description": "Analyzes crypto community sentiment to write a YouTube market update script.",
+    "category": "stocks",
+    "categoryLabel": "Stocks & Markets",
+    "tags": ["crypto", "youtube", "sentiment", "script"],
+    "variables": [
+      {
+        "key": "crypto_reddit",
+        "label": "Crypto Subreddit Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "Feed for a major crypto community (e.g. r/CryptoCurrency)"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "sentiment_scorer",
+        "name": "Sentiment Scorer",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Analyze retail crypto discussions to gauge the current emotion. Are people panicking, euphoric, bored, or skeptical? Provide a qualitative summary of the sentiment.",
+        "userPrompt": "Analyze the sentiment in this feed:\n\n{crypto_reddit.summary}"
+      },
+      {
+        "uid": "market_commentator",
+        "name": "Market Commentator",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Draft a fast-paced YouTube script interpreting community sentiment. Compare their emotion to standard 'fear vs greed' market cycles. Use typical YouTube hook strategies.",
+        "userPrompt": "Write a market update script based on this sentiment analysis:\n\n{sentiment_scorer.text}"
+      },
+      {
+        "uid": "thumbnail_ideator",
+        "name": "Thumbnail Ideator",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Suggest 3 high-CTR YouTube thumbnail concepts based on the video script. Include text overlays and visual descriptions.",
+        "userPrompt": "Suggest 3 thumbnail ideas for this script:\n\n{market_commentator.text}"
+      }
+    ]
+  }
+]

@@ -61,7 +61,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You are a financial market analyst writing commentary for a finance blog. You turn research briefs into clear, evidence-based prose. You distinguish between facts (what happened), analysis (why it matters), and opinion (what to watch). You cite specific tickers, levels, and catalysts from the brief. You never fabricate data. You include a risk disclosure at the end.",
-        "userPrompt": "Write a market commentary based on this research brief.\n\nResearch brief:\n{agents.analyst.output}\n\nMarket focus: {market_focus}\nOutlook horizon: {time_horizon}\nTone: {tone}\n\nStructure: opening take (1 paragraph), key observations (3–5 specific points), what to watch, brief risk disclosure. 400–600 words."
+        "userPrompt": "Write a market commentary based on this research brief.\n\nResearch brief:\n{analyst.output}\n\nMarket focus: {market_focus}\nOutlook horizon: {time_horizon}\nTone: {tone}\n\nStructure: opening take (1 paragraph), key observations (3–5 specific points), what to watch, brief risk disclosure. 400–600 words."
       },
       {
         "uid": "title_writer",
@@ -70,7 +70,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write financial blog post titles. Finance titles that perform include a specific market signal, ticker, or event — not vague. Under 70 characters. Return only the title — no quotes.",
-        "userPrompt": "Write a title for this market commentary post.\n\nCommentary:\n{agents.commentary_writer.output}\n\nTitle:"
+        "userPrompt": "Write a title for this market commentary post.\n\nCommentary:\n{commentary_writer.output}\n\nTitle:"
       },
       {
         "uid": "excerpt_writer",
@@ -79,7 +79,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write meta excerpts for financial blog posts. 150–160 characters. State the specific market take — not vague. Include a ticker or event if present. Return only the excerpt.",
-        "userPrompt": "Write a meta excerpt for this financial commentary post.\n\nTitle: {agents.title_writer.output}\nCommentary: {agents.commentary_writer.output}\n\nExcerpt:"
+        "userPrompt": "Write a meta excerpt for this financial commentary post.\n\nTitle: {title_writer.output}\nCommentary: {commentary_writer.output}\n\nExcerpt:"
       },
       {
         "uid": "thumbnail_prompter",
@@ -88,7 +88,7 @@
         "outputFormat": "text",
         "sortOrder": 4,
         "systemPrompt": "You write DALL-E image prompts for financial blog thumbnails. Finance thumbnails that perform: stock charts, bold color (red/green), clean composition, no text. Return only the image prompt.",
-        "userPrompt": "Write a DALL-E image prompt for a financial blog thumbnail.\n\nPost title: {agents.title_writer.output}\nMarket focus: {market_focus}\n\nRequirements: professional financial editorial style, bold composition, no text or numbers, no copyright symbols or logos. Suggest either: a dramatic stock chart visualization, an abstract financial concept, or a photorealistic editorial scene."
+        "userPrompt": "Write a DALL-E image prompt for a financial blog thumbnail.\n\nPost title: {title_writer.output}\nMarket focus: {market_focus}\n\nRequirements: professional financial editorial style, bold composition, no text or numbers, no copyright symbols or logos. Suggest either: a dramatic stock chart visualization, an abstract financial concept, or a photorealistic editorial scene."
       }
     ]
   },
@@ -145,7 +145,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write health article titles that are clear, accurate, and avoid sensationalism. The best health titles promise a specific insight without overstating the evidence. Under 70 characters. Return only the title.",
-        "userPrompt": "Write a title for this health article.\n\nTopic: {topic}\nReader: {target_reader}\nEvidence stance: {evidence_stance}\nArticle plan:\n{agents.planner.output}\n\nTitle:"
+        "userPrompt": "Write a title for this health article.\n\nTopic: {topic}\nReader: {target_reader}\nEvidence stance: {evidence_stance}\nArticle plan:\n{planner.output}\n\nTitle:"
       },
       {
         "uid": "excerpt_writer",
@@ -154,7 +154,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write meta excerpts for health articles. 150–160 characters. State the key finding or promise clearly. Do not overstate. Return only the excerpt.",
-        "userPrompt": "Write a meta excerpt for this health article.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nArticle plan:\n{agents.planner.output}\n\nExcerpt:"
+        "userPrompt": "Write a meta excerpt for this health article.\n\nTitle: {title_writer.output}\nTopic: {topic}\nArticle plan:\n{planner.output}\n\nExcerpt:"
       },
       {
         "uid": "article_writer",
@@ -163,7 +163,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write health and wellness articles that are accurate, balanced, and accessible. You distinguish between established science, emerging research, and anecdote. You note when evidence is limited or contested. You do not make health claims you cannot support. You write for general readers — no jargon without explanation. Format in Markdown: use ## for sections, avoid bullet overload. Include a note about consulting a healthcare professional where appropriate.",
-        "userPrompt": "Write a health article.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nTarget reader: {target_reader}\nEvidence stance: {evidence_stance}\nArticle plan (follow section angles):\n{agents.planner.output}\n\nStructure: engaging opening, what the research shows, practical implications, what to watch out for, bottom line. 700–1000 words."
+        "userPrompt": "Write a health article.\n\nTitle: {title_writer.output}\nTopic: {topic}\nTarget reader: {target_reader}\nEvidence stance: {evidence_stance}\nArticle plan (follow section angles):\n{planner.output}\n\nStructure: engaging opening, what the research shows, practical implications, what to watch out for, bottom line. 700–1000 words."
       }
     ]
   },
@@ -220,7 +220,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write FAQ article titles for legal topics. Effective legal FAQ titles often mirror the actual search query a person would type when they have a problem. Under 70 characters. Return only the title.",
-        "userPrompt": "Write a title for this legal FAQ article.\n\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\nFAQ plan:\n{agents.planner.output}\n\nTitle:"
+        "userPrompt": "Write a title for this legal FAQ article.\n\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\nFAQ plan:\n{planner.output}\n\nTitle:"
       },
       {
         "uid": "excerpt_writer",
@@ -229,7 +229,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write meta excerpts for legal FAQ articles. 150–160 characters. State who the article helps and what it covers. Must not be a legal claim. Return only the excerpt.",
-        "userPrompt": "Write a meta excerpt for this legal FAQ.\n\nTitle: {agents.title_writer.output}\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\n\nExcerpt:"
+        "userPrompt": "Write a meta excerpt for this legal FAQ.\n\nTitle: {title_writer.output}\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\n\nExcerpt:"
       },
       {
         "uid": "faq_writer",
@@ -238,7 +238,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write plain-language legal FAQ articles for general readers. You explain legal concepts clearly without oversimplifying. You note jurisdiction-specific rules where relevant and flag where laws vary. You do not give specific legal advice — you explain how the law generally works. Open with a one-paragraph overview. Then write 6–10 FAQ questions and answers using ## for each Q. End with a standard disclaimer in a blockquote: 'This article is for informational purposes only and is not legal advice. Consult a licensed attorney in your jurisdiction for advice specific to your situation.'",
-        "userPrompt": "Write a legal FAQ article.\n\nTitle: {agents.title_writer.output}\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\nReader: {reader_knowledge}\nFAQ plan (follow questions from this):\n{agents.planner.output}\n\nWrite 6–10 common questions and clear, accurate answers. Use plain language. Include the disclaimer at the end."
+        "userPrompt": "Write a legal FAQ article.\n\nTitle: {title_writer.output}\nTopic: {legal_topic}\nJurisdiction: {jurisdiction}\nReader: {reader_knowledge}\nFAQ plan (follow questions from this):\n{planner.output}\n\nWrite 6–10 common questions and clear, accurate answers. Use plain language. Include the disclaimer at the end."
       }
     ]
   }

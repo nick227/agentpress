@@ -61,7 +61,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You name short stories. Great short story titles do one of three things: hint at the central irony, evoke the story's dominant image, or name the central tension ambiguously. Under 7 words. Return only the title — no quotes, no explanation.",
-        "userPrompt": "Write a title for this short story.\n\nPremise: {premise}\nGenre: {genre}\nOutline: {agents.outline_writer.output}\n\nTitle:"
+        "userPrompt": "Write a title for this short story.\n\nPremise: {premise}\nGenre: {genre}\nOutline: {outline_writer.output}\n\nTitle:"
       },
       {
         "uid": "opening_writer",
@@ -70,7 +70,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write the opening section of literary short fiction — from the first line through the inciting incident. Your prose is precise and specific — you show, you don't tell. Dialogue is sharp and character-revealing. You write in scenes, not summaries. Sensory detail anchors the reader. Do not begin with weather. Do not include the title.",
-        "userPrompt": "Write the opening section of this short story.\n\nTitle: {agents.title_writer.output}\nPremise: {premise}\nGenre: {genre}\nProtagonist: {protagonist}\nOutline (cover opening scene and inciting incident):\n{agents.outline_writer.output}\n\nWrite opening through inciting incident. Target ~30% of {target_words} words. Start in scene."
+        "userPrompt": "Write the opening section of this short story.\n\nTitle: {title_writer.output}\nPremise: {premise}\nGenre: {genre}\nProtagonist: {protagonist}\nOutline (cover opening scene and inciting incident):\n{outline_writer.output}\n\nWrite opening through inciting incident. Target ~30% of {target_words} words. Start in scene."
       },
       {
         "uid": "rising_writer",
@@ -79,7 +79,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write the rising action of literary short fiction. You receive an opening that has established voice, character, and the inciting incident. Continue seamlessly — match the prose style exactly. Build tension through the rising beats in the outline toward the turning point.",
-        "userPrompt": "Write the rising action section of this short story.\n\nOutline (follow the 2 rising tension beats and turning point):\n{agents.outline_writer.output}\n\nOpening already written (continue directly from this):\n{agents.opening_writer.output}\n\nTarget ~40% of {target_words} words. Escalate toward the crisis."
+        "userPrompt": "Write the rising action section of this short story.\n\nOutline (follow the 2 rising tension beats and turning point):\n{outline_writer.output}\n\nOpening already written (continue directly from this):\n{opening_writer.output}\n\nTarget ~40% of {target_words} words. Escalate toward the crisis."
       },
       {
         "uid": "climax_writer",
@@ -88,7 +88,7 @@
         "outputFormat": "text",
         "sortOrder": 4,
         "systemPrompt": "You write the climax and resolution of literary short fiction. You receive the full story so far — match its voice exactly. Deliver the climax, closing image, and emotional throughline payoff. End the story — no epilogue unless the outline calls for it.",
-        "userPrompt": "Write the climax and resolution of this short story.\n\nOutline (follow climax and closing image):\n{agents.outline_writer.output}\n\nStory so far (continue directly from this):\n{agents.rising_writer.output}\n\nTarget ~30% of {target_words} words. Land the emotional throughline."
+        "userPrompt": "Write the climax and resolution of this short story.\n\nOutline (follow climax and closing image):\n{outline_writer.output}\n\nStory so far (continue directly from this):\n{rising_writer.output}\n\nTarget ~30% of {target_words} words. Land the emotional throughline."
       }
     ]
   },
@@ -154,7 +154,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You title personal essays. Great personal essay titles are specific (not 'On Failure' but 'The Year I Said Yes to Everything and Ended Up with Nothing'), hint at the emotional journey, and create just enough curiosity to earn the click. Under 12 words. Return only the title — no quotes.",
-        "userPrompt": "Write a title for this personal essay.\n\nCentral moment: {central_moment}\nInsight it arrives at: {insight}\nVoice: {author_voice}\nEssay plan:\n{agents.planner.output}\n\nTitle:"
+        "userPrompt": "Write a title for this personal essay.\n\nCentral moment: {central_moment}\nInsight it arrives at: {insight}\nVoice: {author_voice}\nEssay plan:\n{planner.output}\n\nTitle:"
       },
       {
         "uid": "excerpt_writer",
@@ -163,7 +163,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write lede sentences and opening excerpts for personal essays — the 2–3 sentences that appear in email previews or on the blog archive page. They must earn the read without summarizing. Often the best excerpts are the essay's first sentences. Return only the excerpt.",
-        "userPrompt": "Write a 2–3 sentence excerpt for this personal essay.\n\nTitle: {agents.title_writer.output}\nCentral moment: {central_moment}\nVoice: {author_voice}\nEssay plan (use the opening scene beat):\n{agents.planner.output}\n\nDrop the reader into the moment. No setup. No summary.\n\nExcerpt:"
+        "userPrompt": "Write a 2–3 sentence excerpt for this personal essay.\n\nTitle: {title_writer.output}\nCentral moment: {central_moment}\nVoice: {author_voice}\nEssay plan (use the opening scene beat):\n{planner.output}\n\nDrop the reader into the moment. No setup. No summary.\n\nExcerpt:"
       },
       {
         "uid": "scene_writer",
@@ -172,7 +172,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write the opening and middle of personal narrative essays in the tradition of great literary journalism. Open in a specific scene, pull back to context, build to a crisis point. First person with a strong, consistent voice. Specific — names, dates, sensory details. Do not include the title. Do not state the insight directly yet.",
-        "userPrompt": "Write the opening and middle of this personal essay.\n\nTitle: {agents.title_writer.output}\nCentral moment: {central_moment}\nAuthor voice: {author_voice}\nAudience: {audience}\nEssay plan (follow opening, context, and crisis beats):\n{agents.planner.output}\n\nOpen with the moment itself. Build to the crisis. ~500–700 words."
+        "userPrompt": "Write the opening and middle of this personal essay.\n\nTitle: {title_writer.output}\nCentral moment: {central_moment}\nAuthor voice: {author_voice}\nAudience: {audience}\nEssay plan (follow opening, context, and crisis beats):\n{planner.output}\n\nOpen with the moment itself. Build to the crisis. ~500–700 words."
       },
       {
         "uid": "reflection_writer",
@@ -181,7 +181,7 @@
         "outputFormat": "text",
         "sortOrder": 4,
         "systemPrompt": "You write the reflection and closing of personal narrative essays. You receive the scene section already written — match its voice exactly. Move through reflection and arrive at an insight that feels earned. Trust the story to carry the point — resist explaining it directly.",
-        "userPrompt": "Write the reflection and closing of this personal essay.\n\nInsight it arrives at: {insight}\nAuthor voice: {author_voice}\nEssay plan (follow reflection arc and insight emergence):\n{agents.planner.output}\n\nEssay so far (continue directly from this):\n{agents.scene_writer.output}\n\n~300–500 words. Let the insight emerge from the story."
+        "userPrompt": "Write the reflection and closing of this personal essay.\n\nInsight it arrives at: {insight}\nAuthor voice: {author_voice}\nEssay plan (follow reflection arc and insight emergence):\n{planner.output}\n\nEssay so far (continue directly from this):\n{scene_writer.output}\n\n~300–500 words. Let the insight emerge from the story."
       }
     ]
   }

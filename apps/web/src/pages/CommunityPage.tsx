@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { Bot, Check, GitFork, Rss, Workflow, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCommunityAgents, useCommunityFeeds, useCommunityPipelines, useCommunityPrompts, useForkCommunityAgent, useForkCommunityFeed, useForkCommunityPipeline, useForkCommunityPrompt } from '@project/sdk'
@@ -226,7 +226,7 @@ function PipelineRow({ pipeline, loading, onFork }: { pipeline: any; loading: bo
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{pipeline.name}</p>
+        <Link to={`/pipelines/${pipeline.slug || pipeline.id}`} className="text-sm font-medium hover:underline block">{pipeline.name}</Link>
         <p className="text-xs text-muted-foreground truncate">{pipeline.description || `${pipeline._count?.agents ?? 0} agents`}</p>
       </div>
       <Button size="sm" variant="outline" loading={loading} onClick={onFork}><GitFork size={13} /> Use pipeline</Button>
@@ -238,7 +238,10 @@ function AgentRow({ agent, loading, onFork }: { agent: any; loading: boolean; on
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
       <Bot size={14} className="text-accent" />
-      <div className="min-w-0 flex-1"><p className="text-sm font-medium">{agent.name}</p><p className="text-xs text-muted-foreground truncate">{agent.description ?? agent.kind}</p></div>
+      <div className="min-w-0 flex-1">
+        <Link to={`/agents/${agent.slug || agent.id}`} className="text-sm font-medium hover:underline block">{agent.name}</Link>
+        <p className="text-xs text-muted-foreground truncate">{agent.description ?? agent.kind}</p>
+      </div>
       <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add Agent</Button>
     </div>
   )
@@ -248,7 +251,7 @@ function FeedRow({ feed, loading, onFork }: { feed: any; loading: boolean; onFor
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{feed.name}</p>
+        <Link to={`/research/${feed.slug || feed.id}`} className="text-sm font-medium hover:underline block">{feed.name}</Link>
         <p className="text-xs text-muted-foreground capitalize">{feed.sourceType} · {feed._count?.items ?? 0} items</p>
       </div>
       <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add feed</Button>
@@ -260,7 +263,7 @@ function PromptRow({ prompt, loading, onFork }: { prompt: any; loading: boolean;
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{prompt.name}</p>
+        <Link to={`/prompts/${prompt.slug || prompt.id}`} className="text-sm font-medium hover:underline block">{prompt.name}</Link>
         <p className="text-xs text-muted-foreground truncate">{prompt.description}</p>
       </div>
       <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add prompt</Button>

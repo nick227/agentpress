@@ -1,0 +1,142 @@
+[
+  {
+    "id": "oss-release-hypeman",
+    "name": "OSS Release Hypeman",
+    "description": "Turns a dry GitHub release feed into a hyped-up dev community announcement.",
+    "category": "developer",
+    "categoryLabel": "Developer",
+    "tags": ["github", "release", "dev.to", "twitter"],
+    "variables": [
+      {
+        "key": "github_release_feed",
+        "label": "GitHub Release Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "The feed for the repository releases"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "feature_translator",
+        "name": "Feature Translator",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Translate dry technical commit messages and PR titles into benefit-driven language. Explain *why* a developer should care about this update.",
+        "userPrompt": "Translate this release feed into developer benefits:\n\n{github_release_feed.summary}"
+      },
+      {
+        "uid": "dev_post",
+        "name": "Dev.to Post Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Write a complete, markdown-formatted blog post explaining a software release. Use a casual, community-focused developer tone. Include sections for 'What is new', 'Why it matters', and 'How to upgrade'.",
+        "userPrompt": "Write a release blog post based on these benefits:\n\n{feature_translator.text}"
+      },
+      {
+        "uid": "social_broadcaster",
+        "name": "Social Broadcaster",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Write a short Twitter thread announcing a software release. Keep it extremely punchy. The first tweet should have the biggest feature. The last tweet should link to the blog post.",
+        "userPrompt": "Write an announcement thread for this post:\n\n{dev_post.text}"
+      }
+    ]
+  },
+  {
+    "id": "tutorial-generator",
+    "name": "API Tutorial Builder",
+    "description": "Takes an API documentation snippet and creates a practical coding tutorial.",
+    "category": "developer",
+    "categoryLabel": "Developer",
+    "tags": ["tutorial", "code", "education", "api"],
+    "variables": [
+      {
+        "key": "api_docs",
+        "label": "API Documentation",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "POST /v1/messages - Send a message to a channel...",
+        "hint": "Paste the raw API endpoint documentation"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "concept_explainer",
+        "name": "Concept Explainer",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Write an engaging introduction for a coding tutorial. Explain the real-world use case for the provided API docs. Why would someone build this?",
+        "userPrompt": "Write the introduction for a tutorial about this API:\n\n{api_docs}"
+      },
+      {
+        "uid": "code_scripter",
+        "name": "Code Scripter",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Generate step-by-step code blocks for a tutorial based on API docs. Provide examples in cURL and Node.js. Add comments to explain the code.",
+        "userPrompt": "Generate code examples for this API:\n\n{api_docs}"
+      },
+      {
+        "uid": "tutorial_compiler",
+        "name": "Tutorial Compiler",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Merge an introduction and code snippets into a cohesive markdown tutorial. Add headings, formatting, and a conclusion.",
+        "userPrompt": "Merge these into a tutorial:\n\nIntro:\n{concept_explainer.text}\n\nCode:\n{code_scripter.text}"
+      }
+    ]
+  },
+  {
+    "id": "tech-drama-opinion",
+    "name": "Tech Drama Opinion Piece",
+    "description": "Summarizes a heated HackerNews/Reddit debate and drafts a spicy opinion blog post.",
+    "category": "developer",
+    "categoryLabel": "Developer",
+    "tags": ["blog", "opinion", "hackernews", "reddit"],
+    "variables": [
+      {
+        "key": "hackernews_feed",
+        "label": "HackerNews / Reddit Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "The feed containing the debate or news item"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "debate_summarizer",
+        "name": "Debate Summarizer",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Analyze a feed summary to extract the core argument and the steel-manned perspectives of both sides of the debate.",
+        "userPrompt": "Summarize the debate from this feed:\n\n{hackernews_feed.summary}"
+      },
+      {
+        "uid": "opinion_generator",
+        "name": "Opinion Generator",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Take a definitive stance on a technical debate and draft a 500-word hot take. Be opinionated but logical. Use strong analogies.",
+        "userPrompt": "Write an opinion piece based on this debate summary:\n\n{debate_summarizer.text}"
+      },
+      {
+        "uid": "headline_editor",
+        "name": "Headline Editor",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Create a highly clickable, slightly provocative title and a 1-sentence meta description for an opinion piece.",
+        "userPrompt": "Write a headline and meta description for this piece:\n\n{opinion_generator.text}"
+      }
+    ]
+  }
+]

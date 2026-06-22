@@ -70,7 +70,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write professional resume summaries — the 3–4 line section at the top of a resume. Great summaries: state the candidate's level and specialty, highlight 2–3 measurable achievements or capabilities, and position them for the target role without being a generic list of adjectives. No 'results-driven professional'. No 'passionate team player'. Be specific and quantified where possible. Return only the summary — no label, no heading.",
-        "userPrompt": "Write a professional resume summary.\n\nCandidate: {full_name}\nTarget role: {target_role}\nExperience: {experience_summary}\nSkills: {key_skills}\nIndustry: {industry}\nExperience plan:\n{agents.experience_planner.output}\n\n3–4 lines. Specific. Quantified. Written in third person or as a statement (no 'I'). Summary:"
+        "userPrompt": "Write a professional resume summary.\n\nCandidate: {full_name}\nTarget role: {target_role}\nExperience: {experience_summary}\nSkills: {key_skills}\nIndustry: {industry}\nExperience plan:\n{experience_planner.output}\n\n3–4 lines. Specific. Quantified. Written in third person or as a statement (no 'I'). Summary:"
       },
       {
         "uid": "resume_writer",
@@ -79,7 +79,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write professional resume content in Markdown. Format: ## Professional Summary (paste from input), ## Core Skills (two-column bullet list), ## Professional Experience (each role as ### Company | Role | Date Range, followed by 3–4 achievement bullets using the CAR format: Context, Action, Result — quantified where possible), ## Education (brief). Achievement bullets start with strong action verbs. ATS-friendly: no tables, no columns, no graphics in the output. Do not include contact information.",
-        "userPrompt": "Write a complete resume in Markdown.\n\nName: {full_name}\nTarget role: {target_role}\nSummary: {agents.summary_writer.output}\nExperience: {experience_summary}\nSkills: {key_skills}\nIndustry: {industry}\nExperience plan (follow achievement and structure notes):\n{agents.experience_planner.output}\n\nFormat each achievement bullet as: [Strong verb] [what you did] [quantified result]. Write the full resume."
+        "userPrompt": "Write a complete resume in Markdown.\n\nName: {full_name}\nTarget role: {target_role}\nSummary: {summary_writer.output}\nExperience: {experience_summary}\nSkills: {key_skills}\nIndustry: {industry}\nExperience plan (follow achievement and structure notes):\n{experience_planner.output}\n\nFormat each achievement bullet as: [Strong verb] [what you did] [quantified result]. Write the full resume."
       },
       {
         "uid": "title_writer",
@@ -181,7 +181,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write cover letters that get read. Great cover letters: open with a strong hook (not 'I am writing to apply for'), tell one specific story that demonstrates the candidate's most relevant qualification, connect that story to the company's current situation or needs, and close with a confident ask — not a groveling hope. Under 350 words. Three to four paragraphs. No bullet points. Written in first person. Do not repeat information that would just restate the resume.",
-        "userPrompt": "Write a cover letter.\n\nApplicant: {applicant_name}\nRole: {target_role}\nCompany: {company_name}\nKey qualification: {key_qualification}\nWhy this company: {why_company}\nTone: {tone}\nAngle plan:\n{agents.angle_planner.output}\n\nUnder 350 words. Open with a hook. Tell the story of the key qualification. Connect it to this company specifically. End with confidence."
+        "userPrompt": "Write a cover letter.\n\nApplicant: {applicant_name}\nRole: {target_role}\nCompany: {company_name}\nKey qualification: {key_qualification}\nWhy this company: {why_company}\nTone: {tone}\nAngle plan:\n{angle_planner.output}\n\nUnder 350 words. Open with a hook. Tell the story of the key qualification. Connect it to this company specifically. End with confidence."
       }
     ]
   }

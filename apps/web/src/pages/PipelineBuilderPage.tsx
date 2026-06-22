@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { usePipeline } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { DetailPanel } from '@/features/pipelines/builder/DetailPanel'
@@ -47,9 +47,19 @@ export function PipelineBuilderPage() {
       </div>
     )
   } else {
+    const isCommunity = pipeline.visibility === 'PUBLIC'
     content = (
-      <div className="min-h-full w-full min-w-0 bg-background">
-        <DetailPanel pipeline={pipeline} runs={recentRuns} pipelineId={pipelineSlug!} />
+      <div className="min-h-full w-full min-w-0 bg-background flex flex-col">
+        {isCommunity && (
+          <div className="bg-muted p-2 text-center text-xs text-muted-foreground border-b flex justify-between items-center px-4 shrink-0">
+             <span><Link to="/community" className="hover:underline">← Community</Link></span>
+             <span>Community pipeline — read-only template. Fork this pipeline from the community page to edit and run it.</span>
+             <span className="w-16"></span>
+          </div>
+        )}
+        <div className="flex-1 min-h-0 overflow-auto">
+          <DetailPanel pipeline={pipeline} runs={recentRuns} pipelineId={pipelineSlug!} />
+        </div>
       </div>
     )
   }

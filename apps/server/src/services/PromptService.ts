@@ -171,11 +171,19 @@ export class PromptService {
   }
 
   async get(context: AuthContext, promptIdOrSlug: string) {
+    const communityWorkspaceId = await getCommunityWorkspaceId()
     const prompt = await db.prompt.findFirst({
       where: {
-        AND: [
-          this.listWhere(context),
-          { OR: [{ id: promptIdOrSlug }, { slug: promptIdOrSlug }] },
+        OR: [
+          {
+            AND: [
+              this.listWhere(context),
+              { OR: [{ id: promptIdOrSlug }, { slug: promptIdOrSlug }] },
+            ],
+          },
+          ...(communityWorkspaceId
+            ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const, OR: [{ id: promptIdOrSlug }, { slug: promptIdOrSlug }] }]
+            : []),
         ],
       },
     })

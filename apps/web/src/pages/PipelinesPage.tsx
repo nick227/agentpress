@@ -207,7 +207,7 @@ function PipelineRow({
         </div>
       </button>
 
-      <div className={cn('flex shrink-0 items-center gap-1 pr-3', !isConfirming && 'opacity-0 group-hover:opacity-100 transition-opacity')}>
+      <div className={cn('flex shrink-0 items-center gap-1 pr-3', !isConfirming && 'hidden group-hover:opacity-100 transition-opacity')}>
         {isConfirming ? (
           <>
             <Button variant="destructive" size="sm" loading={isDeleting} onClick={onDelete}>

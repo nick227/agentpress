@@ -25,21 +25,109 @@ Every agent produces an output that is saved to the pipeline run. You can config
 *   **Thumbnail Prompt:** Sets the prompt used to generate the main featured image (thumbnail). The latest one wins.
 
 ## Variables and References
-You can pass data into your agent prompts using `{variables}`. These are evaluated dynamically when the pipeline runs.
 
-### General Variables
-*   `{topic}`: The main subject for the pipeline run.
-*   `{agents.[uid].output}`: The exact output of a previous agent in the pipeline. This is crucial for chaining agents together (e.g., Agent B refines the output of Agent A).
+You can pass data into agent prompts using `{references}`. References are evaluated dynamically when the pipeline runs. All resolved variables and research feeds are locked in at run start, so prompt rendering is reproducible for that run.
 
-### Research References
-If you have connected Research Sources (like YouTube transcripts, Reddit daily digests, or RSS feeds), you can inject their stored data into prompts using their source slug.
-*   `{source_slug.summary}`: Latest stored item for that feed, summarized with the feed's pipeline summary style (see feed settings).
-*   `{source_slug.date}`: Publish date (YYYY-MM-DD).
-*   `{source_slug.title}`: The title of the source item.
-*   `{source_slug.url}`: The URL of the source item.
-*   `{source_slug.content}`: Full collected content or transcript.
+## Prompt Reference Conventions
 
-*Tip: For exact reuse of a prior daily pull, pin a specific day's research with `{source_slug.YYYY-MM-DD.summary}` (e.g. `{wallstreetbets.2026-06-18.title}`). Date-pinned refs use the same pipeline summary style as `{source_slug.summary}`.*
+References use curly braces: `{root}` or `{root.field}`. The **root** determines what kind of value is resolved.
+
+### Taxonomy
+
+| Syntax | Resolves as | Example |
+|---|---|---|
+| `{outline.output}` | Prior pipeline node output | Full text from the agent whose UID is `outline` |
+| `{writer.body}` | Prior node shaped field | Same output, keyed by that agent's output target (`body`, `title`, `excerpt`, etc.) |
+| `{ziptrader.summary}` | Research feed / resource | Latest summary for feed slug `ziptrader` |
+| `{context}` | Pipeline variable | Variable defined on the pipeline or injected by a loop |
+| `{row.title}` | Dataset row field | Field from the current row when running over a dataset |
+
+Use the **agent UID** as the root for prior steps — not an `agents.` prefix:
+
+```
+{outline.output}
+{outline.title}
+{writer.body}
+```
+
+Not:
+
+```
+{agents.outline.output}   ← legacy only
+```
+
+### Resolution order
+
+For dotted references `{root.field}`, the renderer resolves the root in this order:
+
+1. **Pipeline node UID** — output from a prior agent in this run
+2. **Feed / resource key** — workspace research feed, then community feed
+3. **Variable or row path** — pipeline variables, loop injection, dataset fields
+4. **Missing** — reference is left unchanged; validation warns
+
+Pipeline node UIDs must not collide with feed slugs used in the same pipeline. Save-time validation flags collisions.
+
+### Prior node outputs
+
+Each completed agent exposes its output under its UID:
+
+- `{uid.output}` — always the agent's raw output text
+- `{uid.body}`, `{uid.title}`, `{uid.excerpt}`, … — same text, keyed by that agent's **Output Use** setting
+
+Example: if agent `outline` runs before agent `writer`, the writer prompt can include:
+
+```
+Refine this outline into a full post:
+
+{outline.output}
+```
+
+If `outline` has Output Use set to **Body**, `{outline.body}` resolves to the same value.
+
+### Research feed references
+
+Inject stored research using the feed **slug** as the root:
+
+| Field | Meaning |
+|---|---|
+| `{slug.summary}` | Latest item, summarized with the feed's summary style |
+| `{slug.date}` | Publish date (`YYYY-MM-DD`) |
+| `{slug.title}` | Title of the source item |
+| `{slug.url}` | URL of the source item |
+| `{slug.content}` | Full collected content or transcript |
+
+Example:
+
+```
+Summarize today's market context:
+
+{ziptrader.summary}
+```
+
+**Pin a specific day** for exact reuse:
+
+```
+{wallstreetbets.2026-06-18.summary}
+{wallstreetbets.2026-06-18.title}
+```
+
+Date-pinned refs use the same summary style as `{slug.summary}`.
+
+### Pipeline variables
+
+Simple `{key}` references resolve to pipeline variables defined in the builder (e.g. `{topic}`, `{audience}`, `{tone}`).
+
+Loop and dataset runs may inject additional keys (e.g. `{context}` maps from a loop variable, `{row.title}` from the current dataset row).
+
+### Legacy syntax
+
+Older pipelines may still use `{agents.uid.output}`. This still resolves (normalized to `{uid.output}`) but is deprecated. The builder insert menu and new templates use `{uid.output}` only.
+
+Similarly, `{research.summary}` is legacy — use `{feed_slug.summary}` instead.
+
+### Validation
+
+At pipeline save and seed time, references are checked against known agent UIDs, feed slugs, and variable keys. Unknown feeds error; unknown node UIDs warn; legacy `agents.` prefixes warn.
 
 ## Pipeline Runs
 When you execute a pipeline, it generates a **Run**. 
@@ -59,7 +147,7 @@ In the run view, each agent is labeled as:
 - **Reused:** The output was reused from a prior run with matching inputs.
 - **Failed:** The agent encountered an error.
 
-*Note: If you change an upstream dependency—such as updating a `{topic}` or if `{agents.previous.output}` changes—the rendered prompt downstream changes automatically. This forces downstream agents to regenerate while keeping unaffected upstream agents cached.*
+*Note: If you change an upstream dependency—such as updating a `{topic}` or if `{outline.output}` changes—the rendered prompt downstream changes automatically. This forces downstream agents to regenerate while keeping unaffected upstream agents cached.*
 
 ## Publishing Destinations
 Once a pipeline has finished generating its outputs and assembling the final post, it can be published.

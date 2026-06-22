@@ -22,7 +22,7 @@ export interface ResearchContext {
 type PipelineForResearch = {
   workspaceId?: string
   variables?: Array<{ key: string }>
-  agents?: Array<{ systemPrompt: string; userPrompt: string }>
+  agents?: Array<{ uid: string; systemPrompt: string; userPrompt: string }>
 }
 
 const RESEARCH_FIELDS = new Set(['summary', 'date', 'publishedAt', 'title', 'url', 'content', 'sourceName', 'sourceType'])
@@ -89,14 +89,16 @@ export class ResearchContextService {
   }
 
   private findReferencedSources(pipeline: PipelineForResearch): Map<string, Set<string>> {
+    const agentUids = new Set((pipeline.agents ?? []).map((agent) => agent.uid))
     const references = new Map<string, Set<string>>()
     for (const agent of pipeline.agents ?? []) {
       const text = `${agent.systemPrompt}\n${agent.userPrompt}`
-      for (const [, ref] of text.matchAll(/\{([^}]+)\}/g)) {
-        if (!ref || !ref.includes('.')) continue
+      for (const [, rawRef] of text.matchAll(/\{([^}]+)\}/g)) {
+        if (!rawRef || !rawRef.includes('.')) continue
+        const ref = rawRef.startsWith('agents.') ? rawRef.slice('agents.'.length) : rawRef
         const parts = ref.split('.')
         const [root, second, third] = parts
-        if (!root || root === 'agents' || root === 'research') continue
+        if (!root || root === 'research' || root === 'row' || agentUids.has(root)) continue
         if (second && RESEARCH_FIELDS.has(second)) {
           if (!references.has(root)) references.set(root, new Set())
         } else if (second && third && DATE_KEY.test(second) && RESEARCH_FIELDS.has(third)) {

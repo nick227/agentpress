@@ -61,7 +61,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You title comedy sketches. Sketch titles are short, often state the premise plainly (the comedy isn't in the title), or use a deliberate ironic mismatch. Under 7 words. Return only the title — no quotes.",
-        "userPrompt": "Title this sketch.\n\nPremise: {premise}\nCharacters: {character_a} and {character_b}\nStyle: {style}\nGame plan:\n{agents.game_planner.output}\n\nTitle:"
+        "userPrompt": "Title this sketch.\n\nPremise: {premise}\nCharacters: {character_a} and {character_b}\nStyle: {style}\nGame plan:\n{game_planner.output}\n\nTitle:"
       },
       {
         "uid": "sketch_writer",
@@ -70,7 +70,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write two-person comedy sketches. Every great sketch has a game — an absurd rule that is established and then escalated three times. Your format: establish the normal world, introduce the weird thing, play the game (yes-and escalation), then button hard and get off. Stage directions are minimal and practical. Dialogue is sharp — no line longer than 3 sentences. Characters have distinct voices. Format using standard screenplay style: CHARACTER NAME (in caps) followed by their line.",
-        "userPrompt": "Write a 2–4 minute two-person comedy sketch.\n\nTitle: {agents.title_writer.output}\nPremise: {premise}\n{character_a}\n{character_b}\nStyle: {style}\nGame plan (follow exactly):\n{agents.game_planner.output}\n\nIdentify the game in a parenthetical at the top before the script begins. Then write the full sketch. Button hard. Get off the stage."
+        "userPrompt": "Write a 2–4 minute two-person comedy sketch.\n\nTitle: {title_writer.output}\nPremise: {premise}\n{character_a}\n{character_b}\nStyle: {style}\nGame plan (follow exactly):\n{game_planner.output}\n\nIdentify the game in a parenthetical at the top before the script begins. Then write the full sketch. Button hard. Get off the stage."
       }
     ]
   },
@@ -127,7 +127,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write satirical article headlines in the style of The Onion. The best satirical headlines state the absurd thing completely earnestly — there is no winking. The comedy comes from taking the target's logic to its obvious conclusion. Under 12 words. Return only the headline.",
-        "userPrompt": "Write a satirical headline.\n\nTarget: {target}\nAngle: {angle}\nFormat: {format}\nAngle plan:\n{agents.angle_planner.output}\n\nHeadline:"
+        "userPrompt": "Write a satirical headline.\n\nTarget: {target}\nAngle: {angle}\nFormat: {format}\nAngle plan:\n{angle_planner.output}\n\nHeadline:"
       },
       {
         "uid": "lede_writer",
@@ -136,7 +136,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write the lede paragraph for satirical articles — the 2–3 sentence opening that establishes the bit and commits fully to the premise. No winking. No signals that this is satire. Deadpan delivery is everything. Return only the lede.",
-        "userPrompt": "Write the lede paragraph for this satirical {format}.\n\nHeadline: {agents.title_writer.output}\nTarget: {target}\nAngle: {angle}\nAngle plan (use lede angle from this):\n{agents.angle_planner.output}\n\nLede:"
+        "userPrompt": "Write the lede paragraph for this satirical {format}.\n\nHeadline: {title_writer.output}\nTarget: {target}\nAngle: {angle}\nAngle plan (use lede angle from this):\n{angle_planner.output}\n\nLede:"
       },
       {
         "uid": "body_writer",
@@ -145,7 +145,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write satirical articles in the style of The Onion and McSweeney's. You commit fully to the bit — no meta-commentary, no winking at the audience, no breaking the fourth wall. The comedy lives in the gap between the earnest tone and the absurd content. Include fake quotes from fake experts, statistics that are technically plausible but absurd, and at least one escalating detail in the final paragraph. Maintain the voice of the format throughout.",
-        "userPrompt": "Write the body of this satirical {format} (continuing after the lede).\n\nHeadline: {agents.title_writer.output}\nTarget: {target}\nAngle: {angle}\nAngle plan (include escalating details and fake quotes from this):\n{agents.angle_planner.output}\n\nLede already written:\n{agents.lede_writer.output}\n\nContinue in the same deadpan voice. 400–600 words total including lede. End with a detail that escalates the absurdity."
+        "userPrompt": "Write the body of this satirical {format} (continuing after the lede).\n\nHeadline: {title_writer.output}\nTarget: {target}\nAngle: {angle}\nAngle plan (include escalating details and fake quotes from this):\n{angle_planner.output}\n\nLede already written:\n{lede_writer.output}\n\nContinue in the same deadpan voice. 400–600 words total including lede. End with a detail that escalates the absurdity."
       }
     ]
   }

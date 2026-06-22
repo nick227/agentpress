@@ -1,0 +1,149 @@
+[
+  {
+    "id": "podcast-to-thread",
+    "name": "Podcast-to-Thread Engine",
+    "description": "Turns a recent podcast or YouTube video into a viral Twitter/X thread. Extracts the hook, key lessons, and weaves them together.",
+    "category": "creator",
+    "categoryLabel": "Creator",
+    "tags": ["social", "twitter", "podcast", "repurpose"],
+    "variables": [
+      {
+        "key": "youtube_feed",
+        "label": "YouTube / Podcast Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "The feed containing the transcript summaries"
+      },
+      {
+        "key": "tweet_count",
+        "label": "Thread Length",
+        "type": "text",
+        "required": false,
+        "defaultValue": "10",
+        "exampleValue": "8",
+        "hint": "Number of tweets in the thread"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "hook_writer",
+        "name": "Hook Extractor",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "You analyze podcast transcripts and extract the single most controversial, counter-intuitive, or mind-blowing hook. State it in 2-3 sentences. This will be used to open a Twitter thread.",
+        "userPrompt": "Analyze this podcast summary and find the strongest hook for a Twitter thread:\n\n{youtube_feed.summary}"
+      },
+      {
+        "uid": "point_extractor",
+        "name": "Key Point Extractor",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "You extract actionable lessons from transcripts. Return 3-5 specific, tactical points. No fluff. Just the raw value.",
+        "userPrompt": "Extract 3-5 key lessons from this podcast summary:\n\n{youtube_feed.summary}"
+      },
+      {
+        "uid": "thread_weaver",
+        "name": "Thread Weaver",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "You are a master Twitter ghostwriter. You take a hook and key points and write a highly engaging, formatting-heavy Twitter thread. Number each tweet (e.g., 1/X). End with a call to action.",
+        "userPrompt": "Write a {tweet_count}-tweet thread.\n\nHook to use:\n{hook_writer.text}\n\nPoints to cover:\n{point_extractor.text}\n\nFormat with line breaks. Use bullet points where necessary."
+      }
+    ]
+  },
+  {
+    "id": "trend-jacking-tiktok",
+    "name": "Trend-Jacking TikTok Script",
+    "description": "Takes trending internet news and turns it into a fast-paced 60-second video script.",
+    "category": "creator",
+    "categoryLabel": "Creator",
+    "tags": ["tiktok", "shorts", "video", "trends"],
+    "variables": [
+      {
+        "key": "news_feed",
+        "label": "News / Trend Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "The feed to monitor for trending topics"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "trend_synthesizer",
+        "name": "Trend Synthesizer",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Identify the most viral, dramatic, or engaging angle from a news summary. What is the core conflict or crazy fact?",
+        "userPrompt": "Find the viral angle in this news:\n\n{news_feed.summary}"
+      },
+      {
+        "uid": "scriptwriter",
+        "name": "Scriptwriter",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Write a fast-paced, 60-second TikTok script. Format with [VISUAL] for screen directions and [AUDIO] for spoken lines. Keep sentences extremely short. Start with a 3-second hook.",
+        "userPrompt": "Write a 60-second script based on this viral angle:\n{trend_synthesizer.text}"
+      },
+      {
+        "uid": "seo_optimizer",
+        "name": "SEO Optimizer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Generate a YouTube Shorts / TikTok title, a 2-sentence description, and 5 hashtags based on the provided script. Put this at the bottom of the output.",
+        "userPrompt": "Generate SEO metadata for this script:\n\n{scriptwriter.text}"
+      }
+    ]
+  },
+  {
+    "id": "bts-newsletter",
+    "name": "Behind-the-Scenes Newsletter",
+    "description": "Takes the creator's recent videos and drafts an authentic email newsletter focusing on the making of the video.",
+    "category": "creator",
+    "categoryLabel": "Creator",
+    "tags": ["email", "newsletter", "authenticity"],
+    "variables": [
+      {
+        "key": "youtube_feed",
+        "label": "YouTube Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "Feed of your recent videos"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "story_miner",
+        "name": "Story Miner",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Find the implicit struggle, challenge, or funny anecdote within a video summary. What went wrong? What was hard?",
+        "userPrompt": "Find the struggle or 'behind the scenes' story in this video summary:\n\n{youtube_feed.summary}"
+      },
+      {
+        "uid": "draft_writer",
+        "name": "Newsletter Draft Writer",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Write a personal, text-only email newsletter. Talk to the reader like a friend. Share the behind-the-scenes struggle, then pivot to sharing the final video link.",
+        "userPrompt": "Write an email newsletter about this behind-the-scenes story:\n{story_miner.text}\n\nMake sure to tell them to watch the full video!"
+      },
+      {
+        "uid": "subject_tester",
+        "name": "Subject Line Generator",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Generate 5 high-converting, curiosity-inducing email subject lines for a newsletter draft. Output them as a bulleted list at the top of the content.",
+        "userPrompt": "Generate 5 subject lines for this email:\n\n{draft_writer.text}"
+      }
+    ]
+  }
+]

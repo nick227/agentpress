@@ -1,4 +1,4 @@
-import { db, Prisma } from '@project/db'
+import { auditPromptReferences, db, Prisma } from '@project/db'
 import { parseCategoryIds } from './serviceUtils'
 import { authorization, type AuthContext } from './AuthorizationService'
 import { audit } from './AuditService'
@@ -131,8 +131,14 @@ export class PipelineService {
   }
 
   async get(context: AuthContext, pipelineId: string) {
+    const communityWorkspaceId = await getCommunityWorkspaceId()
     const p = await db.pipeline.findFirst({
-      where: { workspaceId: context.workspaceId, OR: [{ id: pipelineId }, { slug: pipelineId }] },
+      where: {
+        OR: [
+          { workspaceId: context.workspaceId, OR: [{ id: pipelineId }, { slug: pipelineId }] },
+          ...(communityWorkspaceId ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const, OR: [{ id: pipelineId }, { slug: pipelineId }] }] : []),
+        ],
+      },
 
       include: {
         variables: { orderBy: { sortOrder: 'asc' } },
@@ -329,33 +335,26 @@ export class PipelineService {
       researchSources.filter((source) => source.workspaceId === communityWorkspaceId).map((source) => source.slug),
     )
 
-    for (const agent of p.agents) {
-      const refs = [...agent.systemPrompt.matchAll(/\{([^}]+)\}/g), ...agent.userPrompt.matchAll(/\{([^}]+)\}/g)]
-      for (const [, ref] of refs) {
-        if (!ref) continue
-        if (ref.startsWith('agents.')) {
-          const parts = ref.split('.')
-          const uid = parts[1]
-          if (uid && !agentUidSet.has(uid)) {
-            warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown agent UID "${uid}"`, path: `agents.${agent.uid}` })
-          }
-        } else if (ref === 'research' || ref.startsWith('research.')) {
-          warnings.push({ level: 'warning', message: `Agent "${agent.uid}" uses legacy {research} reference which is deprecated. Use the specific feed slug instead, e.g. {feed_slug.summary}`, path: `agents.${agent.uid}` })
-        } else if (ref.includes('.')) {
-          const [root] = ref.split('.')
-          if (root && root !== 'row' && !varKeys.has(root) && communitySourceSlugs.has(root) && !researchSourceSlugs.has(root)) {
-            errors.push({
-              level: 'error',
-              message: `Agent "${agent.uid}" references community feed "${root}". Add it to this workspace before running.`,
-              path: `agents.${agent.uid}`,
-            })
-          } else if (root && root !== 'row' && !varKeys.has(root) && !researchSourceSlugs.has(root)) {
-            warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown variable or research source "${root}"`, path: `agents.${agent.uid}` })
-          }
-        } else if (!varKeys.has(ref)) {
-          warnings.push({ level: 'warning', message: `Agent "${agent.uid}" references unknown variable "${ref}"`, path: `agents.${agent.uid}` })
-        }
+    const refIssues = auditPromptReferences({
+      agents: p.agents.map((agent) => ({
+        uid: agent.uid,
+        systemPrompt: agent.systemPrompt,
+        userPrompt: agent.userPrompt,
+      })),
+      variableKeys: varKeys,
+      researchSourceSlugs,
+      communitySourceSlugs,
+      agentUids: agentUidSet,
+    })
+
+    for (const issue of refIssues) {
+      const entry = {
+        level: issue.level,
+        message: issue.message,
+        path: issue.agentUid ? `agents.${issue.agentUid}` : undefined,
       }
+      if (issue.level === 'error') errors.push(entry)
+      else warnings.push(entry)
     }
 
     const requiredVars = p.variables.filter((v) => v.required && !v.defaultValue)

@@ -244,12 +244,20 @@ export class ResearchService {
   }
 
   async get(context: AuthContext, idOrSlug: string) {
+    const communityWorkspaceId = await getCommunityWorkspaceId()
     const [source, globalDefault] = await Promise.all([
       db.researchSource.findFirstOrThrow({
         where: {
-          AND: [
-            { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-            { workspaceId: context.workspaceId },
+          OR: [
+            {
+              AND: [
+                { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+                { workspaceId: context.workspaceId },
+              ],
+            },
+            ...(communityWorkspaceId
+              ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const, OR: [{ id: idOrSlug }, { slug: idOrSlug }] }]
+              : []),
           ],
         },
         include: this.sourceInclude(),
@@ -601,8 +609,15 @@ export class ResearchService {
   }
 
   async listItems(context: AuthContext, sourceId: string, page = 1, limit = 15) {
+    const communityWorkspaceId = await getCommunityWorkspaceId()
     const source = await db.researchSource.findFirst({
-      where: { id: sourceId, workspaceId: context.workspaceId },
+      where: {
+        id: sourceId,
+        OR: [
+          { workspaceId: context.workspaceId },
+          ...(communityWorkspaceId ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const }] : []),
+        ],
+      },
     })
     if (!source) throw Object.assign(new Error('Research source not found'), { statusCode: 404 })
     const skip = (page - 1) * limit
@@ -633,11 +648,46 @@ export class ResearchService {
   }
 
   async getItem(context: AuthContext, itemId: string) {
+    const communityWorkspaceId = await getCommunityWorkspaceId()
     const item = await db.researchItem.findFirstOrThrow({
-      where: { id: itemId, source: { workspaceId: context.workspaceId } },
+      where: {
+        id: itemId,
+        source: {
+          OR: [
+            { workspaceId: context.workspaceId },
+            ...(communityWorkspaceId ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const }] : []),
+          ],
+        },
+      },
       include: { _count: { select: { summaries: true } } },
     })
     return this.formatItem(item)
+  }
+
+  async listSummaries(context: AuthContext, itemId: string) {
+    const communityWorkspaceId = await getCommunityWorkspaceId()
+    await db.researchItem.findFirstOrThrow({
+      where: {
+        id: itemId,
+        source: {
+          OR: [
+            { workspaceId: context.workspaceId },
+            ...(communityWorkspaceId ? [{ workspaceId: communityWorkspaceId, visibility: 'PUBLIC' as const }] : []),
+          ],
+        },
+      },
+    })
+    const rows = await db.researchSummary.findMany({
+      where: { itemId },
+      include: { prompt: { select: { name: true, description: true } } },
+      orderBy: { createdAt: 'asc' },
+    })
+    return rows.map((r) => ({
+      ...r,
+      promptName: r.prompt.name,
+      promptDescription: r.prompt.description,
+      prompt: undefined,
+    }))
   }
 
   async refreshItemContent(context: AuthContext, itemId: string) {
@@ -663,23 +713,6 @@ export class ResearchService {
       include: { _count: { select: { summaries: true } } },
     })
     return this.formatItem(updated)
-  }
-
-  async listSummaries(context: AuthContext, itemId: string) {
-    await db.researchItem.findFirstOrThrow({
-      where: { id: itemId, source: { workspaceId: context.workspaceId } },
-    })
-    const rows = await db.researchSummary.findMany({
-      where: { itemId },
-      include: { prompt: { select: { name: true, description: true } } },
-      orderBy: { createdAt: 'asc' },
-    })
-    return rows.map((r) => ({
-      ...r,
-      promptName: r.prompt.name,
-      promptDescription: r.prompt.description,
-      prompt: undefined,
-    }))
   }
 
   async summarize(context: AuthContext | null, itemId: string, promptId: string) {

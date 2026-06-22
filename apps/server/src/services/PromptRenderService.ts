@@ -1,4 +1,4 @@
-type AgentOutput = Record<string, string>
+import { normalizePromptReference } from '@project/db'
 
 function resolvePath(value: unknown, path: string[]): unknown {
   let current = value
@@ -21,30 +21,41 @@ function stringify(value: unknown): string | undefined {
 }
 
 export class PromptRenderService {
-  render(
-    template: string,
-    variables: Record<string, unknown>,
-    agentOutputs: AgentOutput,
-  ): string {
+  render(template: string, variables: Record<string, unknown>): string {
     return template.replace(/\{([^}]+)\}/g, (match, ref: string) => {
-      if (ref.startsWith('agents.')) {
-        const parts = ref.split('.')
-        const uid = parts[1]
-        if (uid && uid in agentOutputs) {
-          return agentOutputs[uid] ?? match
-        }
-        return match
+      const { normalized } = normalizePromptReference(ref)
+
+      if (normalized in variables) {
+        return stringify(variables[normalized]) ?? match
       }
-      if (ref in variables) {
-        return stringify(variables[ref]) ?? match
-      }
-      if (ref.includes('.')) {
-        const [root, ...path] = ref.split('.')
+
+      if (normalized.includes('.')) {
+        const [root, ...path] = normalized.split('.')
         if (root && root in variables) {
           return stringify(resolvePath(variables[root], path)) ?? match
         }
       }
+
       return match
     })
   }
+}
+
+export function buildPriorNodeVariables(
+  runVariables: Record<string, unknown>,
+  agentOutputs: Record<string, string>,
+  pipelineAgents: Array<{ uid: string; outputTarget: string }>,
+): Record<string, unknown> {
+  const renderVariables = { ...runVariables }
+
+  for (const [uid, text] of Object.entries(agentOutputs)) {
+    const agent = pipelineAgents.find((item) => item.uid === uid)
+    const target = agent?.outputTarget ?? 'output'
+    renderVariables[uid] = {
+      output: text,
+      [target]: text,
+    }
+  }
+
+  return renderVariables
 }

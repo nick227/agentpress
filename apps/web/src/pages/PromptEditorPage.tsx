@@ -86,8 +86,8 @@ export function PromptEditorPage() {
 
   return (
     <div className="page-shell page-shell--3xl space-y-6">
-      <Link to="/prompts" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ChevronLeft size={14} /> Prompts
+      <Link to={isCommunity ? "/community?tab=prompts" : "/prompts"} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ChevronLeft size={14} /> {isCommunity ? 'Community' : 'Prompts'}
       </Link>
 
       <div className="page-header gap-4">

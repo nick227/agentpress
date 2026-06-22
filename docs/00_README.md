@@ -32,3 +32,8 @@ AgentPress is a minimal account-based AI pipeline builder for generating blog po
 16. Development Handoff Checklist
 17. Account-Level Schedules Proposal
 18. Permissions, Visibility, Teams, and Community Plan
+
+## Operational guides
+
+- [Pipelines](pipelines.md) — agent chaining, output uses, **prompt reference conventions**
+- [Research feeds](research-feeds.md) — feed types, slugs, sync, and summary prompts

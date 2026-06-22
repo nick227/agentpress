@@ -253,7 +253,10 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
             className="font-mono"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Used in <code className="bg-muted px-1 rounded">{`{agents.${form.uid || 'uid'}.output}`}</code>
+            Used in <code className="bg-muted px-1 rounded">{`{${form.uid || 'uid'}.output}`}</code>
+            {form.outputTarget && form.outputTarget !== 'output' && (
+              <> or <code className="bg-muted px-1 rounded">{`{${form.uid || 'uid'}.${form.outputTarget}}`}</code></>
+            )}
           </p>
         </Field>
         <Field label="Name">

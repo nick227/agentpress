@@ -21,7 +21,7 @@ export function GlobalExplorerSections({ explorer }: { explorer: GlobalExplorerS
 }
 
 function AgentSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
-  if (explorer.agents.length === 0 && explorer.needle) return null
+  if (explorer.agents.length === 0) return null
   return (
     <ResourceGroup label="Agents" icon={Bot} indexHref="/agents" addHref="/agents/new" onRefetch={explorer.refreshAgents} isRefetching={explorer.agentsFetching}>
       {explorer.agents.map((agent) => (
@@ -32,7 +32,7 @@ function AgentSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
 }
 
 function PipelineSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
-  if (explorer.pipelines.length === 0 && explorer.needle) return null
+  if (explorer.pipelines.length === 0) return null
 
   return (
     <ResourceGroup
@@ -59,7 +59,7 @@ function PipelineSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
 }
 
 function ScheduleSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
-  if (explorer.schedules.length === 0 && explorer.needle) return null
+  if (explorer.schedules.length === 0) return null
 
   return (
     <ResourceGroup
@@ -87,7 +87,7 @@ function ScheduleSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
 }
 
 function ResearchSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
-  if (explorer.researchSources.length === 0 && explorer.needle) return null
+  if (explorer.researchSources.length === 0) return null
 
   return (
     <ResourceGroup
@@ -120,7 +120,7 @@ function ResearchSection({ explorer }: { explorer: GlobalExplorerSidebarModel })
 }
 
 function PromptSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
-  if (explorer.prompts.length === 0 && explorer.needle) return null
+  if (explorer.prompts.length === 0) return null
 
   return (
     <ResourceGroup
@@ -145,7 +145,7 @@ function PromptSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
 }
 
 function DestinationSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
-  if (explorer.destinations.length === 0 && explorer.needle) return null
+  if (explorer.destinations.length === 0) return null
 
   return (
     <ResourceGroup
@@ -170,7 +170,7 @@ function DestinationSection({ explorer }: { explorer: GlobalExplorerSidebarModel
 }
 
 function RunsSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
-  if (explorer.runs.length === 0 && explorer.needle) return null
+  if (explorer.runs.length === 0) return null
 
   return (
     <ResourceGroup

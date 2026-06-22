@@ -70,7 +70,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write SEO blog post titles. Your titles include the target keyword naturally, are under 65 characters, and promise a specific outcome or insight. No clickbait. No vague superlatives. Return only the title — no quotes, no label.",
-        "userPrompt": "Write an SEO title for this blog post.\n\nTopic: {topic}\nTarget keyword: {target_keyword}\nTone: {tone}\nContent plan:\n{agents.planner.output}\n\nTitle:"
+        "userPrompt": "Write an SEO title for this blog post.\n\nTopic: {topic}\nTarget keyword: {target_keyword}\nTone: {tone}\nContent plan:\n{planner.output}\n\nTitle:"
       },
       {
         "uid": "intro_writer",
@@ -79,7 +79,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write blog post introductions. A great intro does three things in order: hooks the reader with a specific question, stat, or scenario; establishes why this topic matters to them right now; and previews what they will learn. 150–200 words. Do not include the title or any heading. Do not summarize the whole post. End on a transition sentence that leads naturally into the first section.",
-        "userPrompt": "Write the introduction for this blog post.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\nContent plan:\n{agents.planner.output}\n\nFollow the intro hook angle from the plan. 150–200 words. No heading. End with a transition into the first section."
+        "userPrompt": "Write the introduction for this blog post.\n\nTitle: {title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\nContent plan:\n{planner.output}\n\nFollow the intro hook angle from the plan. 150–200 words. No heading. End with a transition into the first section."
       },
       {
         "uid": "body_writer",
@@ -88,7 +88,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write the main body sections of SEO blog posts in Markdown. You receive an intro that has already been written and a content plan — your job is to write the 4 main sections that follow. Each section has an ## H2 heading, 2–3 paragraphs of substantive content, and where appropriate an example, data point, or practical tip. Maintain the tone and voice established in the intro. The target keyword and natural variants should appear organically. Do not repeat what the intro already said.",
-        "userPrompt": "Write the 4 main body sections for this blog post.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nTarget keyword: {target_keyword}\nAudience: {audience}\nTone: {tone}\nContent plan:\n{agents.planner.output}\n\nIntro already written (do not repeat or summarize it):\n{agents.intro_writer.output}\n\nWrite the 4 sections from the plan. ## heading for each. 2–3 paragraphs per section. Each section should flow naturally from the one before it. Total: approximately {word_count} words minus the intro and conclusion."
+        "userPrompt": "Write the 4 main body sections for this blog post.\n\nTitle: {title_writer.output}\nTopic: {topic}\nTarget keyword: {target_keyword}\nAudience: {audience}\nTone: {tone}\nContent plan:\n{planner.output}\n\nIntro already written (do not repeat or summarize it):\n{intro_writer.output}\n\nWrite the 4 sections from the plan. ## heading for each. 2–3 paragraphs per section. Each section should flow naturally from the one before it. Total: approximately {word_count} words minus the intro and conclusion."
       },
       {
         "uid": "conclusion_writer",
@@ -97,7 +97,7 @@
         "outputFormat": "text",
         "sortOrder": 4,
         "systemPrompt": "You write blog post conclusions. A great conclusion: briefly recaps the central argument (not every section — just the core point), delivers the key takeaway the reader can act on, and ends with a clear call to action. 100–150 words. Use ## Conclusion as the heading. Do not introduce new information. Do not say 'In conclusion' or 'To summarize'.",
-        "userPrompt": "Write the conclusion for this blog post.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nContent plan:\n{agents.planner.output}\n\nBody sections already written:\n{agents.body_writer.output}\n\nUse ## Conclusion as the heading. Recap the central point, deliver the key takeaway, end with a CTA. 100–150 words."
+        "userPrompt": "Write the conclusion for this blog post.\n\nTitle: {title_writer.output}\nTopic: {topic}\nContent plan:\n{planner.output}\n\nBody sections already written:\n{body_writer.output}\n\nUse ## Conclusion as the heading. Recap the central point, deliver the key takeaway, end with a CTA. 100–150 words."
       },
       {
         "uid": "excerpt_writer",
@@ -106,7 +106,7 @@
         "outputFormat": "text",
         "sortOrder": 5,
         "systemPrompt": "You write SEO meta excerpts for blog posts. 150–160 characters. Include the target keyword naturally. Accurately reflect the post's central argument. No clickbait. Return only the excerpt — no quotes, no label.",
-        "userPrompt": "Write a meta excerpt for this blog post.\n\nTitle: {agents.title_writer.output}\nTarget keyword: {target_keyword}\nPost intro: {agents.intro_writer.output}\n\nExcerpt:"
+        "userPrompt": "Write a meta excerpt for this blog post.\n\nTitle: {title_writer.output}\nTarget keyword: {target_keyword}\nPost intro: {intro_writer.output}\n\nExcerpt:"
       },
       {
         "uid": "image_prompter",
@@ -115,7 +115,7 @@
         "outputFormat": "text",
         "sortOrder": 6,
         "systemPrompt": "You write DALL-E image generation prompts for blog post thumbnails. Your prompts produce professional, visually striking hero images. Return only the image generation prompt — no explanation.",
-        "userPrompt": "Write a DALL-E image prompt for a blog post thumbnail.\n\nBlog title: {agents.title_writer.output}\nTopic: {topic}\n\nRequirements: professional editorial quality, visually striking, suitable as a blog hero image, no text or typography in the image."
+        "userPrompt": "Write a DALL-E image prompt for a blog post thumbnail.\n\nBlog title: {title_writer.output}\nTopic: {topic}\n\nRequirements: professional editorial quality, visually striking, suitable as a blog hero image, no text or typography in the image."
       }
     ]
   },
@@ -190,7 +190,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write listicle titles with high click-through rates. Include the number, the audience benefit, and the target keyword where natural. Under 65 characters. Return only the title.",
-        "userPrompt": "Write a listicle title.\n\nTopic: {topic}\nItems: {list_count}\nKeyword: {target_keyword}\nAudience: {audience}\nItem plan:\n{agents.planner.output}\n\nTitle:"
+        "userPrompt": "Write a listicle title.\n\nTopic: {topic}\nItems: {list_count}\nKeyword: {target_keyword}\nAudience: {audience}\nItem plan:\n{planner.output}\n\nTitle:"
       },
       {
         "uid": "intro_writer",
@@ -199,7 +199,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write short listicle introductions. 80–120 words. State the problem the list solves for the reader, tease the value they'll get, and transition directly to the list. No heading needed. Do not list the items in the intro.",
-        "userPrompt": "Write the intro for this listicle.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\n\nState the problem, tease the value, transition to the list. 80–120 words."
+        "userPrompt": "Write the intro for this listicle.\n\nTitle: {title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\n\nState the problem, tease the value, transition to the list. 80–120 words."
       },
       {
         "uid": "list_writer",
@@ -208,7 +208,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write the numbered list body of a listicle in Markdown. Each item gets: ## [number]. [Item Name] as the heading, a 2–3 sentence explanation of what it is and why it matters to the specific audience, and one concrete tip or example. Items should feel like they could each stand alone as useful advice. Maintain consistent tone and voice across all items. Do not include an intro or conclusion — that's handled elsewhere.",
-        "userPrompt": "Write all {list_count} list items.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\n\nItem plan to follow:\n{agents.planner.output}\n\nIntro already written (the list items begin directly after):\n{agents.intro_writer.output}\n\nFormat each item as ## [N]. [Name]. 2–3 sentences of explanation + one tip or example per item. All {list_count} items, in the order from the plan."
+        "userPrompt": "Write all {list_count} list items.\n\nTitle: {title_writer.output}\nTopic: {topic}\nAudience: {audience}\nTone: {tone}\n\nItem plan to follow:\n{planner.output}\n\nIntro already written (the list items begin directly after):\n{intro_writer.output}\n\nFormat each item as ## [N]. [Name]. 2–3 sentences of explanation + one tip or example per item. All {list_count} items, in the order from the plan."
       },
       {
         "uid": "excerpt_writer",
@@ -217,7 +217,7 @@
         "outputFormat": "text",
         "sortOrder": 4,
         "systemPrompt": "You write meta excerpts for listicle articles. 150–160 characters. Include the number and the target keyword. Tease the list without giving it away. Return only the excerpt.",
-        "userPrompt": "Write a meta excerpt for this listicle.\n\nTitle: {agents.title_writer.output}\nTopic: {topic}\nKeyword: {target_keyword}\n\nExcerpt:"
+        "userPrompt": "Write a meta excerpt for this listicle.\n\nTitle: {title_writer.output}\nTopic: {topic}\nKeyword: {target_keyword}\n\nExcerpt:"
       }
     ]
   },
@@ -292,7 +292,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write product review titles. Include the product name and signal authority or a clear verdict angle. Patterns like '[Product] Review: Is It Worth It?' or '[Product] Review — Honest Take for [Audience]' perform well. Under 65 characters. Return only the title.",
-        "userPrompt": "Write a product review title.\n\nProduct: {product_name}\nAudience: {target_audience}\nReview plan:\n{agents.planner.output}\n\nTitle:"
+        "userPrompt": "Write a product review title.\n\nProduct: {product_name}\nAudience: {target_audience}\nReview plan:\n{planner.output}\n\nTitle:"
       },
       {
         "uid": "overview_writer",
@@ -301,7 +301,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write the opening sections of product reviews in Markdown. Your job covers two sections: a brief intro that hooks the reader and states the review angle, and a 'What Is [Product]?' section that explains what the product does and who it's made for. Combined: 200–250 words. Use ## What Is [Product Name]? as your only heading — no intro heading. Set the tone that the rest of the review will follow.",
-        "userPrompt": "Write the opening and 'What Is It?' sections for this product review.\n\nTitle: {agents.title_writer.output}\nProduct: {product_name}\nCategory: {product_category}\nAudience: {target_audience}\nReview plan:\n{agents.planner.output}\n\nStart with a brief un-headed intro (hook + review angle). Then ## What Is {product_name}? section. 200–250 words total. Set the voice for the full review."
+        "userPrompt": "Write the opening and 'What Is It?' sections for this product review.\n\nTitle: {title_writer.output}\nProduct: {product_name}\nCategory: {product_category}\nAudience: {target_audience}\nReview plan:\n{planner.output}\n\nStart with a brief un-headed intro (hook + review angle). Then ## What Is {product_name}? section. 200–250 words total. Set the voice for the full review."
       },
       {
         "uid": "analysis_writer",
@@ -310,7 +310,7 @@
         "outputFormat": "text",
         "sortOrder": 3,
         "systemPrompt": "You write the features, pros/cons, and pricing sections of product reviews in Markdown. Your tone is analytical and honest — you are writing for someone who genuinely needs to make a decision, not for someone who wants to be sold to. Each feature gets a ## heading, 2–3 sentences of honest assessment. Then ## Pros (bullet list), ## Cons (bullet list), ## Pricing (brief). Maintain the same voice as the opening section.",
-        "userPrompt": "Write the features, pros/cons, and pricing sections of this review.\n\nProduct: {product_name}\nFeatures to cover: {key_features}\nAudience: {target_audience}\nReview plan:\n{agents.planner.output}\n\nOpening already written (match its voice, do not repeat it):\n{agents.overview_writer.output}\n\nWrite a ## heading per feature, then ## Pros (3 bullets), ## Cons (3 bullets), ## Pricing."
+        "userPrompt": "Write the features, pros/cons, and pricing sections of this review.\n\nProduct: {product_name}\nFeatures to cover: {key_features}\nAudience: {target_audience}\nReview plan:\n{planner.output}\n\nOpening already written (match its voice, do not repeat it):\n{overview_writer.output}\n\nWrite a ## heading per feature, then ## Pros (3 bullets), ## Cons (3 bullets), ## Pricing."
       },
       {
         "uid": "verdict_writer",
@@ -319,7 +319,7 @@
         "outputFormat": "text",
         "sortOrder": 4,
         "systemPrompt": "You write the 'Who Is It For?' and 'Verdict' sections of product reviews in Markdown. This is where the review earns trust or loses it — be specific, honest, and direct. No vague hedging. A good verdict tells the reader exactly who should buy, who shouldn't, and why. 150–200 words across the two sections.",
-        "userPrompt": "Write the 'Who Is It For?' and Verdict sections of this review.\n\nProduct: {product_name}\nAudience: {target_audience}\nVerdict tone: {verdict_tone}\nReview plan:\n{agents.planner.output}\n\nFeatures and pros/cons already written:\n{agents.analysis_writer.output}\n\nWrite ## Who Is {product_name} For? and ## Verdict. Be specific. Name the buyer and the non-buyer. 150–200 words total."
+        "userPrompt": "Write the 'Who Is It For?' and Verdict sections of this review.\n\nProduct: {product_name}\nAudience: {target_audience}\nVerdict tone: {verdict_tone}\nReview plan:\n{planner.output}\n\nFeatures and pros/cons already written:\n{analysis_writer.output}\n\nWrite ## Who Is {product_name} For? and ## Verdict. Be specific. Name the buyer and the non-buyer. 150–200 words total."
       },
       {
         "uid": "excerpt_writer",
@@ -328,7 +328,7 @@
         "outputFormat": "text",
         "sortOrder": 5,
         "systemPrompt": "You write meta excerpts for product review posts. 150–160 characters. Include the product name and tease the verdict without revealing it. Return only the excerpt.",
-        "userPrompt": "Write a meta excerpt for this review.\n\nTitle: {agents.title_writer.output}\nProduct: {product_name}\nVerdict direction from plan:\n{agents.planner.output}\n\nExcerpt:"
+        "userPrompt": "Write a meta excerpt for this review.\n\nTitle: {title_writer.output}\nProduct: {product_name}\nVerdict direction from plan:\n{planner.output}\n\nExcerpt:"
       }
     ]
   }

@@ -1,0 +1,171 @@
+[
+  {
+    "id": "resume-bullet-enhancer",
+    "name": "Resume Bullet Enhancer",
+    "description": "Turns rough job duties into impact-driven resume bullets tailored to a job description.",
+    "category": "career",
+    "categoryLabel": "Career & Resume",
+    "tags": ["resume", "career", "job-search"],
+    "variables": [
+      {
+        "key": "job_description",
+        "label": "Job Description",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "We are looking for a Senior Product Manager who can lead cross-functional teams...",
+        "hint": "Paste the target job description"
+      },
+      {
+        "key": "rough_duties",
+        "label": "Rough Duties / Experience",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Managed the dev team, launched a new feature, increased sales by 10%.",
+        "hint": "Paste your current, unpolished resume bullets or job duties"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "keyword_matcher",
+        "name": "Keyword Matcher",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Analyze a job description to identify the top 5 most important hard and soft skills required for the role.",
+        "userPrompt": "Identify the top 5 skills in this job description:\n\n{job_description}"
+      },
+      {
+        "uid": "impact_maximizer",
+        "name": "Impact Maximizer",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Rewrite rough job duties to include metrics, strong action verbs, and relevant keywords. Focus heavily on the business impact.",
+        "userPrompt": "Rewrite these duties to maximize impact, incorporating these keywords where applicable:\n\nKeywords: {keyword_matcher.text}\n\nDuties:\n{rough_duties}"
+      },
+      {
+        "uid": "bullet_formatter",
+        "name": "Bullet Formatter",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Format rewritten text into 3-5 clean, ATS-friendly resume bullets. Start each bullet with a strong action verb. Do not use periods at the end of the bullets.",
+        "userPrompt": "Format these into 3-5 resume bullets:\n\n{impact_maximizer.text}"
+      }
+    ]
+  },
+  {
+    "id": "story-cover-letter",
+    "name": "Story-Driven Cover Letter",
+    "description": "Generates a highly personalized cover letter using the user's resume and a job description.",
+    "category": "career",
+    "categoryLabel": "Career & Resume",
+    "tags": ["cover-letter", "career", "job-search"],
+    "variables": [
+      {
+        "key": "job_description",
+        "label": "Job Description",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Looking for an enthusiastic marketing specialist...",
+        "hint": "Paste the target job description"
+      },
+      {
+        "key": "resume_text",
+        "label": "Your Resume",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Marketing Specialist at ABC Corp. Increased leads by 25%...",
+        "hint": "Paste your full resume text"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "experience_aligner",
+        "name": "Experience Aligner",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Cross-reference a resume with a job description to find the single most compelling piece of experience that makes the candidate a perfect fit.",
+        "userPrompt": "Find the best matching experience from this resume for this job:\n\nJob Description:\n{job_description}\n\nResume:\n{resume_text}"
+      },
+      {
+        "uid": "storyteller",
+        "name": "Storyteller",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Draft a compelling, story-driven opening paragraph for a cover letter. Hook the reader immediately using a specific achievement instead of 'I am writing to apply for...'",
+        "userPrompt": "Write an opening paragraph based on this matched experience:\n\n{experience_aligner.text}"
+      },
+      {
+        "uid": "letter_finisher",
+        "name": "Letter Finisher",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Complete a cover letter using an engaging intro. Add a middle paragraph connecting skills to the company's needs, and a strong call-to-action closing.",
+        "userPrompt": "Finish this cover letter:\n\nIntro:\n{storyteller.text}\n\nJob Context:\n{job_description}\n\nResume Context:\n{resume_text}"
+      }
+    ]
+  },
+  {
+    "id": "interview-cheat-sheet",
+    "name": "Custom Interview Cheat Sheet",
+    "description": "Prepares a candidate for an interview using company news and the job description.",
+    "category": "career",
+    "categoryLabel": "Career & Resume",
+    "tags": ["interview", "prep", "career"],
+    "variables": [
+      {
+        "key": "job_description",
+        "label": "Job Description",
+        "type": "text",
+        "required": true,
+        "defaultValue": "",
+        "exampleValue": "Product Manager responsible for roadmap planning...",
+        "hint": "Paste the target job description"
+      },
+      {
+        "key": "company_news_feed",
+        "label": "Company News Feed",
+        "type": "research_source",
+        "required": true,
+        "hint": "Feed containing recent press releases or news about the company"
+      }
+    ],
+    "agents": [
+      {
+        "uid": "company_intel",
+        "name": "Company Intel",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 0,
+        "systemPrompt": "Summarize recent company events, product launches, or challenges from a news feed. Extract 3 talking points a candidate can bring up in an interview to impress the hiring manager.",
+        "userPrompt": "Extract 3 talking points from this company news:\n\n{company_news_feed.summary}"
+      },
+      {
+        "uid": "question_predictor",
+        "name": "Question Predictor",
+        "outputTarget": "none",
+        "outputFormat": "text",
+        "sortOrder": 1,
+        "systemPrompt": "Predict 5 highly specific, challenging behavioral and technical interview questions based on a job description.",
+        "userPrompt": "Predict 5 interview questions for this role:\n\n{job_description}"
+      },
+      {
+        "uid": "cheat_sheet_compiler",
+        "name": "Cheat Sheet Compiler",
+        "outputTarget": "body",
+        "outputFormat": "text",
+        "sortOrder": 2,
+        "systemPrompt": "Merge company intel and predicted questions into a clean, 1-page markdown interview prep document. Include a section for 'Questions to Ask Them' based on the intel.",
+        "userPrompt": "Compile the interview cheat sheet:\n\nTalking Points:\n{company_intel.text}\n\nPredicted Questions:\n{question_predictor.text}"
+      }
+    ]
+  }
+]

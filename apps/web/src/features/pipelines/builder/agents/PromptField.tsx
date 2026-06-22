@@ -47,6 +47,7 @@ export function PromptField({
   const [showAssist, setShowAssist] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [suggested, setSuggested] = useState('')
+  const [showPriorMenu, setShowPriorMenu] = useState(false)
   const [showVariableMenu, setShowVariableMenu] = useState(false)
   const [showResearchMenu, setShowResearchMenu] = useState(false)
   const [showPromptMenu, setShowPromptMenu] = useState(false)
@@ -112,6 +113,7 @@ export function PromptField({
                 setShowPromptMenu((v) => !v)
                 setShowVariableMenu(false)
                 setShowResearchMenu(false)
+                setShowPriorMenu(false)
               }}
               className="text-xs h-7 gap-1"
             >
@@ -201,6 +203,7 @@ export function PromptField({
                 setShowVariableMenu((v) => !v)
                 setShowResearchMenu(false)
                 setShowPromptMenu(false)
+                setShowPriorMenu(false)
               }}
               className="text-xs h-7 gap-1"
             >
@@ -231,11 +234,66 @@ export function PromptField({
               type="button"
               variant="ghost"
               size="sm"
+              disabled={agentsBefore.length === 0}
+              onClick={() => {
+                setShowPriorMenu((v) => !v)
+                setShowVariableMenu(false)
+                setShowResearchMenu(false)
+                setShowPromptMenu(false)
+              }}
+              className="text-xs h-7 gap-1"
+            >
+              Prior steps <ChevronDown size={11} />
+            </Button>
+            {showPriorMenu && (
+              <div className="absolute right-0 top-8 z-20 w-56 bg-surface border rounded shadow-lg py-1">
+                {agentsBefore.map((prior) => (
+                  <div key={prior.id} className="px-1 py-1">
+                    <div className="px-2 pb-1">
+                      <p className="text-[11px] font-medium truncate">{prior.name}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono truncate">{prior.uid}</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      <button
+                        type="button"
+                        className="text-left px-2 py-1.5 text-xs rounded truncate hover:bg-muted font-mono"
+                        onClick={() => {
+                          insertAtCursor(`{${prior.uid}.output}`)
+                          setShowPriorMenu(false)
+                        }}
+                      >
+                        {`{${prior.uid}.output}`}
+                      </button>
+                      {prior.outputTarget !== 'output' && (
+                        <button
+                          type="button"
+                          className="text-left px-2 py-1.5 text-xs rounded truncate hover:bg-muted font-mono"
+                          onClick={() => {
+                            insertAtCursor(`{${prior.uid}.${prior.outputTarget}}`)
+                            setShowPriorMenu(false)
+                          }}
+                        >
+                          {`{${prior.uid}.${prior.outputTarget}}`}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               disabled={researchSources.length === 0}
               onClick={() => {
                 setShowResearchMenu((v) => !v)
                 setShowVariableMenu(false)
                 setShowPromptMenu(false)
+                setShowPriorMenu(false)
               }}
               className="text-xs h-7 gap-1"
             >

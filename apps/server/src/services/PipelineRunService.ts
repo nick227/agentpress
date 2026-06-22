@@ -4,7 +4,7 @@ import type { PublishProgressReporter } from './publishProgress'
 import { db, Prisma } from '@project/db'
 import { OpenAIService } from './OpenAIService'
 import { getImageProvider, getImageModelLabel } from './imageProviders'
-import { PromptRenderService } from './PromptRenderService'
+import { PromptRenderService, buildPriorNodeVariables } from './PromptRenderService'
 import { OutputAssetService } from './OutputAssetService'
 import {
   WordPressService,
@@ -429,10 +429,15 @@ export class PipelineRunService {
     const { agent } = input
     const imageAgent = isImageAgent(agent)
     const staticAgent = isStaticAgent(agent)
+    const renderVariables = buildPriorNodeVariables(
+      input.runVariables,
+      input.agentOutputs,
+      input.pipeline.agents,
+    )
     const renderedSystemPrompt = imageAgent || staticAgent
       ? ''
-      : renderer.render(agent.systemPrompt, input.runVariables, input.agentOutputs)
-    const renderedUserPrompt = renderer.render(agent.userPrompt, input.runVariables, input.agentOutputs)
+      : renderer.render(agent.systemPrompt, renderVariables)
+    const renderedUserPrompt = renderer.render(agent.userPrompt, renderVariables)
     const inputHash = computeAgentInputHash({
       agentUid: agent.uid,
       model: staticAgent ? 'static' : imageAgent ? imageProvider.id : input.textModel,

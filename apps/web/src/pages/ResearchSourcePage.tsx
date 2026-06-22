@@ -46,9 +46,10 @@ export function ResearchSourcePage() {
       </div>
     )
   } else {
+    const isCommunity = source.visibility === 'PUBLIC'
     content = (
       <div className="page-shell pb-10">
-        <Link to="/" className="mt-5 inline-flex text-sm text-muted-foreground hover:text-foreground">← Home</Link>
+        <Link to={isCommunity ? "/community?tab=feeds" : "/"} className="mt-5 inline-flex text-sm text-muted-foreground hover:text-foreground">← {isCommunity ? 'Community' : 'Home'}</Link>
         <ResearchInfoPanel source={source} />
         <ResearchItemsSection
           sourceType={source.sourceType}

@@ -13,6 +13,11 @@ import tweetTemplatesData from '../data/templates/tweets.json'
 import seoVariablePacksData from '../data/variable-packs/seo.json'
 import styleVariablePacksData from '../data/variable-packs/style.json'
 import productVariablePacksData from '../data/variable-packs/product.json'
+import creatorTemplatesData from '../data/templates/creator.json'
+import developerTemplatesData from '../data/templates/developer.json'
+import curationTemplatesData from '../data/templates/curation.json'
+import stocksTemplatesData from '../data/templates/stocks.json'
+import careerTemplatesData from '../data/templates/career.json'
 
 const blogTemplates = blogTemplatesData as ContentTemplate[]
 const socialTemplates = socialTemplatesData as ContentTemplate[]
@@ -25,6 +30,11 @@ const nicheTemplates = nicheTemplatesData as ContentTemplate[]
 const resumeTemplates = resumeTemplatesData as ContentTemplate[]
 const commercialTemplates = commercialTemplatesData as ContentTemplate[]
 const tweetTemplates = tweetTemplatesData as ContentTemplate[]
+const creatorTemplates = creatorTemplatesData as ContentTemplate[]
+const developerTemplates = developerTemplatesData as ContentTemplate[]
+const curationTemplates = curationTemplatesData as ContentTemplate[]
+const stocksTemplates = stocksTemplatesData as ContentTemplate[]
+const careerTemplates = careerTemplatesData as ContentTemplate[]
 
 const seoVariablePacks = seoVariablePacksData as VariablePack[]
 const styleVariablePacks = styleVariablePacksData as VariablePack[]
@@ -42,6 +52,11 @@ const ALL_TEMPLATES: ContentTemplate[] = [
   ...tweetTemplates,
   ...socialTemplates,
   ...ecommerceTemplates,
+  ...creatorTemplates,
+  ...developerTemplates,
+  ...curationTemplates,
+  ...stocksTemplates,
+  ...careerTemplates,
 ]
 
 const ALL_PACKS: VariablePack[] = [

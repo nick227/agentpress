@@ -61,7 +61,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write complete Twitter/X threads. Tweet 1 is the hook — bold promise, under 240 characters, ends with 'Thread 🧵' or 'Here's how:'. Tweets 2+ open with a number (2/, 3/, etc.), make one clear point each, under 280 characters, and add standalone value. No filler. The final tweet recaps in 2 sentences and asks a question or invites a retweet. Write every tweet as it would appear — not descriptions.",
-        "userPrompt": "Write the complete {tweet_count}-tweet Twitter thread.\n\nTopic: {topic}\nAudience: {audience}\nAuthor perspective: {author_persona}\nOutline:\n{agents.outline_writer.output}\n\nWrite all tweets including the hook (tweet 1). Number tweets 2+ as 2/, 3/, etc. Each under 280 characters. Last tweet: recap + question or CTA."
+        "userPrompt": "Write the complete {tweet_count}-tweet Twitter thread.\n\nTopic: {topic}\nAudience: {audience}\nAuthor perspective: {author_persona}\nOutline:\n{outline_writer.output}\n\nWrite all tweets including the hook (tweet 1). Number tweets 2+ as 2/, 3/, etc. Each under 280 characters. Last tweet: recap + question or CTA."
       }
     ]
   },
@@ -118,7 +118,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You pick the strongest tweet from a set of options and polish it for publication. Evaluate on: specificity, tension, originality. Return only the final tweet — no label, no explanation, no hashtags unless they earn their place.",
-        "userPrompt": "Pick the strongest tweet from these three options, polish if needed, and return only the final tweet.\n\nOptions:\n{agents.variation_writer.output}\n\nFinal tweet:"
+        "userPrompt": "Pick the strongest tweet from these three options, polish if needed, and return only the final tweet.\n\nOptions:\n{variation_writer.output}\n\nFinal tweet:"
       }
     ]
   }

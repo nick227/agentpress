@@ -79,7 +79,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write cold email subject lines that get opened. The best cold subject lines are short (under 6 words), specific to the recipient or their situation, and create just enough curiosity without being clickbait. They never use 'quick question', 'touching base', or a generic benefit statement. Return only the subject line — no 'Subject:' prefix, no quotes.",
-        "userPrompt": "Write a cold email subject line.\n\nProspect: {prospect_name} at {prospect_company}\nPain point: {pain_point}\nOffer: {offer}\nOutreach plan:\n{agents.prospect_planner.output}\n\nSubject line:"
+        "userPrompt": "Write a cold email subject line.\n\nProspect: {prospect_name} at {prospect_company}\nPain point: {pain_point}\nOffer: {offer}\nOutreach plan:\n{prospect_planner.output}\n\nSubject line:"
       },
       {
         "uid": "email_writer",
@@ -88,7 +88,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write B2B cold emails that get replies. Rules: under 120 words, 3 short paragraphs, one CTA. Structure: line 1 is specific to them (not about you), line 2 connects their pain to your offer in one sentence, line 3 is social proof if available, final line is a low-commitment CTA. No fluffy openers. No 'I hope this finds you well.' Sign with the sender's name only.",
-        "userPrompt": "Write a cold outreach email.\n\nSubject: {agents.subject_writer.output}\nProspect: {prospect_name} at {prospect_company}\nPain point: {pain_point}\nOffer: {offer}\nSender: {sender_name}\nSocial proof: {social_proof}\nOutreach plan:\n{agents.prospect_planner.output}\n\nUnder 120 words. Three short paragraphs. One CTA. Sign off with just the sender's first name."
+        "userPrompt": "Write a cold outreach email.\n\nSubject: {subject_writer.output}\nProspect: {prospect_name} at {prospect_company}\nPain point: {pain_point}\nOffer: {offer}\nSender: {sender_name}\nSocial proof: {social_proof}\nOutreach plan:\n{prospect_planner.output}\n\nUnder 120 words. Three short paragraphs. One CTA. Sign off with just the sender's first name."
       }
     ]
   },
@@ -154,7 +154,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write subject lines for a 3-email follow-up sequence. Each subject line must be different — no 'Re:' thread hijacking on email 2 or 3. Email 1: add a new hook. Email 2: add value. Email 3: close the loop gracefully. Each under 6 words. Return all three on separate lines, labeled 'Email 1:', 'Email 2:', 'Email 3:'.",
-        "userPrompt": "Write subject lines for a 3-email follow-up sequence.\n\nProspect: {prospect_name}\nOriginal topic: {original_email_topic}\nSequence plan:\n{agents.sequence_planner.output}\n\nReturn three subject lines labeled Email 1, 2, 3."
+        "userPrompt": "Write subject lines for a 3-email follow-up sequence.\n\nProspect: {prospect_name}\nOriginal topic: {original_email_topic}\nSequence plan:\n{sequence_planner.output}\n\nReturn three subject lines labeled Email 1, 2, 3."
       },
       {
         "uid": "sequence_writer",
@@ -163,7 +163,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write 3-email cold follow-up sequences. Each email is distinct and stands alone — no 'just following up', no 'bumping this to the top of your inbox'. Email 1 (Day 3): reframe the original angle, shorter than the original. Email 2 (Day 7): add genuine value — a resource, insight, or case study that is useful regardless of whether they buy. Email 3 (Day 14): graceful close — give them an easy out while leaving the door open. All three under 80 words each. Format clearly labeled.",
-        "userPrompt": "Write a 3-email follow-up sequence.\n\nSubject lines:\n{agents.title_writer.output}\n\nProspect: {prospect_name}\nOriginal topic: {original_email_topic}\nNew angle for email 2: {new_angle}\nSender: {sender_name}\nSequence plan:\n{agents.sequence_planner.output}\n\nWrite Email 1, Email 2, and Email 3 clearly labeled with the subject line and body for each."
+        "userPrompt": "Write a 3-email follow-up sequence.\n\nSubject lines:\n{title_writer.output}\n\nProspect: {prospect_name}\nOriginal topic: {original_email_topic}\nNew angle for email 2: {new_angle}\nSender: {sender_name}\nSequence plan:\n{sequence_planner.output}\n\nWrite Email 1, Email 2, and Email 3 clearly labeled with the subject line and body for each."
       }
     ]
   },
@@ -220,7 +220,7 @@
         "outputFormat": "text",
         "sortOrder": 1,
         "systemPrompt": "You write LinkedIn connection request notes. LinkedIn connection requests are under 300 characters. The best ones are specific (reference something real), not salesy, and feel like one person talking to another. No 'I'd love to add you to my network.' Return only the connection request note.",
-        "userPrompt": "Write a LinkedIn connection request note.\n\nProspect: {prospect_name}\nReason: {connection_reason}\nYour context: {your_context}\nOutreach plan:\n{agents.outreach_planner.output}\n\nUnder 300 characters. Specific. No pitch. No 'I came across your profile'. Note:"
+        "userPrompt": "Write a LinkedIn connection request note.\n\nProspect: {prospect_name}\nReason: {connection_reason}\nYour context: {your_context}\nOutreach plan:\n{outreach_planner.output}\n\nUnder 300 characters. Specific. No pitch. No 'I came across your profile'. Note:"
       },
       {
         "uid": "dm_writer",
@@ -229,7 +229,7 @@
         "outputFormat": "text",
         "sortOrder": 2,
         "systemPrompt": "You write LinkedIn DMs sent after a connection is accepted. The best LinkedIn DMs are: short (under 80 words), reference the specific reason you connected, share something of value or make a low-stakes ask, and end with one clear question. They are never a pitch deck in text form. No 'I noticed we're both in the same industry.' Sign off with only your first name.",
-        "userPrompt": "Write an initial LinkedIn DM to send after connection is accepted.\n\nConnection note used: {agents.connection_writer.output}\nProspect: {prospect_name}\nYour context: {your_context}\nOutreach plan:\n{agents.outreach_planner.output}\n\nUnder 80 words. One specific observation. One question or low-commitment CTA. No pitch."
+        "userPrompt": "Write an initial LinkedIn DM to send after connection is accepted.\n\nConnection note used: {connection_writer.output}\nProspect: {prospect_name}\nYour context: {your_context}\nOutreach plan:\n{outreach_planner.output}\n\nUnder 80 words. One specific observation. One question or low-commitment CTA. No pitch."
       }
     ]
   }
