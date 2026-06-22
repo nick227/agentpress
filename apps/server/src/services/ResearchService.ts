@@ -8,6 +8,7 @@ import { resolveGlobalDefaultSummaryPrompt } from './summaryPromptResolve'
 import { formatResearchCheckMessage } from './researchCheckMessage'
 import { createHash } from 'crypto'
 import { authorization, type AuthContext } from './AuthorizationService'
+import { getCommunityWorkspaceId } from './communityWorkspace'
 
 const REMOTE_CACHE_TTL_MS = 60 * 60 * 1000
 const YOUTUBE_MISSING_TRANSCRIPT_CACHE_TTL_MS = 5 * 60 * 1000
