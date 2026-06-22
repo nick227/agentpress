@@ -264,7 +264,7 @@ export function PromptField({
                       >
                         {`{${prior.uid}.output}`}
                       </button>
-                      {prior.outputTarget !== 'output' && (
+                      {prior.outputTarget !== 'none' && (
                         <button
                           type="button"
                           className="text-left px-2 py-1.5 text-xs rounded truncate hover:bg-muted font-mono"
