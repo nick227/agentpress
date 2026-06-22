@@ -44,14 +44,10 @@ export function HomePage() {
 
   return (
     <div className="relative isolate min-h-full overflow-hidden bg-background">
-      <section className="mx-auto grid w-full max-w-6xl gap-10 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:gap-16">
+      <section className="mx-auto grid w-full max-w-6xl gap-10 px-5 sm:px-8 sm:py-12 lg:grid-cols-[1.08fr_0.92fr] lg:items-start lg:gap-16">
         <div className="min-w-0">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border bg-surface/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur">
-            <Rss size={13} className="text-accent" />
-            YouTube · Reddit · RSS
-          </div>
           <h1 className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-[-0.04em] text-foreground sm:text-5xl">
-            AgentPress automates end-to-end AI content pipelines.
+            Automates AI agents
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
             Connect your sources, set a schedule, and AgentPress handles the rest — pulling in new content hourly and running AI agents that write and publish finished posts automatically.
@@ -67,7 +63,7 @@ export function HomePage() {
             </li>
             <li className="flex items-start gap-2 text-sm text-muted-foreground">
               <Check size={14} className="mt-0.5 shrink-0 text-green-600" />
-              Publishes to WordPress directly, or saves a draft you can review first.
+              Publishes to remote server and saves a reusable draft.
             </li>
           </ul>
           <div className="mt-7 flex flex-wrap items-center gap-3">

@@ -40,6 +40,9 @@ const DestinationsPage = lazy(() =>
 const RunsPage = lazy(() =>
   import('@/pages/RunsPage').then((m) => ({ default: m.RunsPage })),
 )
+const RunDetailPage = lazy(() =>
+  import('@/pages/RunDetailPage').then((m) => ({ default: m.RunDetailPage })),
+)
 const ProfilePage = lazy(() =>
   import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 )
@@ -117,6 +120,7 @@ export function App() {
             <Route path="/destinations/new" element={<LazyPage><DestinationEditorPage /></LazyPage>} />
             <Route path="/destinations/:destinationId" element={<LazyPage><DestinationEditorPage /></LazyPage>} />
             <Route path="/runs" element={<LazyPage><RunsPage /></LazyPage>} />
+            <Route path="/runs/:runId" element={<LazyPage><RunDetailPage /></LazyPage>} />
             <Route path="/profile" element={<LazyPage><ProfilePage /></LazyPage>} />
             <Route path="/community" element={<LazyPage><CommunityPage /></LazyPage>} />
             <Route path="/teams" element={<LazyPage><TeamsPage /></LazyPage>} />

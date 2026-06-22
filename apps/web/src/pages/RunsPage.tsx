@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bot, CheckCircle2, Clock, FileText, ImageOff, Layers, Loader2, Play, Plus, RefreshCw, Send, Zap, XCircle } from 'lucide-react'
+import { Bot, CheckCircle2, Clock, FileText, ImageOff, Layers, Loader2, Play, Plus, RefreshCw, Send, Workflow, Zap, XCircle } from 'lucide-react'
 import { useAllRuns, usePipelineRun, usePublishRun, useStartPipelineRun } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -193,15 +193,24 @@ function RunRow({
               className="inline-block"
             >
               <Link
-                to={`/pipelines/${run.pipelineSlug}?run=${run.id}`}
+                to={`/runs/${run.id}`}
                 className="text-sm font-semibold text-foreground hover:underline"
               >
-                {run.pipelineName}
+                {run.title && run.title !== run.pipelineName ? run.title : run.pipelineName}
               </Link>
             </span>
-            {run.title && run.title !== run.pipelineName && (
-              <span className="text-sm text-muted-foreground">— {run.title}</span>
-            )}
+            <span onClick={(e) => e.stopPropagation()} className="inline-flex items-center">
+              <Link
+                to={`/pipelines/${run.pipelineSlug}`}
+                className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                title={`Pipeline: ${run.pipelineName}`}
+              >
+                <Workflow size={10} />
+                {run.title && run.title !== run.pipelineName && (
+                  <span>{run.pipelineName}</span>
+                )}
+              </Link>
+            </span>
             {run.dryRun && (
               <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                 dry

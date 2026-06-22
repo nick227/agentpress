@@ -83,6 +83,11 @@ export function CommunityPage() {
   const [feedCat, setFeedCat] = useState<string | null>(null)
   const [promptKind, setPromptKind] = useState<string | null>(null)
 
+  // Optimistic "added" tracking — IDs added this session show Added immediately
+  // without waiting for the community list to refetch.
+  const [addedIds, setAddedIds] = useState<ReadonlySet<string>>(() => new Set())
+  const [pendingId, setPendingId] = useState<string | null>(null)
+
   const pipelines = useCommunityPipelines()
   const agents = useCommunityAgents()
   const feeds = useCommunityFeeds()
@@ -113,6 +118,23 @@ export function CommunityPage() {
     setSearchParams(next === 'pipelines' ? {} : { tab: next })
   }
 
+  function isAdded(item: any) {
+    return item.forked === true || addedIds.has(item.id)
+  }
+
+  async function handleFork(id: string, mutate: (id: string) => Promise<unknown>, successMsg: string) {
+    setPendingId(id)
+    try {
+      await mutate(id)
+      setAddedIds(prev => new Set([...prev, id]))
+      toast.success(successMsg)
+    } catch {
+      toast.error('Failed to add — please try again')
+    } finally {
+      setPendingId(null)
+    }
+  }
+
   return (
     <div className="page-shell space-y-5">
       <div>
@@ -140,13 +162,13 @@ export function CommunityPage() {
           <div className="rounded border bg-surface overflow-hidden">
             {pipelineCat
               ? filteredPipelines.map(p => (
-                  <PipelineRow key={p.id} pipeline={p} loading={forkPipeline.isPending} onFork={async () => { await forkPipeline.mutateAsync(p.id); toast.success('Private pipeline copy created') }} />
+                  <PipelineRow key={p.id} pipeline={p} added={isAdded(p)} loading={pendingId === p.id} onFork={() => handleFork(p.id, forkPipeline.mutateAsync, 'Private pipeline copy created')} />
                 ))
               : pipelineGroups.map(([cat, items], gi) => (
                   <div key={cat}>
                     <SectionHeader label={PIPELINE_CATEGORY_LABELS[cat] ?? cat} first={gi === 0} />
                     {items.map(p => (
-                      <PipelineRow key={p.id} pipeline={p} loading={forkPipeline.isPending} onFork={async () => { await forkPipeline.mutateAsync(p.id); toast.success('Private pipeline copy created') }} />
+                      <PipelineRow key={p.id} pipeline={p} added={isAdded(p)} loading={pendingId === p.id} onFork={() => handleFork(p.id, forkPipeline.mutateAsync, 'Private pipeline copy created')} />
                     ))}
                   </div>
                 ))}
@@ -167,13 +189,13 @@ export function CommunityPage() {
           <div className="rounded border bg-surface overflow-hidden">
             {feedCat
               ? filteredFeeds.map(f => (
-                  <FeedRow key={f.id} feed={f} loading={forkFeed.isPending} onFork={async () => { await forkFeed.mutateAsync(f.id); toast.success('Feed added to your sources') }} />
+                  <FeedRow key={f.id} feed={f} added={isAdded(f)} loading={pendingId === f.id} onFork={() => handleFork(f.id, forkFeed.mutateAsync, 'Feed added to your sources')} />
                 ))
               : feedGroups.map(([cat, items], gi) => (
                   <div key={cat}>
                     <SectionHeader label={FEED_CATEGORY_LABELS[cat] ?? cat} first={gi === 0} />
                     {items.map(f => (
-                      <FeedRow key={f.id} feed={f} loading={forkFeed.isPending} onFork={async () => { await forkFeed.mutateAsync(f.id); toast.success('Feed added to your sources') }} />
+                      <FeedRow key={f.id} feed={f} added={isAdded(f)} loading={pendingId === f.id} onFork={() => handleFork(f.id, forkFeed.mutateAsync, 'Feed added to your sources')} />
                     ))}
                   </div>
                 ))}
@@ -183,11 +205,8 @@ export function CommunityPage() {
 
       {tab === 'agents' && (
         <div className="rounded border bg-surface overflow-hidden">
-          {allAgents.map((agent) => (
-            <AgentRow key={agent.id} agent={agent} loading={forkAgent.isPending} onFork={async () => {
-              await forkAgent.mutateAsync(agent.id)
-              toast.success('Agent added to your library')
-            }} />
+          {allAgents.map(agent => (
+            <AgentRow key={agent.id} agent={agent} added={isAdded(agent)} loading={pendingId === agent.id} onFork={() => handleFork(agent.id, forkAgent.mutateAsync, 'Agent added to your library')} />
           ))}
         </div>
       )}
@@ -205,13 +224,13 @@ export function CommunityPage() {
           <div className="rounded border bg-surface overflow-hidden">
             {promptKind
               ? filteredPrompts.map(p => (
-                  <PromptRow key={p.id} prompt={p} loading={forkPrompt.isPending} onFork={async () => { await forkPrompt.mutateAsync(p.id); toast.success('Prompt added to your library') }} />
+                  <PromptRow key={p.id} prompt={p} added={isAdded(p)} loading={pendingId === p.id} onFork={() => handleFork(p.id, forkPrompt.mutateAsync, 'Prompt added to your library')} />
                 ))
               : promptGroups.map(([kind, items], gi) => (
                   <div key={kind}>
                     <SectionHeader label={PROMPT_KIND_LABELS[kind] ?? kind} first={gi === 0} />
                     {items.map(p => (
-                      <PromptRow key={p.id} prompt={p} loading={forkPrompt.isPending} onFork={async () => { await forkPrompt.mutateAsync(p.id); toast.success('Prompt added to your library') }} />
+                      <PromptRow key={p.id} prompt={p} added={isAdded(p)} loading={pendingId === p.id} onFork={() => handleFork(p.id, forkPrompt.mutateAsync, 'Prompt added to your library')} />
                     ))}
                   </div>
                 ))}
@@ -222,19 +241,31 @@ export function CommunityPage() {
   )
 }
 
-function PipelineRow({ pipeline, loading, onFork }: { pipeline: any; loading: boolean; onFork: () => void }) {
+function AddedBadge() {
+  return (
+    <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-600 dark:text-emerald-400 border border-emerald-600/25 dark:border-emerald-400/25 rounded-md bg-emerald-50/50 dark:bg-emerald-950/30 shrink-0">
+      <Check size={12} />
+      Added
+    </div>
+  )
+}
+
+function PipelineRow({ pipeline, added, loading, onFork }: { pipeline: any; added: boolean; loading: boolean; onFork: () => void }) {
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
       <div className="min-w-0 flex-1">
         <Link to={`/pipelines/${pipeline.slug || pipeline.id}`} className="text-sm font-medium hover:underline block">{pipeline.name}</Link>
         <p className="text-xs text-muted-foreground truncate">{pipeline.description || `${pipeline._count?.agents ?? 0} agents`}</p>
       </div>
-      <Button size="sm" variant="outline" loading={loading} onClick={onFork}><GitFork size={13} /> Use pipeline</Button>
+      {added
+        ? <AddedBadge />
+        : <Button size="sm" variant="outline" loading={loading} onClick={onFork}><GitFork size={13} /> Use pipeline</Button>
+      }
     </div>
   )
 }
 
-function AgentRow({ agent, loading, onFork }: { agent: any; loading: boolean; onFork: () => void }) {
+function AgentRow({ agent, added, loading, onFork }: { agent: any; added: boolean; loading: boolean; onFork: () => void }) {
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
       <Bot size={14} className="text-accent" />
@@ -242,31 +273,40 @@ function AgentRow({ agent, loading, onFork }: { agent: any; loading: boolean; on
         <Link to={`/agents/${agent.slug || agent.id}`} className="text-sm font-medium hover:underline block">{agent.name}</Link>
         <p className="text-xs text-muted-foreground truncate">{agent.description ?? agent.kind}</p>
       </div>
-      <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add Agent</Button>
+      {added
+        ? <AddedBadge />
+        : <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add Agent</Button>
+      }
     </div>
   )
 }
 
-function FeedRow({ feed, loading, onFork }: { feed: any; loading: boolean; onFork: () => void }) {
+function FeedRow({ feed, added, loading, onFork }: { feed: any; added: boolean; loading: boolean; onFork: () => void }) {
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
       <div className="min-w-0 flex-1">
         <Link to={`/research/${feed.slug || feed.id}`} className="text-sm font-medium hover:underline block">{feed.name}</Link>
         <p className="text-xs text-muted-foreground capitalize">{feed.sourceType} · {feed._count?.items ?? 0} items</p>
       </div>
-      <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add feed</Button>
+      {added
+        ? <AddedBadge />
+        : <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add feed</Button>
+      }
     </div>
   )
 }
 
-function PromptRow({ prompt, loading, onFork }: { prompt: any; loading: boolean; onFork: () => void }) {
+function PromptRow({ prompt, added, loading, onFork }: { prompt: any; added: boolean; loading: boolean; onFork: () => void }) {
   return (
     <div className="flex items-center gap-4 px-4 py-3 border-t first:border-t-0">
       <div className="min-w-0 flex-1">
         <Link to={`/prompts/${prompt.slug || prompt.id}`} className="text-sm font-medium hover:underline block">{prompt.name}</Link>
         <p className="text-xs text-muted-foreground truncate">{prompt.description}</p>
       </div>
-      <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add prompt</Button>
+      {added
+        ? <AddedBadge />
+        : <Button size="sm" variant="outline" loading={loading} onClick={onFork}><Check size={13} /> Add prompt</Button>
+      }
     </div>
   )
 }

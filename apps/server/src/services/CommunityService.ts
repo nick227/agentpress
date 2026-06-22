@@ -2,15 +2,23 @@ import { db } from '@project/db'
 import { authorization, type AuthContext } from './AuthorizationService'
 
 export class CommunityService {
-  async listAgents() {
-    return db.agent.findMany({
+  async listAgents(workspaceId?: string) {
+    const items = await db.agent.findMany({
       where: { visibility: 'PUBLIC' },
       orderBy: [{ category: 'asc' }, { name: 'asc' }],
     })
+    if (!workspaceId || items.length === 0) return items.map(a => ({ ...a, forked: false }))
+    const forkedSet = new Set(
+      (await db.agent.findMany({
+        where: { workspaceId, sourceAgentId: { in: items.map(a => a.id) } },
+        select: { sourceAgentId: true },
+      })).map(a => a.sourceAgentId!)
+    )
+    return items.map(a => ({ ...a, forked: forkedSet.has(a.id) }))
   }
 
-  async listPipelines() {
-    return db.pipeline.findMany({
+  async listPipelines(workspaceId?: string) {
+    const items = await db.pipeline.findMany({
       where: { visibility: 'PUBLIC' },
       orderBy: { updatedAt: 'desc' },
       select: {
@@ -19,10 +27,18 @@ export class CommunityService {
         _count: { select: { agents: true, variables: true, forks: true } },
       },
     })
+    if (!workspaceId || items.length === 0) return items.map(p => ({ ...p, forked: false }))
+    const forkedSet = new Set(
+      (await db.pipeline.findMany({
+        where: { workspaceId, sourcePipelineId: { in: items.map(p => p.id) } },
+        select: { sourcePipelineId: true },
+      })).map(p => p.sourcePipelineId!)
+    )
+    return items.map(p => ({ ...p, forked: forkedSet.has(p.id) }))
   }
 
-  async listFeeds() {
-    return db.researchSource.findMany({
+  async listFeeds(workspaceId?: string) {
+    const items = await db.researchSource.findMany({
       where: { visibility: 'PUBLIC' },
       orderBy: { name: 'asc' },
       select: {
@@ -32,10 +48,19 @@ export class CommunityService {
         _count: { select: { items: true } },
       },
     })
+    if (!workspaceId || items.length === 0) return items.map(f => ({ ...f, forked: false }))
+    const feedUrls = items.map(f => f.sourceUrl).filter((u): u is string => !!u)
+    const forkedUrls = new Set(
+      (await db.researchSource.findMany({
+        where: { workspaceId, sourceUrl: { in: feedUrls } },
+        select: { sourceUrl: true },
+      })).map(f => f.sourceUrl!)
+    )
+    return items.map(f => ({ ...f, forked: f.sourceUrl ? forkedUrls.has(f.sourceUrl) : false }))
   }
 
-  async listPrompts() {
-    return db.prompt.findMany({
+  async listPrompts(workspaceId?: string) {
+    const items = await db.prompt.findMany({
       where: { visibility: 'PUBLIC' },
       orderBy: { name: 'asc' },
       select: {
@@ -43,6 +68,14 @@ export class CommunityService {
         workspace: { select: { id: true, name: true, type: true } },
       },
     })
+    if (!workspaceId || items.length === 0) return items.map(p => ({ ...p, forked: false }))
+    const forkedSet = new Set(
+      (await db.prompt.findMany({
+        where: { workspaceId, sourcePromptId: { in: items.map(p => p.id) } },
+        select: { sourcePromptId: true },
+      })).map(p => p.sourcePromptId!)
+    )
+    return items.map(p => ({ ...p, forked: forkedSet.has(p.id) }))
   }
 
   async getPipeline(pipelineId: string) {

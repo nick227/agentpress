@@ -82,7 +82,7 @@ export function MobileNav() {
             className="flex items-center gap-2.5 rounded px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
           >
             <BookOpen size={15} />
-            Documentation
+            Help
           </Link>
           <Link
             to="/profile"

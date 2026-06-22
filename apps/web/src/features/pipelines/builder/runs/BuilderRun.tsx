@@ -4,7 +4,7 @@ import { useDestinations, usePipelineRun, usePublishRun } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Button } from '@/components/ui/Button'
-import { CheckCircle2, XCircle, Loader2, Clock, FileCode, Image, Send, Download, FolderOpen, ExternalLink, Settings } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Clock, FileCode, Image, Send, Download, FolderOpen, ExternalLink, Maximize2, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { downloadRunAsset } from '@/lib/downloadRunAsset'
 import { PublishProgressPanel } from './PublishProgressPanel'
@@ -155,32 +155,41 @@ export function BuilderRun({ runId, pipeline }: Props) {
           </div>
         </div>
 
-        {canPublish && (
-          <div className="page-header-actions flex items-center gap-2">
-            {destination ? (
-              <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[140px]" title={destination.siteUrl}>
-                {destination.name ?? destination.siteUrl}
-              </span>
-            ) : null}
-            <Button
-              size="sm"
-              className="gap-1.5 shrink-0"
-              loading={isPublishing}
-              disabled={isPublishing}
-              onClick={handlePublish}
-            >
-              <Send size={13} />
-              {isPublishing ? 'Publishing…' : run.status === 'posted' ? 'Publish again' : 'Publish'}
-            </Button>
-            <Link
-              to={`/pipelines/${pipeline.slug}`}
-              title="Change destination in pipeline setup"
-              className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Settings size={14} />
-            </Link>
-          </div>
-        )}
+        <div className="page-header-actions flex items-center gap-2">
+          <Link
+            to={`/runs/${run.id}`}
+            title="Open run detail page"
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Maximize2 size={14} />
+          </Link>
+          {canPublish && (
+            <>
+              {destination ? (
+                <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[140px]" title={destination.siteUrl}>
+                  {destination.name ?? destination.siteUrl}
+                </span>
+              ) : null}
+              <Button
+                size="sm"
+                className="gap-1.5 shrink-0"
+                loading={isPublishing}
+                disabled={isPublishing}
+                onClick={handlePublish}
+              >
+                <Send size={13} />
+                {isPublishing ? 'Publishing…' : run.status === 'posted' ? 'Publish again' : 'Publish'}
+              </Button>
+              <Link
+                to={`/pipelines/${pipeline.slug}`}
+                title="Change destination in pipeline setup"
+                className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Settings size={14} />
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       {(publishAttempts.length > 0 || isPublishing) && (

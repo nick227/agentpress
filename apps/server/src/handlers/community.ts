@@ -2,20 +2,20 @@ import { CommunityService } from '../services/CommunityService'
 
 const service = new CommunityService()
 
-export async function listCommunityAgents(_request: any, reply: any) {
-  return reply.send({ data: await service.listAgents() })
+export async function listCommunityAgents(request: any, reply: any) {
+  return reply.send({ data: await service.listAgents(request.auth?.workspaceId) })
 }
 
-export async function listCommunityPipelines(_request: any, reply: any) {
-  return reply.send({ data: await service.listPipelines() })
+export async function listCommunityPipelines(request: any, reply: any) {
+  return reply.send({ data: await service.listPipelines(request.auth?.workspaceId) })
 }
 
-export async function listCommunityFeeds(_request: any, reply: any) {
-  return reply.send({ data: await service.listFeeds() })
+export async function listCommunityFeeds(request: any, reply: any) {
+  return reply.send({ data: await service.listFeeds(request.auth?.workspaceId) })
 }
 
-export async function listCommunityPrompts(_request: any, reply: any) {
-  return reply.send({ data: await service.listPrompts() })
+export async function listCommunityPrompts(request: any, reply: any) {
+  return reply.send({ data: await service.listPrompts(request.auth?.workspaceId) })
 }
 
 export async function getCommunityPipeline(request: any, reply: any) {

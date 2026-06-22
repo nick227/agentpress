@@ -106,7 +106,7 @@ export function ImageAgentPanel({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+      <div className="flex flex-col gap-3">
         <Field label="Image source" className="flex-1">
           <select
             value={imageMode}
@@ -118,7 +118,6 @@ export function ImageAgentPanel({
             <option value="generate">Generate during run</option>
             <option value="none">Skip image</option>
           </select>
-          <p className="text-xs text-muted-foreground mt-1">{MODE_HINTS[imageMode]}</p>
         </Field>
         <Button
           size="sm"

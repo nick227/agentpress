@@ -183,9 +183,9 @@ function RunsSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
       {explorer.runs.slice(0, 20).map((run) => (
         <ResourceLink
           key={run.id}
-          href={`/pipelines/${run.pipelineSlug}`}
+          href={`/runs/${run.id}`}
           label={run.title ?? run.pipelineName}
-          active={false}
+          active={explorer.pathname === `/runs/${run.id}`}
           status={runStatus(run.status)}
           activityAt={run.startedAt}
           activityLabel="Started"

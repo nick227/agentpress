@@ -33,7 +33,10 @@ export function useForkCommunityAgent() {
       if (error) throw error
       return (data as any)?.data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['agents'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['community-agents'] })
+    },
   })
 }
 
@@ -69,7 +72,10 @@ export function useForkCommunityPipeline() {
       if (error) throw error
       return (data as any)?.data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['pipelines'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] })
+      queryClient.invalidateQueries({ queryKey: ['community-pipelines'] })
+    },
   })
 }
 
@@ -83,7 +89,10 @@ export function useForkCommunityFeed() {
       if (error) throw error
       return (data as any)?.data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['research-sources'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['research-sources'] })
+      queryClient.invalidateQueries({ queryKey: ['community-feeds'] })
+    },
   })
 }
 
@@ -97,6 +106,9 @@ export function useForkCommunityPrompt() {
       if (error) throw error
       return (data as any)?.data
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['prompts'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prompts'] })
+      queryClient.invalidateQueries({ queryKey: ['community-prompts'] })
+    },
   })
 }

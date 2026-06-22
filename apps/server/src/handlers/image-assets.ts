@@ -7,13 +7,20 @@ import { authorization } from '../services/AuthorizationService'
 const svc = new ImageAssetService()
 const assets = new OutputAssetService()
 
+async function resolvePipeline(pipelineIdOrSlug: string, workspaceId: string) {
+  return db.pipeline.findFirst({
+    where: { OR: [{ id: pipelineIdOrSlug }, { slug: pipelineIdOrSlug }], workspaceId },
+    select: { id: true },
+  })
+}
+
 export async function listImageAssets(
   request: FastifyRequest<{ Params: { pipelineId: string }; Querystring: { agentId?: string } }>,
   reply: FastifyReply,
 ) {
-  const pipeline = await db.pipeline.findFirst({ where: { id: request.params.pipelineId, workspaceId: (request as any).auth.workspaceId } })
+  const pipeline = await resolvePipeline(request.params.pipelineId, (request as any).auth.workspaceId)
   if (!pipeline) return reply.status(404).send({ error: 'Pipeline not found' })
-  return reply.send({ data: await svc.list(request.params.pipelineId, request.query.agentId) })
+  return reply.send({ data: await svc.list(pipeline.id, request.query.agentId) })
 }
 
 export async function generateImageAsset(
@@ -21,9 +28,9 @@ export async function generateImageAsset(
   reply: FastifyReply,
 ) {
   authorization.authorize((request as any).auth, 'resource:edit')
-  const pipeline = await db.pipeline.findFirst({ where: { id: request.params.pipelineId, workspaceId: (request as any).auth.workspaceId } })
+  const pipeline = await resolvePipeline(request.params.pipelineId, (request as any).auth.workspaceId)
   if (!pipeline) return reply.status(404).send({ error: 'Pipeline not found' })
-  return reply.status(201).send({ data: await svc.generate(request.params.pipelineId, request.body) })
+  return reply.status(201).send({ data: await svc.generate(pipeline.id, request.body) })
 }
 
 export async function uploadImageAsset(
@@ -34,9 +41,9 @@ export async function uploadImageAsset(
   reply: FastifyReply,
 ) {
   authorization.authorize((request as any).auth, 'resource:edit')
-  const pipeline = await db.pipeline.findFirst({ where: { id: request.params.pipelineId, workspaceId: (request as any).auth.workspaceId } })
+  const pipeline = await resolvePipeline(request.params.pipelineId, (request as any).auth.workspaceId)
   if (!pipeline) return reply.status(404).send({ error: 'Pipeline not found' })
-  return reply.status(201).send({ data: await svc.upload(request.params.pipelineId, request.body) })
+  return reply.status(201).send({ data: await svc.upload(pipeline.id, request.body) })
 }
 
 export async function downloadImageAsset(

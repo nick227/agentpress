@@ -29,7 +29,7 @@ export function Shell() {
             className="flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
           >
             <BookOpen size={15} />
-            Documentation
+            Help
           </Link>
           <Link
             to="/profile"
