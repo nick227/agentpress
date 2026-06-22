@@ -36,7 +36,7 @@ export function AgentEditorPage() {
   }
 
   return (
-    <div className="page-shell page-shell--3xl space-y-6">
+    <div className="page-shell page-shell--5xl space-y-6">
       <Link to={isCommunity ? "/community?tab=agents" : "/agents"} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft size={14} /> {isCommunity ? 'Community' : 'Agents'}
       </Link>

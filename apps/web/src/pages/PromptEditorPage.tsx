@@ -62,7 +62,7 @@ export function PromptEditorPage() {
 
   if (!isNew && isLoading) {
     return (
-      <div className="page-shell page-shell--3xl">
+      <div className="page-shell page-shell--5xl">
         <Skeleton className="h-64 w-full" />
       </div>
     )
@@ -85,7 +85,7 @@ export function PromptEditorPage() {
     : promptToFormValues(prompt!)
 
   return (
-    <div className="page-shell page-shell--3xl space-y-6">
+    <div className="page-shell page-shell--5xl space-y-6">
       <Link to={isCommunity ? "/community?tab=prompts" : "/prompts"} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft size={14} /> {isCommunity ? 'Community' : 'Prompts'}
       </Link>

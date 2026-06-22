@@ -60,7 +60,7 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="page-shell page-shell--2xl mx-auto space-y-6">
+      <div className="page-shell page-shell--5xl mx-auto space-y-6">
         <Skeleton className="h-7 w-24" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />

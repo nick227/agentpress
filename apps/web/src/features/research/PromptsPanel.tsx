@@ -9,7 +9,7 @@ export function PromptsPanel() {
   const globalDefault = prompts.find((prompt) => prompt.isDefault) ?? prompts[0]
 
   return (
-    <div className="page-shell page-shell--2xl">
+    <div className="page-shell page-shell--5xl">
       <div className="section-header mb-5">
         <div className="min-w-0">
           <h2 className="text-base font-semibold">Content prompts</h2>

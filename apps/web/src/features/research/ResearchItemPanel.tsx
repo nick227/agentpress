@@ -69,7 +69,7 @@ export function ResearchItemPanel({ itemId, sourceSlug, sourceType = 'youtube' }
   }
 
   return (
-    <div className="page-shell page-shell--3xl">
+    <div className="page-shell page-shell--5xl">
       <div className="mb-5">
         <h1 className="text-base font-semibold leading-snug mb-1">{item.title}</h1>
         <div className="flex items-center gap-3 flex-wrap text-xs text-muted-foreground">

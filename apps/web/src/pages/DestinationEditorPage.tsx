@@ -110,11 +110,11 @@ export function DestinationEditorPage() {
     }
   }
 
-  if (!isNew && destinationLoading) return <div className="page-shell page-shell--3xl"><Skeleton className="h-64 w-full" /></div>
+  if (!isNew && destinationLoading) return <div className="page-shell page-shell--5xl"><Skeleton className="h-64 w-full" /></div>
   if (!isNew && !destination) return <div className="page-shell">Destination not found.</div>
 
   return (
-    <div className="page-shell page-shell--3xl space-y-6">
+    <div className="page-shell page-shell--5xl space-y-6">
       <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ChevronLeft size={14} /> Home</Link>
       <div className="page-header gap-4">
         <div className="min-w-0"><h1 className="text-lg font-semibold">{isNew ? 'New destination' : destination?.name}</h1><p className="text-sm text-muted-foreground">WordPress publishing connection and defaults.</p></div>

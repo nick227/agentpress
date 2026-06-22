@@ -120,7 +120,7 @@ export function ResearchInfoPanel({ source }: Props) {
   const isCommunity = source.visibility === 'PUBLIC'
 
   return (
-    <div className="page-shell page-shell--2xl">
+    <div className="page-shell page-shell--5xl">
       <div className="page-header mb-6">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold">{source.name}</h1>

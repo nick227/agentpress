@@ -17,7 +17,7 @@ export function TeamsPage() {
   const [email, setEmail] = useState('')
   async function submit(event: FormEvent) { event.preventDefault(); if (!name.trim()) return; await createTeam.mutateAsync(name.trim()); setName('') }
   return (
-    <div className="page-shell page-shell--3xl">
+    <div className="page-shell page-shell--5xl">
       <h1 className="text-lg font-semibold">Teams</h1><p className="text-sm text-muted-foreground">Shared workspaces with role-based access.</p>
       <form onSubmit={submit} className="mt-5 flex max-w-md flex-wrap gap-2"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Team name" className="min-w-0 flex-1" /><Button size="sm" type="submit" loading={createTeam.isPending}><Plus size={13} /> Create</Button></form>
       <div className="mt-6 divide-y rounded border bg-surface">

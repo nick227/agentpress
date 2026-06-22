@@ -108,7 +108,7 @@ function ResearchItemsSection({ sourceType, items, total, page, pages, loading, 
   onPageChange: (page: number) => void
 }) {
   return (
-    <section className="page-shell page-shell--2xl pb-8 pt-0">
+    <section className="page-shell page-shell--5xl pb-8 pt-0">
       <div className="mb-3"><h2 className="text-sm font-semibold">Collected items</h2><p className="text-xs text-muted-foreground">{total} item{total === 1 ? '' : 's'}, newest first.</p></div>
       {loading ? <div className="space-y-2">{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-14 w-full" />)}</div> : items.length === 0 ? (
         <div className="rounded border p-4 text-sm text-muted-foreground">No items collected yet.</div>

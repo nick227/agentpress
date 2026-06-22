@@ -232,7 +232,7 @@ export function BuilderAgent({ agent, pipeline, pipelineId, onSaved, onDeleted }
   const formatLabel = staticAgent ? 'static' : imageAgent ? 'image' : null
 
   return (
-    <div className="page-shell page-shell--2xl space-y-5">
+    <div className="page-shell page-shell--5xl space-y-5">
       <div className="flex items-center gap-2">
         <h2 className="text-sm font-semibold">{panelTitle}</h2>
         {formatLabel && (

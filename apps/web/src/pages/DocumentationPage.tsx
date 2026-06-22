@@ -39,7 +39,7 @@ export function DocumentationPage() {
   const [activeTab, setActiveTab] = useState<TabId>('quickstart')
 
   return (
-    <div className="page-shell page-shell--3xl space-y-6">
+    <div className="page-shell page-shell--5xl space-y-6">
       <header className="space-y-2">
         <div className="flex items-center gap-2 text-muted-foreground"><BookOpen size={16} /><span className="text-xs font-medium uppercase tracking-wide">Documentation</span></div>
         <h1 className="text-2xl font-semibold tracking-tight">What is AgentPress</h1>
