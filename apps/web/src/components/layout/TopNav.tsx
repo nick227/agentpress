@@ -5,28 +5,16 @@ import type { LucideIcon } from 'lucide-react'
 
 const NAV_ITEMS: { to: string; label: string; icon: LucideIcon; match: (p: string) => boolean }[] = [
   {
-    to: '/pipelines',
-    label: 'Pipelines',
-    icon: Workflow,
-    match: (p) => p.startsWith('/pipelines'),
-  },
-  {
-    to: '/workflows',
-    label: 'Workflows',
-    icon: Layers,
-    match: (p) => p.startsWith('/workflows'),
-  },
-  {
-    to: '/agents',
-    label: 'Agents',
-    icon: Bot,
-    match: (p) => p.startsWith('/agents'),
-  },
-  {
     to: '/schedules',
     label: 'Schedules',
     icon: CalendarClock,
     match: (p) => p.startsWith('/schedules'),
+  },
+  {
+    to: '/pipelines',
+    label: 'Pipelines',
+    icon: Workflow,
+    match: (p) => p.startsWith('/pipelines'),
   },
   {
     to: '/research',
@@ -39,6 +27,18 @@ const NAV_ITEMS: { to: string; label: string; icon: LucideIcon; match: (p: strin
     label: 'Prompts',
     icon: MessageSquareText,
     match: (p) => p.startsWith('/prompts'),
+  },
+  {
+    to: '/agents',
+    label: 'Agents',
+    icon: Bot,
+    match: (p) => p.startsWith('/agents'),
+  },
+  {
+    to: '/workflows',
+    label: 'Workflows',
+    icon: Layers,
+    match: (p) => p.startsWith('/workflows'),
   },
   {
     to: '/destinations',

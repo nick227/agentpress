@@ -166,12 +166,29 @@ export function CommunityPage() {
         <p className="text-sm text-muted-foreground">Public starter resources. Copies and runs stay private in your workspace.</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant={tab === 'pipelines' ? 'default' : 'outline'} onClick={() => setTab('pipelines')}><Workflow size={13} /> Pipelines</Button>
-        <Button size="sm" variant={tab === 'workflows' ? 'default' : 'outline'} onClick={() => setTab('workflows')}><Layers size={13} /> Workflows</Button>
-        <Button size="sm" variant={tab === 'agents' ? 'default' : 'outline'} onClick={() => setTab('agents')}><Bot size={13} /> Agents</Button>
-        <Button size="sm" variant={tab === 'feeds' ? 'default' : 'outline'} onClick={() => setTab('feeds')}><Rss size={13} /> Feeds</Button>
-        <Button size="sm" variant={tab === 'prompts' ? 'default' : 'outline'} onClick={() => setTab('prompts')}><BookOpen size={13} /> Prompts</Button>
+      <div className="flex gap-0 border-b overflow-x-auto scrollbar-none -mx-0">
+        {([
+          { id: 'pipelines', label: 'Pipelines', icon: <Workflow size={13} /> },
+          { id: 'workflows', label: 'Workflows', icon: <Layers size={13} /> },
+          { id: 'agents',    label: 'Agents',    icon: <Bot size={13} /> },
+          { id: 'feeds',     label: 'Feeds',     icon: <Rss size={13} /> },
+          { id: 'prompts',   label: 'Prompts',   icon: <BookOpen size={13} /> },
+        ] as const).map(({ id, label, icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+              tab === id
+                ? 'border-foreground text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {icon}
+            {label}
+          </button>
+        ))}
       </div>
 
       {tab === 'pipelines' && (

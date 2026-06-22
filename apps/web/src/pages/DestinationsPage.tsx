@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { RowDeleteControls, useDeleteConfirm } from '@/components/ui/RowDeleteControls'
 import { cn } from '@/lib/utils'
+import { CommunityBrowser } from '@/features/content/CommunityBrowser'
 
 type Destination = components['schemas']['Destination']
 
@@ -34,8 +36,9 @@ export function DestinationsPage() {
   const navigate = useNavigate()
   const { data, isLoading } = useDestinations()
   const deleteDestination = useDeleteDestination()
+  const { propsFor } = useDeleteConfirm(deleteDestination)
   const [search, setSearch] = useState('')
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [showCommunity, setShowCommunity] = useState(false)
 
   const all = data?.data ?? []
   const destinations = search
@@ -69,8 +72,11 @@ export function DestinationsPage() {
           </p>
         </div>
         <div className="page-header-actions">
+          <Button size="sm" variant="outline" onClick={() => setShowCommunity(true)}>
+            Browse Community
+          </Button>
           <Button size="sm" onClick={() => navigate('/destinations/new')}>
-            <Plus size={13} /> Add destination
+            <Plus size={13} /> New Destination
           </Button>
         </div>
       </div>
@@ -99,38 +105,33 @@ export function DestinationsPage() {
             <DestinationRow
               key={dest.id}
               destination={dest}
-              isConfirming={confirmDeleteId === dest.id}
-              isDeleting={deleteDestination.isPending && confirmDeleteId === dest.id}
               onClick={() => navigate(`/destinations/${dest.id}`)}
-              onConfirmDelete={() => setConfirmDeleteId(dest.id)}
-              onCancelDelete={() => setConfirmDeleteId(null)}
-              onDelete={async () => {
-                await deleteDestination.mutateAsync(dest.id)
-                setConfirmDeleteId(null)
-              }}
+              {...propsFor(dest.id, dest.name)}
             />
           ))}
         </div>
       )}
+
+      {showCommunity && <CommunityBrowser defaultTab="pipelines" onClose={() => setShowCommunity(false)} />}
     </div>
   )
 }
 
 function DestinationRow({
   destination,
+  onClick,
   isConfirming,
   isDeleting,
-  onClick,
-  onConfirmDelete,
-  onCancelDelete,
+  onConfirm,
+  onCancel,
   onDelete,
 }: {
   destination: Destination
+  onClick: () => void
   isConfirming: boolean
   isDeleting: boolean
-  onClick: () => void
-  onConfirmDelete: () => void
-  onCancelDelete: () => void
+  onConfirm: () => void
+  onCancel: () => void
   onDelete: () => Promise<void>
 }) {
   const categoryCount = destination.defaultCategoryIds?.length ?? 0
@@ -142,10 +143,8 @@ function DestinationRow({
         onClick={onClick}
         className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
       >
-        {/* Status dot — always green/configured for destinations */}
         <span className="mt-px h-2 w-2 shrink-0 rounded-full bg-green-500" />
 
-        {/* Main info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-medium text-foreground">{destination.name}</p>
@@ -173,7 +172,6 @@ function DestinationRow({
           </div>
         </div>
 
-        {/* Right meta */}
         <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
           {destination.authType && (
             <span className="hidden sm:inline tabular-nums">
@@ -201,33 +199,13 @@ function DestinationRow({
         </div>
       </button>
 
-      {/* Hover-revealed actions */}
-      <div
-        className={cn(
-          'flex shrink-0 items-center gap-1 pr-3 transition-opacity',
-          !isConfirming && 'opacity-0 group-hover:opacity-100',
-        )}
-      >
-        {isConfirming ? (
-          <>
-            <Button
-              variant="destructive"
-              size="sm"
-              loading={isDeleting}
-              onClick={onDelete}
-            >
-              Delete
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onCancelDelete}>
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={onConfirmDelete}>
-            ✕
-          </Button>
-        )}
-      </div>
+      <RowDeleteControls
+        isConfirming={isConfirming}
+        isDeleting={isDeleting}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+        onDelete={onDelete}
+      />
     </div>
   )
 }

@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Layers, Globe2, Plus } from 'lucide-react'
-import { useWorkflows } from '@project/sdk'
+import { Layers, Plus } from 'lucide-react'
+import { useWorkflows, useDeleteWorkflow } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { RowDeleteControls, useDeleteConfirm } from '@/components/ui/RowDeleteControls'
 import { cn } from '@/lib/utils'
+import { CommunityBrowser } from '@/features/content/CommunityBrowser'
 
 type WorkflowSummary = components['schemas']['WorkflowSummary']
 
@@ -34,7 +36,10 @@ function groupBy(items: WorkflowSummary[]): [string, WorkflowSummary[]][] {
 export function WorkflowsPage() {
   const navigate = useNavigate()
   const { data, isLoading } = useWorkflows()
+  const deleteWorkflow = useDeleteWorkflow()
+  const { propsFor } = useDeleteConfirm(deleteWorkflow)
   const [search, setSearch] = useState('')
+  const [showCommunity, setShowCommunity] = useState(false)
 
   const all = data?.data ?? []
   const filtered = useMemo(() => {
@@ -71,12 +76,12 @@ export function WorkflowsPage() {
             Reusable sequences of agent nodes. Insert into any pipeline as a building block.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => navigate('/community?tab=workflows')}>
-            <Globe2 size={13} /> Browse community
+        <div className="page-header-actions">
+          <Button size="sm" variant="outline" onClick={() => setShowCommunity(true)}>
+            Browse Community
           </Button>
           <Button size="sm" onClick={() => navigate('/workflows/new')}>
-            <Plus size={13} /> New workflow
+            <Plus size={13} /> New Workflow
           </Button>
         </div>
       </div>
@@ -86,7 +91,7 @@ export function WorkflowsPage() {
           icon={Layers}
           title="No workflows yet"
           description="Fork community workflow building blocks or create your own reusable sequences."
-          action={{ label: 'Browse community', onClick: () => navigate('/community?tab=workflows') }}
+          action={{ label: 'Browse Community', onClick: () => setShowCommunity(true) }}
         />
       ) : (
         <>
@@ -108,7 +113,11 @@ export function WorkflowsPage() {
                   </p>
                   <div className="divide-y rounded border bg-surface">
                     {items.map((wf) => (
-                      <WorkflowRow key={wf.id} workflow={wf} />
+                      <WorkflowRow
+                        key={wf.id}
+                        workflow={wf}
+                        {...propsFor(wf.id, wf.name)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -117,46 +126,68 @@ export function WorkflowsPage() {
           )}
         </>
       )}
+
+      {showCommunity && <CommunityBrowser defaultTab="workflows" onClose={() => setShowCommunity(false)} />}
     </div>
   )
 }
 
-function WorkflowRow({ workflow }: { workflow: WorkflowSummary }) {
+function WorkflowRow({
+  workflow,
+  isConfirming,
+  isDeleting,
+  onConfirm,
+  onCancel,
+  onDelete,
+}: {
+  workflow: WorkflowSummary
+  isConfirming: boolean
+  isDeleting: boolean
+  onConfirm: () => void
+  onCancel: () => void
+  onDelete: () => Promise<void>
+}) {
   const isCommunity = workflow.visibility === 'PUBLIC'
 
   return (
-    <Link
-      to={`/workflows/${workflow.id}`}
-      className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors"
-    >
-      <Layers size={14} className="shrink-0 text-accent" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium">{workflow.name}</span>
-          {isCommunity && (
-            <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
-              community
-            </span>
-          )}
+    <div className="group flex items-center hover:bg-muted/30 transition-colors">
+      <Link
+        to={`/workflows/${workflow.id}`}
+        className="flex min-w-0 flex-1 items-center gap-4 px-4 py-3"
+      >
+        <Layers size={14} className="shrink-0 text-accent" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium">{workflow.name}</span>
+            {isCommunity && (
+              <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                community
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {workflow.description ?? `${workflow.nodeCount} node${workflow.nodeCount === 1 ? '' : 's'}`}
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-1">
-          {workflow.description ?? `${workflow.nodeCount} node${workflow.nodeCount === 1 ? '' : 's'}`}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
-        <NodeCountBadge count={workflow.nodeCount} />
-        <span className={cn('hidden sm:inline capitalize', isCommunity && 'text-accent/70')}>
-          {workflow.category}
-        </span>
-      </div>
-    </Link>
-  )
-}
+        <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
+            {workflow.nodeCount} {workflow.nodeCount === 1 ? 'node' : 'nodes'}
+          </span>
+          <span className={cn('hidden sm:inline capitalize', isCommunity && 'text-accent/70')}>
+            {workflow.category}
+          </span>
+        </div>
+      </Link>
 
-function NodeCountBadge({ count }: { count: number }) {
-  return (
-    <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums">
-      {count} {count === 1 ? 'node' : 'nodes'}
-    </span>
+      {!isCommunity && (
+        <RowDeleteControls
+          isConfirming={isConfirming}
+          isDeleting={isDeleting}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+          onDelete={onDelete}
+        />
+      )}
+    </div>
   )
 }

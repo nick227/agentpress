@@ -196,7 +196,7 @@ function RunsSection({ explorer }: { explorer: GlobalExplorerSidebarModel }) {
         <ResourceLink
           key={run.id}
           href={`/runs/${run.id}`}
-          label={run.title ?? run.pipelineName}
+          label={run.title ?? run.pipelineName ?? run.workflowName ?? 'Run'}
           active={explorer.pathname === `/runs/${run.id}`}
           status={runStatus(run.status)}
           activityAt={run.startedAt}

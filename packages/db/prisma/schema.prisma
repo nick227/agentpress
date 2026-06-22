@@ -221,8 +221,10 @@ model ImageAsset {
 
 model PipelineRun {
   id                          String                     @id @default(cuid())
-  pipelineId                  String
-  pipeline                    Pipeline                   @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  pipelineId                  String?
+  pipeline                    Pipeline?                  @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  workflowId                  String?
+  workflow                    Workflow?                  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   title                       String?
   status                      String                     @default("queued")
   dryRun                      Boolean                    @default(true)
@@ -248,34 +250,38 @@ model PipelineRun {
 
   @@index([workspaceId, startedAt])
   @@index([batchId])
+  @@index([workflowId])
 }
 
 model AgentRun {
-  id                   String      @id @default(cuid())
+  id                   String         @id @default(cuid())
   pipelineRunId        String
-  pipelineRun          PipelineRun @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  pipelineRun          PipelineRun    @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
   pipelineAgentId      String?
   pipelineAgent        PipelineAgent? @relation("PipelineAgentRuns", fields: [pipelineAgentId], references: [id], onDelete: SetNull)
+  workflowNodeId       String?
+  workflowNode         WorkflowNode?  @relation("WorkflowNodeRuns", fields: [workflowNodeId], references: [id], onDelete: SetNull)
   agentUid             String
   agentName            String
-  agentKind            AgentKind   @default(AI_TEXT)
-  outputFormat         String      @default("text")
+  agentKind            AgentKind      @default(AI_TEXT)
+  outputFormat         String         @default("text")
   outputTarget         String
-  renderedSystemPrompt String      @db.Text
-  renderedUserPrompt   String      @db.Text
+  renderedSystemPrompt String         @db.Text
+  renderedUserPrompt   String         @db.Text
   inputHash            String?
   cacheStatus          String?
   reusedFromAgentRunId String?
-  outputText           String?     @db.Text
+  outputText           String?        @db.Text
   outputJson           Json?
-  status               String      @default("queued")
+  status               String         @default("queued")
   error                String?
-  sortOrder            Int         @default(0)
+  sortOrder            Int            @default(0)
   startedAt            DateTime?
   completedAt          DateTime?
 
   @@index([agentUid, inputHash])
   @@index([pipelineAgentId])
+  @@index([workflowNodeId])
 }
 
 model RunAsset {
@@ -697,6 +703,7 @@ model Workflow {
   createdByUserId  String?
   usageCount       Int            @default(0)
   nodes            WorkflowNode[]
+  runs             PipelineRun[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -722,6 +729,7 @@ model WorkflowNode {
   enabled           Boolean         @default(true)
   sortOrder         Int             @default(0)
   pipelineSnapshots PipelineAgent[] @relation("PipelineAgentWorkflowNode")
+  agentRuns         AgentRun[]      @relation("WorkflowNodeRuns")
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 

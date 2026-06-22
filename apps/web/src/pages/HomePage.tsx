@@ -1,208 +1,393 @@
-import { ArrowRight, BookOpen, Check, Clock3, Database, FileText, FlaskConical, GitFork, Rss, Youtube } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
-import { useCommunityPipelines, useForkCommunityPipeline } from '@project/sdk'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Bot, CheckCircle2, Clock, FileText, Layers, Loader2, Play, RefreshCw, Send, Workflow, XCircle, Zap } from 'lucide-react'
+import { useAllRuns, usePipelines } from '@project/sdk'
+import type { components } from '@project/sdk'
+import { Skeleton } from '@/components/ui/Skeleton'
+import { cn } from '@/lib/utils'
 
-const starters = [
-  {
-    slug: 'this-week-in-ai',
-    icon: FlaskConical,
-    name: 'This Week in AI',
-    description: 'Turns AI and technology source summaries into a structured weekly roundup.',
-  },
-  {
-    slug: 'daily-market-brief',
-    icon: Database,
-    name: 'Daily Market Brief',
-    description: 'Combines finance videos, Reddit discussions, and news feeds into a market brief.',
-  },
-  {
-    slug: 'political-commentary',
-    icon: FileText,
-    name: 'Political Commentary',
-    description: 'Uses current political source material to draft an edited commentary post.',
-  },
-] as const
+type RunSummary = components['schemas']['RunSummary']
+type RunStatus = RunSummary['status']
+type PipelineSummary = components['schemas']['PipelineSummary']
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isToday(iso: string) {
+  const d = new Date(iso)
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+}
+
+function isYesterday(iso: string) {
+  const d = new Date(iso)
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  return d.getFullYear() === yesterday.getFullYear() && d.getMonth() === yesterday.getMonth() && d.getDate() === yesterday.getDate()
+}
+
+function relativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  if (diff < 60_000) return 'just now'
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30) return `${days}d ago`
+  return new Date(iso).toLocaleDateString()
+}
+
+function durationMs(run: RunSummary) {
+  if (!run.completedAt) return null
+  return new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()
+}
+
+function formatDuration(ms: number) {
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
+  return `${Math.round(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`
+}
+
+function groupByDate(runs: RunSummary[]): Array<{ label: string; runs: RunSummary[] }> {
+  const groups: Record<string, RunSummary[]> = {}
+  for (const run of runs) {
+    let label: string
+    if (isToday(run.startedAt)) label = 'Today'
+    else if (isYesterday(run.startedAt)) label = 'Yesterday'
+    else {
+      const d = new Date(run.startedAt)
+      label = d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
+    }
+    ;(groups[label] ??= []).push(run)
+  }
+  return Object.entries(groups).map(([label, runs]) => ({ label, runs }))
+}
+
+// ─── Status config ────────────────────────────────────────────────────────────
+
+const STATUS_CFG: Record<RunStatus, { icon: React.ReactNode; label: string; textColor: string; dot: string }> = {
+  queued:    { icon: <Clock size={10} />,                             label: 'Queued',    textColor: 'text-muted-foreground',  dot: 'bg-muted-foreground/50' },
+  running:   { icon: <Loader2 size={10} className="animate-spin" />,  label: 'Running',   textColor: 'text-blue-500',          dot: 'bg-blue-400 animate-pulse' },
+  completed: { icon: <CheckCircle2 size={10} />,                      label: 'Completed', textColor: 'text-green-600',         dot: 'bg-green-500' },
+  posted:    { icon: <CheckCircle2 size={10} />,                      label: 'Published', textColor: 'text-green-600',         dot: 'bg-green-500' },
+  failed:    { icon: <XCircle size={10} />,                           label: 'Failed',    textColor: 'text-destructive',       dot: 'bg-red-500' },
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function HomePage() {
-  const navigate = useNavigate()
-  const community = useCommunityPipelines()
-  const forkPipeline = useForkCommunityPipeline()
-  const pipelines = community.data ?? []
+  const { data: runsData, isLoading: runsLoading, refetch, isFetching } = useAllRuns(100)
+  const { data: pipelinesData, isLoading: pipelinesLoading } = usePipelines()
 
-  async function useStarter(slug: string) {
-    const pipeline = pipelines.find((item) => item.slug === slug)
-    if (!pipeline) return
-    try {
-      const copy = await forkPipeline.mutateAsync(pipeline.id)
-      toast.success(`${pipeline.name} copied to your workspace`)
-      navigate(`/pipelines/${copy.slug}`)
-    } catch (error: any) {
-      toast.error(error.message ?? 'Could not copy pipeline')
+  const runs = runsData?.data ?? []
+  const pipelines: PipelineSummary[] = (pipelinesData as any)?.data ?? []
+
+  const stats = {
+    active:         runs.filter((r) => r.status === 'running' || r.status === 'queued').length,
+    completedToday: runs.filter((r) => (r.status === 'completed' || r.status === 'posted') && isToday(r.startedAt)).length,
+    publishedToday: runs.filter((r) => r.status === 'posted' && isToday(r.startedAt)).length,
+    failed:         runs.filter((r) => r.status === 'failed').length,
+    total:          runs.length,
+  }
+
+  // Latest run per pipeline (for health column)
+  const latestRunByPipeline = new Map<string, RunSummary>()
+  for (const run of runs) {
+    if (run.pipelineId && !latestRunByPipeline.has(run.pipelineId)) {
+      latestRunByPipeline.set(run.pipelineId, run)
     }
   }
 
+  const groups = groupByDate(runs)
+
   return (
-    <div className="relative isolate min-h-full overflow-hidden bg-background">
-      <section className="mx-auto grid w-full max-w-6xl gap-10 px-5 sm:px-8 sm:py-12 lg:grid-cols-[1.08fr_0.92fr] lg:items-start lg:gap-16">
+    <div className="page-shell">
+      {/* Header */}
+      <div className="page-header">
         <div className="min-w-0">
-          <h1 className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-[-0.04em] text-foreground sm:text-5xl">
-            Automates AI agents
-          </h1>
-          <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground">
-            Connect your sources, set a schedule, and AgentPress handles the rest — pulling in new content hourly and running AI agents that write and publish finished posts automatically.
-          </p>
-          <ul className="mt-5 space-y-2">
-            <li className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Check size={14} className="mt-0.5 shrink-0 text-green-600" />
-              No code required — describe what you want each agent to write.
-            </li>
-            <li className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Check size={14} className="mt-0.5 shrink-0 text-green-600" />
-              Runs on your schedule — hourly, daily, or manually on demand.
-            </li>
-            <li className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Check size={14} className="mt-0.5 shrink-0 text-green-600" />
-              Publishes to remote server and saves a reusable draft.
-            </li>
-          </ul>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <Link to="/community" className="inline-flex h-9 items-center gap-2 rounded bg-foreground px-4 text-sm font-medium text-background hover:opacity-90">
-              Browse the community library <ArrowRight size={14} />
-            </Link>
-            <Link to="/pipelines" className="inline-flex h-9 items-center gap-2 rounded border border-input-border bg-surface px-3 text-sm font-medium hover:bg-muted">
-              Go to your pipelines
-            </Link>
-          </div>
+          <h1 className="text-lg font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Activity across all pipelines</p>
+        </div>
+        <div className="page-header-actions">
+          <Link
+            to="/runs"
+            className="inline-flex h-8 items-center gap-1.5 rounded border border-input-border bg-surface px-3 text-xs font-medium hover:bg-muted"
+          >
+            All runs <ArrowRight size={12} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            title="Refresh"
+            className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40"
+          >
+            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      {runsLoading ? (
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded" />)}
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <StatCard value={stats.active} label="Active now" color={stats.active > 0 ? 'blue' : 'neutral'} pulse={stats.active > 0} />
+          <StatCard value={stats.completedToday} label="Completed today" color="green" />
+          <StatCard value={stats.publishedToday} label="Published today" color={stats.publishedToday > 0 ? 'teal' : 'neutral'} />
+          <StatCard value={stats.failed} label="Failed" color={stats.failed > 0 ? 'red' : 'neutral'} />
+          <StatCard value={stats.total} label="Total runs" color="neutral" />
+        </div>
+      )}
+
+      {/* Main two-column layout */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_280px]">
+        {/* Activity feed */}
+        <div className="min-w-0 space-y-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent activity</h2>
+
+          {runsLoading ? (
+            <div className="space-y-px">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded" />)}
+            </div>
+          ) : runs.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded border border-dashed py-12 text-center text-sm text-muted-foreground">
+              <Play size={20} className="opacity-40" />
+              <p>No runs yet. Start a pipeline to see activity here.</p>
+              <Link to="/pipelines" className="text-foreground underline underline-offset-2 hover:opacity-70">
+                Go to pipelines
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {groups.map(({ label, runs: groupRuns }) => (
+                <div key={label}>
+                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">{label}</p>
+                  <div className="divide-y rounded border bg-surface">
+                    {groupRuns.map((run) => <RunRow key={run.id} run={run} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <HourlyFlow />
-      </section>
+        {/* Pipeline health sidebar */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pipeline health</h2>
 
-      <section className="border-y bg-surface/75 backdrop-blur-sm">
-        <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8 sm:py-12">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Community library</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight">Start with a working pipeline.</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Community pipelines are ready to run. Copy one to your workspace and customize every step — sources, agents, schedule, and output.</p>
+          {pipelinesLoading ? (
+            <div className="space-y-px">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded" />)}
             </div>
-            <Link to="/community" className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
-              Browse all community pipelines <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <div className="mt-6 grid gap-2 sm:grid-cols-3">
-            {starters.map((starter) => {
-              const pipeline = pipelines.find((item) => item.slug === starter.slug)
-              const isCopying = forkPipeline.isPending && forkPipeline.variables === pipeline?.id
-              return (
-                <StarterCard
-                  key={starter.slug}
-                  starter={starter}
-                  disabled={!pipeline || forkPipeline.isPending}
-                  loading={isCopying}
-                  unavailable={!community.isLoading && !pipeline}
-                  onClick={() => { void useStarter(starter.slug) }}
+          ) : pipelines.length === 0 ? (
+            <div className="rounded border border-dashed px-4 py-6 text-center text-xs text-muted-foreground">
+              No pipelines yet.{' '}
+              <Link to="/pipelines/new" className="text-foreground underline underline-offset-2">Create one</Link>
+            </div>
+          ) : (
+            <div className="divide-y rounded border bg-surface">
+              {pipelines.map((pipeline) => (
+                <PipelineHealthRow
+                  key={pipeline.id}
+                  pipeline={pipeline}
+                  latestRun={latestRunByPipeline.get(pipeline.id)}
+                  runsToday={runs.filter((r) => r.pipelineId === pipeline.id && isToday(r.startedAt)).length}
                 />
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-16">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">How it works</p>
-        <h2 className="mt-2 text-xl font-semibold tracking-tight">From sources to published post — automatically.</h2>
-        <div className="mt-5 grid gap-px overflow-hidden rounded border bg-border sm:grid-cols-4">
-          <Process number="1" title="Connect sources">Add YouTube channels, subreddits, or RSS feeds. AgentPress checks them every hour for new content.</Process>
-          <Process number="2" title="Store research">New items are saved as research your agents can read, summarize, and reference when building a post.</Process>
-          <Process number="3" title="Run agents">Each agent handles one job — title, body, excerpt, or image — using the instructions you write.</Process>
-          <Process number="4" title="Publish or review">Send the finished post straight to WordPress, or do a dry run first to check the output.</Process>
-        </div>
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          <Link to="/documentation" className="inline-flex h-9 items-center gap-2 rounded border border-input-border bg-surface px-3 text-sm font-medium hover:bg-muted">
-            <BookOpen size={14} /> Read the documentation
-          </Link>
-          <Link to="/pipelines" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
-            Build your first pipeline <ArrowRight size={14} />
-          </Link>
-        </div>
-      </section>
-    </div>
-  )
-}
-
-function HourlyFlow() {
-  const sources = [
-    { icon: Youtube, name: 'YouTube channels', detail: 'videos and transcripts' },
-    { icon: Rss, name: 'Reddit communities', detail: 'new posts and discussions' },
-    { icon: Rss, name: 'RSS feeds', detail: 'articles and updates' },
-  ]
-  return (
-    <div className="relative mx-auto w-full max-w-lg">
-      <div className="absolute -inset-3 -z-10 rounded-2xl" />
-      <div className="overflow-hidden rounded-xl border bg-surface shadow-2xl shadow-foreground/10">
-        <div className="flex h-12 items-center justify-between border-b px-4">
-          <div className="flex items-center gap-2"><Clock3 size={14} className="text-accent" /><span className="text-xs font-semibold">Hourly research check</span></div>
-          <span className="rounded bg-green-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-600">Running</span>
-        </div>
-        <div className="p-4 sm:p-5">
-          <div className="space-y-2">
-            {sources.map(({ icon: Icon, name, detail }) => (
-              <div key={name} className="flex items-center gap-3 rounded border bg-background px-3 py-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground"><Icon size={14} /></span>
-                <div className="min-w-0 flex-1"><p className="text-xs font-medium">{name}</p><p className="text-[10px] text-muted-foreground">{detail}</p></div>
-                <Check size={13} className="text-green-600" />
-              </div>
-            ))}
-          </div>
-          <div className="my-4 flex items-center gap-3"><div className="h-px flex-1 bg-border" /><ArrowRight size={13} className="text-muted-foreground" /><div className="h-px flex-1 bg-border" /></div>
-          <div className="rounded border border-accent/30 bg-accent/5 px-4 py-3">
-            <p className="text-xs font-semibold">Agents create the post</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">Each agent writes one part using your instructions and the stored research.</p>
-            <div className="mt-2 grid grid-cols-4 gap-1.5 text-center text-[9px] font-medium text-muted-foreground">
-              <span className="rounded border bg-surface px-1 py-1.5">Title</span>
-              <span className="rounded border bg-surface px-1 py-1.5">Article</span>
-              <span className="rounded border bg-surface px-1 py-1.5">Excerpt</span>
-              <span className="rounded border bg-surface px-1 py-1.5">Image</span>
+              ))}
             </div>
-          </div>
+          )}
+
+          <Link
+            to="/pipelines"
+            className="flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            Manage pipelines <ArrowRight size={11} />
+          </Link>
         </div>
       </div>
     </div>
   )
 }
 
-function StarterCard({ starter, disabled, loading, unavailable, onClick }: {
-  starter: typeof starters[number]
-  disabled: boolean
-  loading: boolean
-  unavailable: boolean
-  onClick: () => void
-}) {
-  const Icon = starter.icon
+// ─── Stat card ────────────────────────────────────────────────────────────────
+
+type StatColor = 'blue' | 'green' | 'teal' | 'red' | 'neutral'
+
+const STAT_COLOR: Record<StatColor, { value: string; label: string; ring: string }> = {
+  blue:    { value: 'text-blue-500',          label: 'text-blue-500/70',          ring: 'border-blue-200 dark:border-blue-900/60' },
+  green:   { value: 'text-green-600',         label: 'text-green-600/70',         ring: 'border-green-200 dark:border-green-900/60' },
+  teal:    { value: 'text-teal-600',          label: 'text-teal-600/70',          ring: 'border-teal-200 dark:border-teal-900/60' },
+  red:     { value: 'text-destructive',       label: 'text-destructive/70',       ring: 'border-red-200 dark:border-red-900/60' },
+  neutral: { value: 'text-foreground',        label: 'text-muted-foreground',     ring: 'border-input-border' },
+}
+
+function StatCard({ value, label, color, pulse }: { value: number; label: string; color: StatColor; pulse?: boolean }) {
+  const c = STAT_COLOR[color]
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="group flex flex-col gap-3 rounded border bg-background p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-lg disabled:pointer-events-none disabled:opacity-60"
+    <div className={cn('flex flex-col gap-1 rounded border bg-surface px-4 py-3', c.ring)}>
+      <div className="flex items-center gap-1.5">
+        {pulse && <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />}
+        <span className={cn('text-2xl font-semibold tabular-nums leading-none', c.value)}>{value}</span>
+      </div>
+      <span className={cn('text-[11px] font-medium', c.label)}>{label}</span>
+    </div>
+  )
+}
+
+// ─── Run row ─────────────────────────────────────────────────────────────────
+
+function RunRow({ run }: { run: RunSummary }) {
+  const cfg = STATUS_CFG[run.status] ?? STATUS_CFG.failed
+  const ms = durationMs(run)
+  const isActive = run.status === 'running' || run.status === 'queued'
+
+  const displayName = run.title && run.title !== run.pipelineName
+    ? run.title
+    : (run.pipelineName ?? run.workflowName ?? 'Run')
+
+  return (
+    <Link
+      to={`/runs/${run.id}`}
+      className="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded border bg-surface text-muted-foreground"><Icon size={13} /></span>
-          <h3 className="text-sm font-semibold">{starter.name}</h3>
+      {/* Status dot */}
+      <span className={cn('mt-[5px] h-2 w-2 shrink-0 rounded-full', cfg.dot)} />
+
+      {/* Main info */}
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span className="text-sm font-medium text-foreground truncate">{displayName}</span>
+
+          {run.pipelineSlug && run.title && run.title !== run.pipelineName && (
+            <span
+              onClick={(e) => e.preventDefault()}
+              className="inline-block"
+            >
+              <Link
+                to={`/pipelines/${run.pipelineSlug}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-0.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Workflow size={9} />
+                {run.pipelineName}
+              </Link>
+            </span>
+          )}
+
+          {run.dryRun && (
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">dry</span>
+          )}
+          {run.status === 'posted' && (
+            <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+              <Send size={8} className="inline mr-0.5" />published
+            </span>
+          )}
         </div>
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
-          <GitFork size={11} />{loading ? 'Copying…' : unavailable ? 'Unavailable' : 'Copy'}
+
+        {/* Meta row */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+          {run.postTitle && (
+            <span className="flex items-center gap-1 text-foreground/70">
+              <FileText size={9} />
+              <span className="truncate max-w-[200px]">{run.postTitle}</span>
+            </span>
+          )}
+          {run.agentCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Bot size={9} />
+              {run.agentCount}
+            </span>
+          )}
+          {run.assetCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Layers size={9} />
+              {run.assetCount}
+            </span>
+          )}
+          {run.error && (
+            <span className="text-destructive truncate max-w-[220px]">{run.error}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Right: time + status */}
+      <div className="flex shrink-0 flex-col items-end gap-0.5 text-[11px]">
+        <span className="tabular-nums text-muted-foreground">{relativeTime(run.startedAt)}</span>
+        <span className={cn('flex items-center gap-1 font-medium', cfg.textColor)}>
+          {cfg.icon}
+          {cfg.label}
+          {ms !== null && !isActive && (
+            <span className="font-normal text-muted-foreground/60">{formatDuration(ms)}</span>
+          )}
         </span>
       </div>
-      <p className="text-xs leading-5 text-muted-foreground">{starter.description}</p>
-    </button>
+    </Link>
   )
 }
 
-function Process({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
-  return <article className="bg-surface p-5"><span className="font-mono text-xs text-accent">0{number}</span><h3 className="mt-4 text-sm font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{children}</p></article>
+// ─── Pipeline health row ──────────────────────────────────────────────────────
+
+function PipelineHealthRow({
+  pipeline,
+  latestRun,
+  runsToday,
+}: {
+  pipeline: PipelineSummary
+  latestRun: RunSummary | undefined
+  runsToday: number
+}) {
+  const cfg = latestRun ? (STATUS_CFG[latestRun.status] ?? STATUS_CFG.failed) : null
+  const noRuns = !latestRun
+
+  return (
+    <div className="flex items-start gap-3 px-3 py-2.5">
+      {/* Status dot */}
+      {cfg ? (
+        <span className={cn('mt-1 h-2 w-2 shrink-0 rounded-full', cfg.dot)} />
+      ) : (
+        <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/20" />
+      )}
+
+      {/* Info */}
+      <div className="min-w-0 flex-1">
+        <Link
+          to={`/pipelines/${pipeline.slug}`}
+          className="block truncate text-xs font-medium text-foreground hover:underline"
+        >
+          {pipeline.name}
+        </Link>
+        <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+          {noRuns ? (
+            <span>No runs yet</span>
+          ) : latestRun ? (
+            <>
+              <span className={cn(cfg?.textColor)}>{cfg?.label}</span>
+              <span>·</span>
+              <span>{relativeTime(latestRun.startedAt)}</span>
+              {runsToday > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-0.5">
+                    <Zap size={8} />
+                    {runsToday} today
+                  </span>
+                </>
+              )}
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Quick action: link to pipeline */}
+      <Link
+        to={`/pipelines/${pipeline.slug}`}
+        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        title="Open pipeline"
+      >
+        <ArrowRight size={11} />
+      </Link>
+    </div>
+  )
 }

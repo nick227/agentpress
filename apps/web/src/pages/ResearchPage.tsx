@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FlaskConical, Loader2, Plus, RefreshCw, Rss, Youtube, MessageSquare } from 'lucide-react'
-import { toast } from 'sonner'
-import { useCheckResearchSources, useResearchSources } from '@project/sdk'
+import { FlaskConical, Plus, Rss, Youtube, MessageSquare } from 'lucide-react'
+import { useResearchSources, useDeleteResearchSource } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -10,6 +9,9 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { groupResearchSources, researchCategoryLabel } from '@/components/layout/explorer/researchCategories'
 import { compactRelativeTime } from '@/components/layout/explorer/explorerTime'
+import { CommunityBrowser } from '@/features/content/CommunityBrowser'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 type ResearchSource = components['schemas']['ResearchSource']
 
@@ -28,23 +30,10 @@ const SOURCE_LABEL: Record<string, string> = {
 export function ResearchPage() {
   const navigate = useNavigate()
   const { data, isLoading } = useResearchSources()
-  const checkAll = useCheckResearchSources()
+  const deleteSource = useDeleteResearchSource()
+  const [showCommunity, setShowCommunity] = useState(false)
   const [search, setSearch] = useState('')
-
-  async function handleCheckAll() {
-    const toastId = 'research-check-all'
-    toast.loading('Checking all active research feeds…', { id: toastId })
-    try {
-      const { data: result } = await checkAll.mutateAsync({})
-      const detail = result.newCount > 0 ? `${result.newCount} new item${result.newCount === 1 ? '' : 's'}` : 'no new items'
-      const msg = `Checked ${result.checked} feed${result.checked === 1 ? '' : 's'} — ${detail}${result.failed ? `, ${result.failed} failed` : ''}.`
-      if (result.failed > 0 && result.failed === result.checked) toast.error(msg, { id: toastId })
-      else if (result.failed > 0) toast.warning(msg, { id: toastId })
-      else toast.success(msg, { id: toastId })
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Could not check feeds', { id: toastId })
-    }
-  }
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const allSources = data?.data ?? []
   const filtered = search
@@ -84,12 +73,11 @@ export function ResearchPage() {
           </p>
         </div>
         <div className="page-header-actions">
-          <Button size="sm" variant="outline" disabled={checkAll.isPending} onClick={handleCheckAll}>
-            {checkAll.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            {checkAll.isPending ? 'Checking…' : 'Check all feeds'}
+          <Button size="sm" variant="outline" onClick={() => setShowCommunity(true)}>
+            Browse Community
           </Button>
           <Button size="sm" onClick={() => navigate('/research/new')}>
-            <Plus size={13} /> Add source
+            <Plus size={13} /> New Source
           </Button>
         </div>
       </div>
@@ -126,60 +114,111 @@ export function ResearchPage() {
               </div>
               <div className="divide-y rounded border bg-surface">
                 {group.sources.map((source) => (
-                  <SourceRow key={source.id} source={source} onClick={() => navigate(`/research/${source.slug}`)} />
+                  <SourceRow
+                    key={source.id}
+                    source={source}
+                    isConfirming={confirmDeleteId === source.id}
+                    isDeleting={deleteSource.isPending && confirmDeleteId === source.id}
+                    onClick={() => navigate(`/research/${source.slug}`)}
+                    onConfirmDelete={() => setConfirmDeleteId(source.id)}
+                    onCancelDelete={() => setConfirmDeleteId(null)}
+                    onDelete={async () => {
+                      try {
+                        await deleteSource.mutateAsync(source.id)
+                        toast.success(`${source.name} deleted`)
+                      } catch { toast.error('Failed to delete source') }
+                      setConfirmDeleteId(null)
+                    }}
+                  />
                 ))}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {showCommunity && <CommunityBrowser defaultTab="feeds" onClose={() => setShowCommunity(false)} />}
     </div>
   )
 }
 
-function SourceRow({ source, onClick }: { source: ResearchSource; onClick: () => void }) {
+function SourceRow({
+  source,
+  isConfirming,
+  isDeleting,
+  onClick,
+  onConfirmDelete,
+  onCancelDelete,
+  onDelete,
+}: {
+  source: ResearchSource
+  isConfirming: boolean
+  isDeleting: boolean
+  onClick: () => void
+  onConfirmDelete: () => void
+  onCancelDelete: () => void
+  onDelete: () => Promise<void>
+}) {
   const isActive = source.status === 'active'
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="list-row hover:bg-muted/40 transition-colors"
-    >
-      <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
-        <span
-          className={`mt-1 h-2 w-2 shrink-0 rounded-full sm:mt-0 ${isActive ? 'bg-green-500' : 'bg-muted-foreground/40'}`}
-        />
+    <div className="group flex items-center hover:bg-muted/40 transition-colors">
+      <button
+        type="button"
+        onClick={onClick}
+        className="list-row min-w-0 flex-1"
+      >
+        <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
+          <span
+            className={`mt-1 h-2 w-2 shrink-0 rounded-full sm:mt-0 ${isActive ? 'bg-green-500' : 'bg-muted-foreground/40'}`}
+          />
 
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
-          <p className="text-xs text-muted-foreground truncate">{source.sourceUrl}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground truncate">{source.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{source.sourceUrl}</p>
+          </div>
         </div>
-      </div>
 
-      <div className="list-row-meta pl-5 sm:pl-0">
-        {source.itemCount != null && (
-          <span className="tabular-nums">
-            {source.itemCount.toLocaleString()} item{source.itemCount === 1 ? '' : 's'}
+        <div className="list-row-meta pl-5 sm:pl-0">
+          {source.itemCount != null && (
+            <span className="tabular-nums">
+              {source.itemCount.toLocaleString()} item{source.itemCount === 1 ? '' : 's'}
+            </span>
+          )}
+          {source.lastChecked && (
+            <span className="hidden text-muted-foreground/70 tabular-nums sm:inline">
+              checked {compactRelativeTime(source.lastChecked)}
+            </span>
+          )}
+          <span className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-muted-foreground">
+            {SOURCE_ICON[source.sourceType]}
+            {SOURCE_LABEL[source.sourceType] ?? source.sourceType}
           </span>
-        )}
-        {source.lastChecked && (
-          <span className="hidden text-muted-foreground/70 tabular-nums sm:inline">
-            checked {compactRelativeTime(source.lastChecked)}
+          <span
+            className={`rounded px-2 py-0.5 ${
+              isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            {isActive ? 'Active' : 'Paused'}
           </span>
+        </div>
+      </button>
+
+      <div
+        className={cn(
+          'flex shrink-0 items-center gap-1 pr-3 transition-opacity',
+          !isConfirming && 'opacity-0 group-hover:opacity-100',
         )}
-        <span className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-muted-foreground">
-          {SOURCE_ICON[source.sourceType]}
-          {SOURCE_LABEL[source.sourceType] ?? source.sourceType}
-        </span>
-        <span
-          className={`rounded px-2 py-0.5 ${
-            isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'
-          }`}
-        >
-          {isActive ? 'Active' : 'Paused'}
-        </span>
+      >
+        {isConfirming ? (
+          <>
+            <Button variant="destructive" size="sm" loading={isDeleting} onClick={onDelete}>Delete</Button>
+            <Button variant="ghost" size="sm" onClick={onCancelDelete}>Cancel</Button>
+          </>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={onConfirmDelete}>✕</Button>
+        )}
       </div>
-    </button>
+    </div>
   )
 }

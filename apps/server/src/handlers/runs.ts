@@ -11,6 +11,7 @@ export async function listAllRuns(request: any, reply: any) {
     take: limit,
     include: {
       pipeline: { select: { name: true, slug: true } },
+      workflow: { select: { name: true, slug: true } },
       _count: { select: { agentRuns: true, assets: true } },
     },
   })
@@ -20,9 +21,12 @@ export async function listAllRuns(request: any, reply: any) {
       const post = r.generatedPost as Record<string, unknown> | null
       return {
         id: r.id,
-        pipelineId: r.pipelineId,
-        pipelineName: r.pipeline.name,
-        pipelineSlug: r.pipeline.slug,
+        pipelineId: r.pipelineId ?? undefined,
+        pipelineName: r.pipeline?.name ?? undefined,
+        pipelineSlug: r.pipeline?.slug ?? undefined,
+        workflowId: r.workflowId ?? undefined,
+        workflowName: r.workflow?.name ?? undefined,
+        workflowSlug: r.workflow?.slug ?? undefined,
         title: r.title ?? undefined,
         status: r.status,
         dryRun: r.dryRun,

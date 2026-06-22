@@ -3,8 +3,6 @@ import { ExternalLink, Plus } from 'lucide-react'
 import { usePrompts } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 
-const PLACEHOLDER_HINT = 'Content prompts use {transcript} in the user prompt to inject collected item text.'
-
 export function PromptsPanel() {
   const { data, isLoading } = usePrompts({ kind: 'CONTENT' })
   const prompts = data?.data ?? []
@@ -15,9 +13,6 @@ export function PromptsPanel() {
       <div className="section-header mb-5">
         <div className="min-w-0">
           <h2 className="text-base font-semibold">Content prompts</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Shared catalog for research summaries. {PLACEHOLDER_HINT}
-          </p>
         </div>
         <div className="page-header-actions">
           <Link to="/prompts?kind=CONTENT" className="inline-flex h-7 items-center rounded border px-3 text-xs font-medium hover:bg-muted whitespace-nowrap">Browse all</Link>

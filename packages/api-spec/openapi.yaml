@@ -467,11 +467,13 @@ components:
 
     PipelineRun:
       type: object
-      required: [id, pipelineId, status, dryRun, variables, startedAt]
+      required: [id, status, dryRun, variables, startedAt]
       properties:
         id:
           type: string
         pipelineId:
+          type: string
+        workflowId:
           type: string
         title:
           type: string
@@ -659,7 +661,7 @@ components:
 
     RunSummary:
       type: object
-      required: [id, pipelineId, pipelineName, pipelineSlug, status, dryRun, startedAt, hasPost, variables, agentCount, assetCount]
+      required: [id, status, dryRun, startedAt, hasPost, variables, agentCount, assetCount]
       properties:
         id:
           type: string
@@ -668,6 +670,12 @@ components:
         pipelineName:
           type: string
         pipelineSlug:
+          type: string
+        workflowId:
+          type: string
+        workflowName:
+          type: string
+        workflowSlug:
           type: string
         title:
           type: string
@@ -4534,3 +4542,67 @@ paths:
                 properties:
                   data:
                     $ref: '#/components/schemas/Pipeline'
+
+  /api/workflows/{workflowId}/runs:
+    parameters:
+      - name: workflowId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      operationId: startWorkflowRun
+      tags: [workflows]
+      summary: Start a standalone run for a Workflow (not attached to a Pipeline)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variables:
+                  type: object
+                  additionalProperties: true
+                dryRun:
+                  type: boolean
+                title:
+                  type: string
+      responses:
+        '201':
+          description: Run created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PipelineRun'
+    get:
+      operationId: listWorkflowRuns
+      tags: [workflows]
+      summary: List runs for a Workflow
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Workflow runs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RunSummary'

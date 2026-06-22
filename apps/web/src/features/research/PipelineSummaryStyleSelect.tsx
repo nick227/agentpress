@@ -29,11 +29,7 @@ export function PipelineSummaryStyleSelect({ source }: Props) {
   return (
     <div className="border rounded-lg p-4 space-y-2 mb-6">
       <div>
-        <label className="block text-xs font-medium mb-1">Pipeline summary style</label>
-        <p className="text-xs text-muted-foreground mb-2">
-          Used when pipelines reference <code className="font-mono bg-muted px-1 rounded">{`{${source.slug}.summary}`}</code>.
-          Applies to the latest stored item; auto-generated on run if missing.
-        </p>
+        <label className="block text-xs font-medium mb-1">Pipeline summary</label>
         <select
           value={source.defaultSummaryPromptId ?? ''}
           disabled={updateSource.isPending || prompts.length === 0}
@@ -50,12 +46,6 @@ export function PipelineSummaryStyleSelect({ source }: Props) {
           ))}
         </select>
       </div>
-      {source.pipelineSummaryPromptName && (
-        <p className="text-xs text-muted-foreground">
-          Pipelines currently resolve to <span className="font-medium text-foreground">{source.pipelineSummaryPromptName}</span>
-          {source.defaultSummaryPromptId ? ' (feed override)' : ' (global default)'}.
-        </p>
-      )}
     </div>
   )
 }

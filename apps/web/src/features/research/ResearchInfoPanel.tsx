@@ -210,16 +210,17 @@ export function ResearchInfoPanel({ source }: Props) {
         <p className="text-xs text-muted-foreground mb-1">
           Pipeline reference: <code className="font-mono bg-muted px-1 rounded text-xs">{`{${source.slug}.summary}`}</code>
         </p>
-        <p className="text-xs text-muted-foreground mb-1">{researchSummaryRefHint(source)}</p>
-        <p className="text-xs text-muted-foreground mb-3">{researchSummaryRefDescription()}</p>
-        <p className="text-xs text-muted-foreground mb-3">
-          Open an item to copy a date-pinned reference such as <code className="font-mono bg-muted px-1 rounded text-xs">{`{${source.slug}.YYYY-MM-DD.summary}`}</code> (same summary style).
-        </p>
         {!confirmDelete ? (
+
+          
+          <div className="border-t pt-6 mb-8">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Danger zone</p>
           <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)}>
             <Trash2 size={13} />
             Delete source
           </Button>
+          </div>
+
         ) : (
           <div className="flex gap-2">
             <Button variant="destructive" size="sm" loading={deleteSource.isPending} onClick={handleDelete}>Delete source</Button>

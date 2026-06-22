@@ -138,7 +138,7 @@ function WordPressCategoriesSection({ pipeline, pipelineId, destination, onDesti
   )
 }
 
-function CategoryPickers({ categories, destination, pipeline, onDestinationChange, onPipelineChange }: {
+function CategoryPickers({ categories, destination, onDestinationChange }: {
   categories: Array<{ id: number; name: string; count: number }>
   destination: Destination
   pipeline: Pipeline
@@ -167,13 +167,13 @@ export function PipelineSettingsSection({ pipeline, pipelineId, runTitle, onRunT
   return (
     <section className="space-y-3">
       <Label>Settings</Label>
-      <Row label="Run title"><Input value={runTitle} onChange={(event) => onRunTitleChange(event.target.value)} placeholder={pipeline.name} className="h-8 text-sm" /></Row>
       <Row label="Run mode">
         <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
           <input type="checkbox" checked={pipeline.dryRun} onChange={(event) => { onDryRunChange(event.target.checked); void save({ dryRun: event.target.checked }) }} className="rounded" />
           Dry run only
         </label>
       </Row>
+      <Row label="Run title"><Input value={runTitle} onChange={(event) => onRunTitleChange(event.target.value)} placeholder={pipeline.name} className="h-8 text-sm" /></Row>
       <Row label="Status">
         <div className="flex gap-1.5 flex-wrap">
           {(['draft', 'active', 'paused', 'archived'] as const).map((status) => <Chip key={status} active={pipeline.status === status} onClick={() => save({ status })}>{status.charAt(0).toUpperCase() + status.slice(1)}</Chip>)}
@@ -214,7 +214,7 @@ export function VariablesSection({ pipeline, pipelineId }: { pipeline: Pipeline;
         <Button variant="outline" size="sm" loading={update.isPending} onClick={addVariable}><Plus size={13} /> Add variable</Button>
         <DatasetInput pipeline={pipeline} pipelineId={pipelineId} />
       </SectionHeader>
-      {pipeline.variables.length === 0 ? <EmptyRow text="No variables configured." /> : <VariableList pipeline={pipeline} />}
+      {pipeline.variables.length === 0 ? <EmptyRow text="No variables configured." /> : <VariableList pipeline={pipeline} pipelineId={pipelineId} update={update} />}
       {showPicker && <VariablePackPicker pipeline={pipeline} pipelineId={pipelineId} onClose={() => setShowPicker(false)} />}
     </section>
   )
@@ -378,20 +378,32 @@ function DatasetIssue({ children }: { children: ReactNode }) {
   return <p className="flex items-start gap-1.5 rounded border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-destructive"><AlertCircle size={13} className="mt-0.5 shrink-0" />{children}</p>
 }
 
-function VariableList({ pipeline }: { pipeline: Pipeline }) {
+function VariableList({ pipeline, pipelineId, update }: { pipeline: Pipeline; pipelineId: string; update: ReturnType<typeof useUpdatePipeline> }) {
   const { onSelect } = usePipelineSelection()
+
+  async function deleteVariable(id: string) {
+    const variables = pipeline.variables
+      .filter((v) => v.id !== id)
+      .map((v) => ({ id: v.id, key: v.key, label: v.label, type: v.type as any, required: v.required, defaultValue: v.defaultValue, exampleValue: v.exampleValue, sortOrder: v.sortOrder }))
+    await update.mutateAsync({ pipelineId, variables })
+    toast.success('Variable deleted')
+  }
+
   return (
     <div className="divide-y rounded border bg-surface">
       {pipeline.variables.map((variable) => (
-        <button key={variable.id} type="button" onClick={() => onSelect({ type: 'variable', id: variable.id })} className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40">
-          <div className="min-w-0 flex-1 flex-row flex items-center gap-2">
-            <p className="font-medium truncate">{`${variable.key}`}:</p>
-            <p className="text-medium truncate">{`${variable.defaultValue}`}</p>
-          </div>
-          <span className="text-xs text-muted-foreground">{variable.type.replace('_', ' ')}</span>
-          {variable.required && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Required</span>}
-          <span className="text-muted-foreground">›</span>
-        </button>
+        <div key={variable.id} className="flex items-center gap-2 px-3 py-2.5 hover:bg-muted/40">
+          <button type="button" onClick={() => onSelect({ type: 'variable', id: variable.id })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+            <div className="min-w-0 flex-1 flex items-center gap-2">
+              <p className="font-medium truncate">{`${variable.key}`}:</p>
+              <p className="text-medium truncate">{`${variable.defaultValue}`}</p>
+            </div>
+            <span className="text-xs text-muted-foreground">{variable.type.replace('_', ' ')}</span>
+            {variable.required && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Required</span>}
+            <span className="text-muted-foreground">›</span>
+          </button>
+          <Button variant="ghost" size="icon-sm" disabled={update.isPending} onClick={() => { void deleteVariable(variable.id) }} aria-label={`Delete ${variable.key}`}><Trash2 size={13} /></Button>
+        </div>
       ))}
     </div>
   )
@@ -442,10 +454,15 @@ export function AgentsSection({ pipeline, pipelineId }: { pipeline: Pipeline; pi
     await saveAgents(agents)
   }
 
+  async function deleteAgent(id: string) {
+    await saveAgents(pipeline.agents.filter((agent) => agent.id !== id))
+    toast.success('Agent deleted')
+  }
+
   return (
     <section id="agents" className="space-y-3 scroll-mt-6">
       <AgentSectionHeader pending={update.isPending} onBrowse={() => setShowLibrary(true)} onAdd={addDefinition} />
-      {pipeline.agents.length === 0 ? <EmptyRow text="No agents configured." /> : <AgentList pipeline={pipeline} pending={update.isPending} onMove={moveAgent} onToggle={toggleAgent} />}
+      {pipeline.agents.length === 0 ? <EmptyRow text="No agents configured." /> : <AgentList pipeline={pipeline} pending={update.isPending} onMove={moveAgent} onToggle={toggleAgent} onDelete={deleteAgent} />}
       {showLibrary && <Suspense fallback={null}><AgentLibraryBrowser pipeline={pipeline} pipelineId={pipelineId} onClose={() => setShowLibrary(false)} onAgentAdded={(id) => onSelect({ type: 'agent', id })} /></Suspense>}
     </section>
   )
@@ -465,7 +482,7 @@ function AgentSectionHeader({ pending, onBrowse, onAdd }: { pending: boolean; on
   )
 }
 
-function AgentList({ pipeline, pending, onMove, onToggle }: { pipeline: Pipeline; pending: boolean; onMove: (index: number, direction: -1 | 1) => void; onToggle: (index: number) => void }) {
+function AgentList({ pipeline, pending, onMove, onToggle, onDelete }: { pipeline: Pipeline; pending: boolean; onMove: (index: number, direction: -1 | 1) => void; onToggle: (index: number) => void; onDelete: (id: string) => void }) {
   const { onSelect } = usePipelineSelection()
   return (
     <div className="divide-y rounded border bg-surface">
@@ -486,7 +503,7 @@ function AgentList({ pipeline, pending, onMove, onToggle }: { pipeline: Pipeline
           </button>
           <Button variant="ghost" size="icon-sm" disabled={index === 0 || pending} onClick={() => onMove(index, -1)} aria-label={`Move ${agent.name} up`}><ArrowUp size={13} /></Button>
           <Button variant="ghost" size="icon-sm" disabled={index === pipeline.agents.length - 1 || pending} onClick={() => onMove(index, 1)} aria-label={`Move ${agent.name} down`}><ArrowDown size={13} /></Button>
-          <span className="text-muted-foreground">›</span>
+          <Button variant="ghost" size="icon-sm" disabled={pending} onClick={() => onDelete(agent.id)} aria-label={`Delete ${agent.name}`}><Trash2 size={13} /></Button>
         </div>
       ))}
     </div>

@@ -132,3 +132,50 @@ export function useInsertWorkflowIntoPipeline() {
     },
   })
 }
+
+export function useStartWorkflowRun() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      workflowId,
+      variables,
+      dryRun,
+      title,
+    }: {
+      workflowId: string
+      variables?: Record<string, unknown>
+      dryRun?: boolean
+      title?: string
+    }) => {
+      const { data, error, response } = await getApiClient().POST('/api/workflows/{workflowId}/runs', {
+        params: { path: { workflowId } },
+        body: { variables, dryRun, title },
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    onSuccess: (_data, { workflowId }) => {
+      client.invalidateQueries({ queryKey: ['workflow-runs', workflowId] })
+      client.invalidateQueries({ queryKey: ['runs'] })
+    },
+  })
+}
+
+export function useWorkflowRuns(workflowId: string, limit = 20) {
+  return useQuery({
+    queryKey: ['workflow-runs', workflowId, limit],
+    enabled: Boolean(workflowId),
+    queryFn: async () => {
+      const { data, error, response } = await getApiClient().GET('/api/workflows/{workflowId}/runs', {
+        params: { path: { workflowId }, query: { limit } },
+      })
+      if (error) throw new ApiError((response as Response).status, (error as any).error)
+      return data!
+    },
+    refetchInterval: (query) => {
+      const runs = (query.state.data as any)?.data ?? []
+      const hasActive = runs.some((r: any) => r.status === 'running' || r.status === 'queued')
+      return hasActive ? 3000 : false
+    },
+  })
+}

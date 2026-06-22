@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Workflow } from 'lucide-react'
 import { usePipelines, useDeletePipeline } from '@project/sdk'
 import type { components } from '@project/sdk'
-import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { RowDeleteControls, useDeleteConfirm } from '@/components/ui/RowDeleteControls'
+import { Button } from '@/components/ui/Button'
 import { CreatePipelineDialog } from '@/features/pipelines/CreatePipelineDialog'
 import { PipelineStatusBadge } from '@/features/pipelines/PipelineStatusBadge'
-import { TemplateBrowser } from '@/features/content/TemplateBrowser'
+import { CommunityBrowser } from '@/features/content/CommunityBrowser'
 import { cn } from '@/lib/utils'
 
 type PipelineSummary = components['schemas']['PipelineSummary']
@@ -33,10 +34,10 @@ export function PipelinesPage() {
   const navigate = useNavigate()
   const { data, isLoading } = usePipelines()
   const deletePipeline = useDeletePipeline()
+  const { propsFor } = useDeleteConfirm(deletePipeline)
   const [showCreate, setShowCreate] = useState(false)
-  const [showTemplateBrowser, setShowTemplateBrowser] = useState(false)
+  const [showCommunityBrowser, setShowCommunityBrowser] = useState(false)
   const [search, setSearch] = useState('')
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const all = data?.data ?? []
   const filtered = all.filter((p) =>
@@ -46,14 +47,11 @@ export function PipelinesPage() {
     (p.category ?? '').toLowerCase().includes(search.toLowerCase()),
   )
 
-  // Group by status in the preferred order; skip empty groups
   const grouped = STATUS_GROUPS
     .map((status) => ({ status, items: filtered.filter((p) => p.status === status) }))
     .filter((g) => g.items.length > 0)
 
-  // Ungrouped when searching — just flat
   const showGrouped = !search
-
   const totalActive = all.filter((p) => p.status === 'active').length
 
   if (isLoading) {
@@ -79,8 +77,8 @@ export function PipelinesPage() {
           </p>
         </div>
         <div className="page-header-actions">
-          <Button variant="outline" size="sm" onClick={() => setShowTemplateBrowser(true)}>
-            From Template
+          <Button variant="outline" size="sm" onClick={() => setShowCommunityBrowser(true)}>
+            Browse Community
           </Button>
           <Button size="sm" onClick={() => setShowCreate(true)}>
             <Plus size={14} /> New Pipeline
@@ -118,12 +116,8 @@ export function PipelinesPage() {
                   <PipelineRow
                     key={p.id}
                     pipeline={p}
-                    isConfirming={confirmDeleteId === p.id}
-                    isDeleting={deletePipeline.isPending && confirmDeleteId === p.id}
                     onClick={() => navigate(`/pipelines/${p.slug}`)}
-                    onDelete={async () => { await deletePipeline.mutateAsync(p.id); setConfirmDeleteId(null) }}
-                    onConfirmDelete={() => setConfirmDeleteId(p.id)}
-                    onCancelDelete={() => setConfirmDeleteId(null)}
+                    {...propsFor(p.id, p.name)}
                   />
                 ))}
               </div>
@@ -136,39 +130,35 @@ export function PipelinesPage() {
             <PipelineRow
               key={p.id}
               pipeline={p}
-              isConfirming={confirmDeleteId === p.id}
-              isDeleting={deletePipeline.isPending && confirmDeleteId === p.id}
               onClick={() => navigate(`/pipelines/${p.slug}`)}
-              onDelete={async () => { await deletePipeline.mutateAsync(p.id); setConfirmDeleteId(null) }}
-              onConfirmDelete={() => setConfirmDeleteId(p.id)}
-              onCancelDelete={() => setConfirmDeleteId(null)}
+              {...propsFor(p.id, p.name)}
             />
           ))}
         </div>
       )}
 
       {showCreate && <CreatePipelineDialog onClose={() => setShowCreate(false)} />}
-      {showTemplateBrowser && <TemplateBrowser onClose={() => setShowTemplateBrowser(false)} />}
+      {showCommunityBrowser && <CommunityBrowser defaultTab="pipelines" onClose={() => setShowCommunityBrowser(false)} />}
     </div>
   )
 }
 
 function PipelineRow({
   pipeline,
+  onClick,
   isConfirming,
   isDeleting,
-  onClick,
+  onConfirm,
+  onCancel,
   onDelete,
-  onConfirmDelete,
-  onCancelDelete,
 }: {
   pipeline: PipelineSummary
+  onClick: () => void
   isConfirming: boolean
   isDeleting: boolean
-  onClick: () => void
+  onConfirm: () => void
+  onCancel: () => void
   onDelete: () => Promise<void>
-  onConfirmDelete: () => void
-  onCancelDelete: () => void
 }) {
   const lastRun = relativeTime(pipeline.lastRunAt)
 
@@ -207,20 +197,13 @@ function PipelineRow({
         </div>
       </button>
 
-      <div className={cn('flex shrink-0 items-center gap-1 pr-3', !isConfirming && 'hidden group-hover:opacity-100 transition-opacity')}>
-        {isConfirming ? (
-          <>
-            <Button variant="destructive" size="sm" loading={isDeleting} onClick={onDelete}>
-              Delete
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onCancelDelete}>
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={onConfirmDelete}>✕</Button>
-        )}
-      </div>
+      <RowDeleteControls
+        isConfirming={isConfirming}
+        isDeleting={isDeleting}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+        onDelete={onDelete}
+      />
     </div>
   )
 }

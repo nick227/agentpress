@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bot, CheckCircle2, Clock, FileText, ImageOff, Layers, Loader2, Play, Plus, RefreshCw, Send, Workflow, Zap, XCircle } from 'lucide-react'
-import { useAllRuns, usePipelineRun, usePublishRun, useStartPipelineRun } from '@project/sdk'
+import { useAllRuns, usePipelineRun, usePublishRun, useStartPipelineRun, useStartWorkflowRun } from '@project/sdk'
 import type { components } from '@project/sdk'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { CommunityBrowser } from '@/features/content/CommunityBrowser'
 
 type RunSummary = components['schemas']['RunSummary']
 type RunStatus = RunSummary['status']
@@ -62,6 +63,7 @@ export function RunsPage() {
   const { data, isLoading, refetch, isFetching } = useAllRuns(100)
   const [filter, setFilter] = useState<Filter>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [showCommunity, setShowCommunity] = useState(false)
 
   const allRuns = data?.data ?? []
   const runs = allRuns.filter((r) => matchesFilter(r, filter))
@@ -99,6 +101,9 @@ export function RunsPage() {
           </p>
         </div>
         <div className="page-header-actions">
+          <Button size="sm" variant="outline" onClick={() => setShowCommunity(true)}>
+            Browse Community
+          </Button>
           <button
             type="button"
             onClick={() => void refetch()}
@@ -154,6 +159,7 @@ export function RunsPage() {
           ))}
         </div>
       )}
+      {showCommunity && <CommunityBrowser defaultTab="pipelines" onClose={() => setShowCommunity(false)} />}
     </div>
   )
 }
@@ -196,20 +202,33 @@ function RunRow({
                 to={`/runs/${run.id}`}
                 className="text-sm font-semibold text-foreground hover:underline"
               >
-                {run.title && run.title !== run.pipelineName ? run.title : run.pipelineName}
+                {run.title && run.title !== (run.pipelineName ?? run.workflowName)
+                  ? run.title
+                  : (run.pipelineName ?? run.workflowName ?? 'Run')}
               </Link>
             </span>
             <span onClick={(e) => e.stopPropagation()} className="inline-flex items-center">
-              <Link
-                to={`/pipelines/${run.pipelineSlug}`}
-                className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                title={`Pipeline: ${run.pipelineName}`}
-              >
-                <Workflow size={10} />
-                {run.title && run.title !== run.pipelineName && (
-                  <span>{run.pipelineName}</span>
-                )}
-              </Link>
+              {run.pipelineSlug ? (
+                <Link
+                  to={`/pipelines/${run.pipelineSlug}`}
+                  className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  title={`Pipeline: ${run.pipelineName}`}
+                >
+                  <Workflow size={10} />
+                  {run.title && run.title !== run.pipelineName && (
+                    <span>{run.pipelineName}</span>
+                  )}
+                </Link>
+              ) : run.workflowSlug ? (
+                <Link
+                  to={`/workflows/${run.workflowSlug}`}
+                  className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  title={`Workflow: ${run.workflowName}`}
+                >
+                  <Workflow size={10} />
+                  <span>{run.workflowName}</span>
+                </Link>
+              ) : null}
             </span>
             {run.dryRun && (
               <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
@@ -244,9 +263,9 @@ function RunRow({
               </span>
             )}
             {vars.length > 0 && (
-              <span className="flex items-center gap-1">
+              <span className="flex flex-wrap items-center gap-1">
                 {vars.map(([k]) => (
-                  <span key={k} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  <span key={k} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground whitespace-nowrap">
                     {k}
                   </span>
                 ))}
@@ -283,7 +302,8 @@ function RunRow({
 
 function RunDetail({ run }: { run: RunSummary }) {
   const [dryRun, setDryRun] = useState(run.dryRun)
-  const startRun = useStartPipelineRun()
+  const startPipelineRun = useStartPipelineRun()
+  const startWorkflowRun = useStartWorkflowRun()
   const publishRun = usePublishRun()
   const { data: fullData } = usePipelineRun(run.id)
   const ms = durationMs(run)
@@ -300,14 +320,26 @@ function RunDetail({ run }: { run: RunSummary }) {
     }
   }
 
+  const isWorkflowRun = Boolean(run.workflowId)
+  const isPending = startPipelineRun.isPending || startWorkflowRun.isPending
+
   async function handleRerun() {
     try {
-      await startRun.mutateAsync({
-        pipelineId: run.pipelineId,
-        variables: run.variables,
-        dryRun,
-        title: run.title ?? run.pipelineName,
-      })
+      if (isWorkflowRun && run.workflowId) {
+        await startWorkflowRun.mutateAsync({
+          workflowId: run.workflowId,
+          variables: run.variables,
+          dryRun,
+          title: run.title ?? run.workflowName,
+        })
+      } else if (run.pipelineId) {
+        await startPipelineRun.mutateAsync({
+          pipelineId: run.pipelineId,
+          variables: run.variables,
+          dryRun,
+          title: run.title ?? run.pipelineName,
+        })
+      }
       toast.success(dryRun ? 'Dry run started' : 'Live run started')
     } catch {
       toast.error('Failed to start run')
@@ -417,8 +449,8 @@ function RunDetail({ run }: { run: RunSummary }) {
         <Button
           size="sm"
           onClick={handleRerun}
-          loading={startRun.isPending}
-          disabled={startRun.isPending}
+          loading={isPending}
+          disabled={isPending}
         >
           <Zap size={12} />
           Run live

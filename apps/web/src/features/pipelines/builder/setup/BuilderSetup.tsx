@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { useDeletePipeline } from '@project/sdk'
 import type { components } from '@project/sdk'
 import {
   AgentsSection,
@@ -10,6 +13,7 @@ import {
 } from './BuilderSetupSections'
 import { RunPipelineControls } from './RunPipelineControls'
 import { LoopConfig } from './LoopConfig'
+import { Button } from '@/components/ui/Button'
 
 type Pipeline = components['schemas']['Pipeline']
 type Run = components['schemas']['PipelineRun']
@@ -45,12 +49,26 @@ function useRunDefaults(pipeline: Pipeline) {
 
 export function BuilderSetup({ pipeline, pipelineId, runs, onRunCreated }: Props) {
   const runDefaults = useRunDefaults(pipeline)
+  const navigate = useNavigate()
+  const deletePipeline = useDeletePipeline()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  async function handleDeletePipeline() {
+    try {
+      await deletePipeline.mutateAsync(pipelineId)
+      toast.success(`${pipeline.name} deleted`)
+      navigate('/pipelines')
+    } catch {
+      toast.error('Failed to delete pipeline')
+    }
+  }
 
   return (
     <div className="min-h-full flex flex-col">
       <div className="p-6">
         <div className="w-full min-w-0 max-w-6xl space-y-6">
           <PipelineNameField pipeline={pipeline} pipelineId={pipelineId} onRenamed={runDefaults.handlePipelineRenamed} />
+          <LoopConfig pipeline={pipeline} pipelineId={pipelineId} />
           <div className="space-y-6">
             <DestinationSection pipeline={pipeline} pipelineId={pipelineId} />
             <PipelineSettingsSection
@@ -60,7 +78,6 @@ export function BuilderSetup({ pipeline, pipelineId, runs, onRunCreated }: Props
               onRunTitleChange={runDefaults.setRunTitle}
               onDryRunChange={runDefaults.setDryRun}
             />
-            <LoopConfig pipeline={pipeline} pipelineId={pipelineId} />
             <VariablesSection pipeline={pipeline} pipelineId={pipelineId} />
             <AgentsSection pipeline={pipeline} pipelineId={pipelineId} />
             <RunsSection pipeline={pipeline} runs={runs} />
@@ -75,6 +92,24 @@ export function BuilderSetup({ pipeline, pipelineId, runs, onRunCreated }: Props
         onDryRunChange={runDefaults.setDryRun}
         onRunCreated={onRunCreated}
       />
+
+          {/* Danger zone */}
+          <div className="border-t pt-6 mb-8">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Danger zone</p>
+            {confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <Button variant="destructive" size="sm" loading={deletePipeline.isPending} onClick={handleDeletePipeline}>
+                  Confirm delete
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                <span className="text-xs text-muted-foreground">This cannot be undone.</span>
+              </div>
+            ) : (
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-red-500" onClick={() => setConfirmDelete(true)}>
+                Delete pipeline
+              </Button>
+            )}
+          </div>
     </div>
   )
 }

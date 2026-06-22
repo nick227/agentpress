@@ -55,6 +55,7 @@ interface StartRunOptions {
   researchItemOverrides?: Record<string, string>
   batchId?: string
   loopIndex?: number
+  workflowId?: string
   // When true, startRun awaits full execution before returning (used by batch service for sequential runs)
   awaitExecution?: boolean
 }
@@ -305,6 +306,74 @@ export class PipelineRunService {
     return run
   }
 
+  async startWorkflowRun(idOrSlug: string, variables: Record<string, unknown>, options: StartRunOptions) {
+    const workflow = await db.workflow.findFirst({
+      where: {
+        workspaceId: options.workspaceId,
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
+      include: {
+        nodes: { orderBy: { sortOrder: 'asc' }, where: { enabled: true } },
+      },
+    })
+
+    if (!workflow) throw Object.assign(new Error('Workflow not found'), { statusCode: 404 })
+
+    const dryRun = options.dryRun !== undefined ? options.dryRun : true
+    const runVariables = variables ?? {}
+    const title = options.title?.trim() || workflow.name
+
+    const run = await db.pipelineRun.create({
+      data: {
+        workflowId: workflow.id,
+        title,
+        status: 'running',
+        dryRun,
+        variables: runVariables as any,
+        workspaceId: workflow.workspaceId,
+        createdByUserId: options.createdByUserId,
+      },
+    })
+
+    await audit.record({ workspaceId: workflow.workspaceId, actorUserId: options.createdByUserId, action: 'workflow.run_started', targetType: 'pipelineRun', targetId: run.id, metadata: { workflowId: workflow.id, dryRun } })
+
+    // Build a pipeline-compatible shape from workflow nodes for the execution engine
+    const pseudoPipeline = {
+      id: workflow.id,
+      slug: workflow.slug,
+      workspaceId: workflow.workspaceId,
+      destinationId: null,
+      wpCategoryIds: null,
+      agents: workflow.nodes.map((node) => ({
+        id: node.id,
+        uid: node.uid,
+        kind: node.kind,
+        name: node.name,
+        systemPrompt: node.systemPrompt,
+        userPrompt: node.userPrompt,
+        outputTarget: node.outputTarget,
+        outputFormat: node.outputFormat,
+        imageMode: node.imageMode ?? 'generate',
+        selectedImageAssetId: null,
+        selectedImageAsset: null,
+        enabled: node.enabled,
+        sortOrder: node.sortOrder,
+        // Tag with workflowNodeId so AgentRun records the correct source
+        workflowNodeId: node.id,
+      })),
+      variables: [],
+    }
+
+    this._executeRun(run.id, pseudoPipeline, runVariables, dryRun, { ...options, workflowId: workflow.id }).catch(async (err) => {
+      await db.pipelineRun.update({
+        where: { id: run.id },
+        data: { status: 'failed', error: String(err.message), completedAt: new Date() },
+      })
+    })
+
+    return run
+  }
+
   private async _executeRun(
     runId: string,
     pipeline: any,
@@ -453,7 +522,8 @@ export class PipelineRunService {
     const agentRun = await db.agentRun.create({
       data: {
         pipelineRunId: input.runId,
-        pipelineAgentId: agent.id,
+        pipelineAgentId: agent.workflowNodeId ? undefined : (agent.id ?? undefined),
+        workflowNodeId: agent.workflowNodeId ?? undefined,
         agentUid: agent.uid,
         agentName: agent.name,
         agentKind: agent.kind,
@@ -471,7 +541,13 @@ export class PipelineRunService {
     try {
       const reusable = input.bypassCache
         ? null
-        : await this.findReusableAgentRun(input.pipeline.id, agent.uid, inputHash, agentRun.id)
+        : await this.findReusableAgentRun(
+            input.pipeline.id,
+            agent.uid,
+            inputHash,
+            agentRun.id,
+            Boolean(agent.workflowNodeId),
+          )
       const generated = await this.generateAgentOutput({
         runId: input.runId,
         pipeline: input.pipeline,
@@ -651,7 +727,7 @@ export class PipelineRunService {
     }
   }
 
-  private async findReusableAgentRun(pipelineId: string, agentUid: string, inputHash: string, currentAgentRunId: string) {
+  private async findReusableAgentRun(pipelineOrWorkflowId: string, agentUid: string, inputHash: string, currentAgentRunId: string, isWorkflow = false) {
     return db.agentRun.findFirst({
       where: {
         id: { not: currentAgentRunId },
@@ -659,7 +735,7 @@ export class PipelineRunService {
         inputHash,
         status: 'completed',
         outputText: { not: null },
-        pipelineRun: { pipelineId },
+        pipelineRun: isWorkflow ? { workflowId: pipelineOrWorkflowId } : { pipelineId: pipelineOrWorkflowId },
       },
       orderBy: { completedAt: 'desc' },
     })
@@ -855,6 +931,7 @@ export class PipelineRunService {
     })
     if (!run) throw Object.assign(new Error('Run not found'), { statusCode: 404 })
     if (!run.generatedPost) throw Object.assign(new Error('Run has no generated content'), { statusCode: 400 })
+    if (!run.pipeline) throw Object.assign(new Error('Run has no generated pipeline'), { statusCode: 400 })
 
     const destinationId = destinationIdOverride ?? run.pipeline.destinationId
     if (!destinationId) throw Object.assign(new Error('No destination configured on pipeline'), { statusCode: 400 })
@@ -879,7 +956,7 @@ export class PipelineRunService {
       const result = await this.publishToWordPress(
         post,
         { outputFolder: run.outputFolder, assets: run.assets },
-        run.pipeline,
+        run.pipeline ?? {},
         destination,
         reportProgress,
       )

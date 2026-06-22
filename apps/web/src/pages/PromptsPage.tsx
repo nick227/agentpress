@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { RowDeleteControls, useDeleteConfirm } from '@/components/ui/RowDeleteControls'
 import { cn } from '@/lib/utils'
+import { CommunityBrowser } from '@/features/content/CommunityBrowser'
 
 type Prompt = components['schemas']['Prompt']
 type PromptKind = Prompt['kind']
@@ -33,9 +35,10 @@ export function PromptsPage() {
   const initialKind = searchParams.get('kind') === 'CONTENT' ? 'CONTENT' : searchParams.get('kind') === 'TRANSFORMATIONAL' ? 'TRANSFORMATIONAL' : 'all'
   const { data, isLoading } = usePrompts()
   const deletePrompt = useDeletePrompt()
+  const { propsFor } = useDeleteConfirm(deletePrompt)
   const [search, setSearch] = useState('')
   const [kindFilter, setKindFilter] = useState<PromptKind | 'all'>(initialKind)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [showCommunity, setShowCommunity] = useState(false)
 
   const all = data?.data ?? []
   const prompts = useMemo(() => {
@@ -75,8 +78,11 @@ export function PromptsPage() {
           </p>
         </div>
         <div className="page-header-actions">
+          <Button size="sm" variant="outline" onClick={() => setShowCommunity(true)}>
+            Browse Community
+          </Button>
           <Button size="sm" onClick={() => navigate('/prompts/new')}>
-            <Plus size={13} /> New prompt
+            <Plus size={13} /> New Prompt
           </Button>
         </div>
       </div>
@@ -122,38 +128,33 @@ export function PromptsPage() {
             <PromptRow
               key={prompt.id}
               prompt={prompt}
-              isConfirming={confirmDeleteId === prompt.id}
-              isDeleting={deletePrompt.isPending && confirmDeleteId === prompt.id}
               onClick={() => navigate(`/prompts/${prompt.slug}`)}
-              onConfirmDelete={() => setConfirmDeleteId(prompt.id)}
-              onCancelDelete={() => setConfirmDeleteId(null)}
-              onDelete={async () => {
-                await deletePrompt.mutateAsync(prompt.id)
-                setConfirmDeleteId(null)
-              }}
+              {...propsFor(prompt.id, prompt.name)}
             />
           ))}
         </div>
       )}
+
+      {showCommunity && <CommunityBrowser defaultTab="prompts" onClose={() => setShowCommunity(false)} />}
     </div>
   )
 }
 
 function PromptRow({
   prompt,
+  onClick,
   isConfirming,
   isDeleting,
-  onClick,
-  onConfirmDelete,
-  onCancelDelete,
+  onConfirm,
+  onCancel,
   onDelete,
 }: {
   prompt: Prompt
+  onClick: () => void
   isConfirming: boolean
   isDeleting: boolean
-  onClick: () => void
-  onConfirmDelete: () => void
-  onCancelDelete: () => void
+  onConfirm: () => void
+  onCancel: () => void
   onDelete: () => Promise<void>
 }) {
   const isCommunity = prompt.visibility === 'PUBLIC'
@@ -198,27 +199,13 @@ function PromptRow({
       </button>
 
       {!isCommunity && (
-        <div
-          className={cn(
-            'flex shrink-0 items-center gap-1 pr-3 transition-opacity',
-            !isConfirming && 'opacity-0 group-hover:opacity-100',
-          )}
-        >
-          {isConfirming ? (
-            <>
-              <Button variant="destructive" size="sm" loading={isDeleting} onClick={onDelete}>
-                Delete
-              </Button>
-              <Button variant="ghost" size="sm" onClick={onCancelDelete}>
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={onConfirmDelete}>
-              ✕
-            </Button>
-          )}
-        </div>
+        <RowDeleteControls
+          isConfirming={isConfirming}
+          isDeleting={isDeleting}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+          onDelete={onDelete}
+        />
       )}
     </div>
   )
